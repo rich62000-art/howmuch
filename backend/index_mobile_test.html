@@ -2256,7 +2256,62 @@ document.getElementById("reportModal").style.display = "none";
         // 주소창 쿼리 제거
         window.history.replaceState({}, document.title, window.location.pathname);
     }
+
+
+
+function closeModal() {
+    const modal = document.getElementById("reportModal");
+    if (modal) {
+        modal.style.display = "none";
+    }
+
+    document.body.classList.remove("modal-open");
+
+    const params = new URLSearchParams(window.location.search);
+
+    const hasSharedQuery =
+        params.has("region") ||
+        params.has("apt") ||
+        params.has("size") ||
+        params.has("price");
+
+    if (!hasSharedQuery) return;
+
+    const regionInput = document.getElementById("regionInput");
+    const aptInput = document.getElementById("aptInput");
+    const userPriceInput = document.getElementById("userPriceInput");
+    const dongSelect = document.getElementById("dongSelect");
+    const sizeSelect = document.getElementById("sizeSelect");
+    const regionList = document.getElementById("regionList");
+    const aptList = document.getElementById("aptList");
+    const resultBox = document.getElementById("resultBox");
+
+    if (regionInput) regionInput.value = "";
+    if (aptInput) aptInput.value = "";
+    if (userPriceInput) userPriceInput.value = "";
+
+    if (dongSelect) dongSelect.innerHTML = '<option value="">동 선택</option>';
+    if (sizeSelect) sizeSelect.innerHTML = '<option value="">평형 선택</option>';
+    if (regionList) regionList.innerHTML = "";
+    if (aptList) aptList.innerHTML = "";
+    if (resultBox) resultBox.innerHTML = "";
+
+    window.history.replaceState({}, document.title, window.location.pathname);
 }
+
+window.onclick = function (event) {
+    const modal = document.getElementById("reportModal");
+    if (event.target === modal) {
+        closeModal();
+    }
+};
+
+window.onclick = function (event) {
+    const modal = document.getElementById("reportModal");
+    if (event.target === modal) {
+        closeModal();
+    }
+};
 
 window.onclick = function (event) {
     const modal = document.getElementById("reportModal");
