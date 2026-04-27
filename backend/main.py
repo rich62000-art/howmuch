@@ -758,3 +758,36 @@ def get_sizes(region: str, apt_name: str):
 @app.get("/")
 def serve_index():
     return FileResponse("index_mobile_test.html")
+
+from fastapi.responses import HTMLResponse
+
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy():
+    return """
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <title>개인정보처리방침</title>
+    </head>
+    <body style="font-family: sans-serif; line-height: 1.7; padding: 24px;">
+        <h1>개인정보처리방침</h1>
+
+        <p><strong>얼마일까</strong>는 아파트 실거래가 분석 정보를 제공하는 서비스입니다.</p>
+
+        <h2>1. 수집하는 개인정보</h2>
+        <p>본 서비스는 회원가입을 받지 않으며, 이름, 전화번호, 이메일 등 개인정보를 수집하지 않습니다.</p>
+
+        <h2>2. 입력 정보</h2>
+        <p>사용자가 입력하는 지역, 아파트명, 평형, 희망 매매가는 분석 결과 제공을 위해서만 사용됩니다.</p>
+
+        <h2>3. 개인정보 제3자 제공</h2>
+        <p>본 서비스는 개인정보를 제3자에게 제공하지 않습니다.</p>
+
+        <h2>4. 문의</h2>
+        <p>서비스 관련 문의: yjs1000@hanmail.net</p>
+
+        <p>시행일: 2026년 4월 27일</p>
+    </body>
+    </html>
+    """
