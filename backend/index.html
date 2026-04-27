@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>아파트 실거래가 분석 </title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f7f8fa;
+    padding: 20px;
+    margin: 0;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+h2 {
+    margin-bottom: 20px;
+}
+
+.card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 6px;
+    margin-top: 14px;
+}
+
+input, select, button {
+    width: 100%;
+    max-width: 400px;
+    padding: 14px;
+    margin-top: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+button {
+    background: #1f6feb;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #1558b0;
+}
+
+.list {
+    border: 1px solid #ccc;
+    background: white;
+    width: 100%;
+    max-width: 400px;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+.item {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.item:hover {
+    background: #f3f7ff;
+}
+
+.item:last-child {
+    border-bottom: none;
+}
+
+#resultBox {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #d8e2f0;
+    background: #ffffff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 700px;
+    line-height: 1.7;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.result-title {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 14px;
+}
+
+.result-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 20px !important;   /* ⭐ 강제 적용 */
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    margin-bottom: 10px;
+    background: #eef4ff;
+    color: #1f4fa3;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.summary-card {
+    border: 1px solid #e6eaf0;
+    border-radius: 10px;
+    padding: 14px;
+    background: #fafcff;
+    margin-bottom: 6px;
+}
+
+.summary-label {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px;
+}
+
+.summary-value {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.section-title {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.recent-trades {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.notice-box {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #fff8e8;
+    border: 1px solid #f1dfaa;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.conclusion-box {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 10px;
+    background: #f4f8ff;
+    border: 1px solid #dbe7ff;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 12px;
+    }
+
+    .card {
+        padding: 16px;
+    }
+
+    input, select, button, .list {
+        max-width: 100%;
+    }
+
+    #resultBox {
+        max-width: 100%;
+        padding: 16px;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-value {
+        font-size: 18px;
+    }
+
+    .result-title {
+        font-size: 20px;
+    }
+}
+
+.top-conclusion {
+    margin-bottom: 18px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #f4f8ff;
+    border: 1px solid #dbe7ff;
+}
+
+.top-conclusion-label {
+    font-size: 13px;
+    color: #4a5a7a;
+    margin-bottom: 6px;
+    font-weight: bold;
+}
+
+.top-conclusion-text {
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+}
+
+.region-col {
+    flex: 1.4;
+    min-width: 0;
+}
+
+.dong-col {
+    flex: 1;
+    min-width: 180px;
+}
+
+.region-col input,
+.dong-col select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.region-col .list {
+    width: 100%;
+    max-width: 100%;
+}
+
+@media (max-width: 768px) {
+    .row {
+        flex-wrap: wrap;
+    }
+
+    .region-col,
+    .dong-col {
+        flex: 1 1 100%;
+    }
+}
+
+.row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: nowrap;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ⭐ 핵심: 50:50 */
+.half {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 입력창 꽉 채우기 */
+.half input,
+.half select {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* 자동완성 리스트도 맞추기 */
+.half .list {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* 모바일 */
+@media (max-width: 768px) {
+    .row {
+        flex-wrap: wrap;
+    }
+
+    .half {
+        flex: 1 1 100%;
+    }
+}
+
+.third {
+    flex: 1;
+    min-width: 0;
+}
+
+.third select {
+    width: 100%;
+    max-width: 100%;
+}
+
+button {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 10px;
+}
+
+.highlight-card {
+    margin-top: 16px;
+    margin-bottom: 16px;
+    padding: 16px;
+    border-radius: 14px;
+    background: #f8fbff;
+    border: 1px solid #dbe7ff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.highlight-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.highlight-desc {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.highlight-card input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+}
+
+</style>
+</head>
+
+<body>
+<div class="container">
+
+    <h2>아파트 실거래가 분석</h2>
+
+    <div class="card">
+
+        <!-- 지역, 동 입력 -->
+        <div class="row">
+            <div class="col half">
+                <label for="regionInput">지역</label>
+                <input type="text" id="regionInput" placeholder="지역 입력">
+                <div id="regionList" class="list"></div>
+            </div>
+
+            <div class="col half">
+                <label for="dongSelect">동 선택</label>
+                <select id="dongSelect">
+                    <option value="">동 선택(선택사항)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 아파트 , 평형 -->
+        <div class="row">
+            <div class="col half">
+                <label for="aptInput">아파트</label>
+                <input type="text" id="aptInput" placeholder="아파트 입력">
+                <div id="aptList" class="list"></div>
+            </div>
+
+            <div class="col half">
+                <label for="sizeSelect">전용면적</label>
+                <select id="sizeSelect">
+                    <option value="">평형 선택</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="highlight-card">
+            <div class="highlight-title">희망 매매가</div>
+            <div class="highlight-desc">생각하는 매수가를 입력하면 적정성을 판단합니다</div>
+            <input type="number" id="userPriceInput" placeholder="예: 91000 (단위: 만원)">
+        </div>
+
+        <div class="row three-cols">
+            <div class="col third">
+                <label for="directionSelect">방향</label>
+                <select id="directionSelect">
+                    <option value="">방향 선택</option>
+                    <option value="남향">남향</option>
+                    <option value="동향">동향</option>
+                    <option value="서향">서향</option>
+                    <option value="북향">북향</option>
+                </select>
+            </div>
+
+            <div class="col third">
+                <label for="floorSelect">층</label>
+                <select id="floorSelect">
+                    <option value="">층 선택</option>
+                    <option value="저층">저층</option>
+                    <option value="중층">중층</option>
+                    <option value="고층">고층</option>
+                </select>
+            </div>
+
+            <div class="col third">
+                <label for="interiorSelect">내부 상태</label>
+                <select id="interiorSelect">
+                    <option value="">내부 상태 선택</option>
+                    <option value="좋음">좋음</option>
+                    <option value="보통">보통</option>
+                    <option value="나쁨">나쁨</option>
+                </select>
+            </div>
+        </div>
+
+        <button onclick="analyzePrice()">분석하기</button>
+    </div>
+
+    <div id="resultBox"></div>
+
+</div>
+
+<script>
+
+// 🔥 캐시
+let aptCache = {};
+let aptTimer = null;
+let lastDongRegion = "";
+let dongLoading = false;
+
+const regionInput = document.getElementById("regionInput");
+const dongSelect = document.getElementById("dongSelect");
+
+// 정보 내용 클리어
+function resetAfterRegionChange() {
+    document.getElementById("aptInput").value = "";
+    document.getElementById("aptList").innerHTML = "";
+
+    const sizeSelect = document.getElementById("sizeSelect");
+    sizeSelect.innerHTML = '<option value="">평형 선택</option>';
+
+    document.getElementById("userPriceInput").value = "";
+    document.getElementById("directionSelect").value = "";
+    document.getElementById("floorSelect").value = "";
+    document.getElementById("interiorSelect").value = "";
+
+    document.getElementById("resultBox").innerHTML = "";
+}
+
+// 아파트 변경시 초기화
+function resetAfterAptChange() {
+    const sizeSelect = document.getElementById("sizeSelect");
+    sizeSelect.innerHTML = '<option value="">평형 선택</option>';
+
+    document.getElementById("userPriceInput").value = "";
+    document.getElementById("directionSelect").value = "";
+    document.getElementById("floorSelect").value = "";
+    document.getElementById("interiorSelect").value = "";
+
+    document.getElementById("resultBox").innerHTML = "";
+}
+
+// 🔥 지역 자동완성
+document.getElementById("regionInput").addEventListener("input", function () {
+    
+    resetAfterRegionChange();
+    document.getElementById("dongSelect").innerHTML = '<option value="">동 선택(선택사항)</option>';
+
+    const keyword = this.value;
+
+    if (keyword.length < 1) {
+        document.getElementById("regionList").innerHTML = "";
+        return;
+    }
+
+    fetch("http://192.168.0.35:8000/regions?keyword=" + encodeURIComponent(keyword))
+        .then(res => res.json())
+        .then(data => {
+
+            const list = document.getElementById("regionList");
+            list.innerHTML = "";
+
+            if (!data.검색결과) return;
+
+            data.검색결과.forEach(item => {
+
+                const div = document.createElement("div");
+                div.className = "item";
+                div.innerText = item;
+
+                div.onclick = function () {
+                    document.getElementById("regionInput").value = item;
+                    list.innerHTML = "";
+
+                    document.getElementById("aptInput").value = "";
+                    document.getElementById("aptList").innerHTML = "";
+                    document.getElementById("dongSelect").innerHTML = '<option value="">동 선택(선택사항)</option>';
+
+                    resetAfterRegionChange();
+                    loadDongs(item);
+                };
+
+                list.appendChild(div);
+            });
+
+        });
+});
+
+document.getElementById("dongSelect").addEventListener("change", function () {
+    const region = document.getElementById("regionInput").value;
+
+    resetAfterRegionChange();
+
+    if (!region) return;
+});
+
+// 동 조회 함수
+async function loadDongs(region) {
+    if (!region) {
+        dongSelect.innerHTML = '<option value="">동 선택</option>';
+        return;
+    }
+
+    if (dongLoading) return;
+    if (lastDongRegion === region) return;
+
+    dongLoading = true;
+    lastDongRegion = region;
+
+    dongSelect.innerHTML = '<option value="">🔍 동 검색중...</option>';
+
+    try {
+        const res = await fetch(`http://192.168.0.35:8000/dongs?region=${encodeURIComponent(region)}`);
+        const data = await res.json();
+
+        dongSelect.innerHTML = '<option value="">동 선택</option>';
+
+        const dongs = data["동목록"] || [];
+        for (const dong of dongs) {
+            const option = document.createElement("option");
+            option.value = dong;
+            option.textContent = dong;
+            dongSelect.appendChild(option);
+        }
+
+        if (dongs.length === 0) {
+            dongSelect.innerHTML = '<option value="">동 없음</option>';
+        }
+    } catch (e) {
+        dongSelect.innerHTML = '<option value="">동 조회 실패</option>';
+        console.error(e);
+    } finally {
+        dongLoading = false;
+    }
+}
+
+
+function searchApts() {
+
+    const region = document.getElementById("regionInput").value;
+    const keyword = document.getElementById("aptInput").value;
+
+    console.log("지역:", region, "검색어:", keyword);
+
+    fetch("http://192.168.0.35:8000/apts?region="
+        + encodeURIComponent(region)
+        + "&keyword="
+        + encodeURIComponent(keyword))
+    .then(res => res.json())
+    .then(data => {
+
+        console.log("응답:", data);
+
+        const listEl = document.getElementById("aptList");
+
+        if (!listEl) {
+            console.log("❌ aptList 없음");
+            return;
+        }
+
+        listEl.innerHTML = "";
+
+        if (!data || !data.검색결과) {
+            console.log("❌ 데이터 구조 이상");
+            return;
+        }
+
+        data.검색결과.forEach(item => {
+
+            const div = document.createElement("div");
+            div.innerText = item;
+
+            // 🔥 일단 클릭 확인만
+            div.onclick = function () {
+                console.log("클릭됨:", item);
+            };
+
+            listEl.appendChild(div);
+        });
+
+    })
+    .catch(err => {
+        console.log("❌ 에러:", err);
+    });
+}
+
+
+
+function showSizes(data) {
+    const select = document.getElementById("sizeSelect");
+    select.innerHTML = '<option value="">평형 선택</option>';
+
+    if (!data || !data.평형목록 || data.평형목록.length === 0) {
+        select.innerHTML = '<option value="">평형 없음</option>';
+        return;
+    }
+
+    data.평형목록.forEach(size => {
+        const option = document.createElement("option");
+        option.value = size;
+        option.text = size + "㎡";
+        select.appendChild(option);
+    });
+}
+
+// 🔥 아파트 자동완성 (디바운싱)
+document.getElementById("aptInput").addEventListener("input", function () {
+
+    resetAfterAptChange();
+
+    const keyword = this.value;
+    const region = document.getElementById("regionInput").value;
+
+    clearTimeout(aptTimer);
+
+    aptTimer = setTimeout(() => {
+
+        if (!region || keyword.length < 1) {
+            document.getElementById("aptList").innerHTML = "";
+            return;
+        }
+
+        fetchApts(region, keyword);
+
+    }, 300);
+});
+
+
+// 🔥 아파트 가져오기 (캐시 포함)
+function fetchApts(region, keyword = "") {
+    const selectedDong = document.getElementById("dongSelect").value;
+    const cacheKey = region + "_" + selectedDong;
+
+    if (!keyword && !selectedDong) {
+        document.getElementById("aptList").innerHTML = "";
+        return;
+    }
+
+    document.getElementById("aptList").innerHTML = "<div class='item loading-text'>🔍 아파트 검색중...</div>";
+
+    if (aptCache[cacheKey]) {
+        filterApts(aptCache[cacheKey], keyword);
+        return;
+    }
+
+    let url = "http://192.168.0.35:8000/apts?region=" + encodeURIComponent(region) + "&keyword=";
+    if (selectedDong) {
+        url += "&dong=" + encodeURIComponent(selectedDong);
+    }
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            aptCache[cacheKey] = data.검색결과 || [];
+            filterApts(aptCache[cacheKey], keyword);
+        })
+        .catch(err => {
+            console.log("❌ 아파트 조회 에러:", err);
+            document.getElementById("aptList").innerHTML = "<div class='item'>조회 오류</div>";
+        });
+}
+
+
+
+// 🔥 필터 (프론트에서 처리)
+function filterApts(list, keyword) {
+    const listEl = document.getElementById("aptList");
+    listEl.innerHTML = "";
+
+    const keywordNorm = (keyword || "").replace(/\s/g, "").toLowerCase();
+    const selectedDong = document.getElementById("dongSelect").value;
+
+    let filtered = list;
+
+    if (selectedDong) {
+        filtered = filtered.filter(apt => (apt.dong || "") === selectedDong);
+    }
+
+    if (keywordNorm) {
+        filtered = filtered.filter(apt =>
+            (apt.name || "").replace(/\s/g, "").toLowerCase().includes(keywordNorm)
+        );
+    }
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = "<div class='item'>검색 결과 없음</div>";
+        return;
+    }
+
+    filtered.slice(0, 20).forEach(apt => {
+        const aptName = apt.name || "";
+        const aptDong = apt.dong || "";
+
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerText = aptDong ? `${aptName} (${aptDong})` : aptName;
+
+
+
+        div.onclick = function () {
+            document.getElementById("aptInput").value = aptName;
+            listEl.innerHTML = "";
+
+            resetAfterAptChange();
+
+            const region = document.getElementById("regionInput").value;
+            const sizeSelect = document.getElementById("sizeSelect");
+            sizeSelect.innerHTML = '<option value="">🔍 평형 검색중...</option>';
+
+            fetch("http://192.168.0.35:8000/sizes?region="
+                + encodeURIComponent(region)
+                + "&apt_name="
+                + encodeURIComponent(aptName))
+                .then(res => res.json())
+                .then(data => {
+                showSizes(data);
+            })
+            .catch(err => {
+                console.log("❌ 평형 조회 에러:", err);
+                sizeSelect.innerHTML = '<option value="">평형 조회 오류</option>';
+            });
+};
+
+
+
+        listEl.appendChild(div);
+    });
+}
+
+
+// 🔥 평형 로드
+function loadSizes() {
+
+    const region = document.getElementById("regionInput").value;
+    const apt = document.getElementById("aptInput").value;
+
+    if (!region || !apt) return;
+
+    fetch(
+        "http://192.168.0.35:8000/sizes?region=" +
+        encodeURIComponent(region) +
+        "&apt_name=" +
+        encodeURIComponent(apt)
+    )
+    .then(res => res.json())
+    .then(data => {
+
+        const select = document.getElementById("sizeSelect");
+        select.innerHTML = "";
+
+        const defaultOption = document.createElement("option");
+        defaultOption.text = "평형 선택";
+        defaultOption.value = "";
+        select.appendChild(defaultOption);
+
+        const sizes = data["평형목록"];
+
+        if (!sizes) return;
+
+        sizes.forEach(size => {
+            const option = document.createElement("option");
+            option.value = size;
+            option.text = size + "㎡";
+            select.appendChild(option);
+        });
+    });
+}
+
+
+function analyzePrice() {
+    const region = document.getElementById("regionInput").value;
+    const apt = document.getElementById("aptInput").value;
+    const size = document.getElementById("sizeSelect").value;
+    const userPrice = document.getElementById("userPriceInput").value;
+    const direction = document.getElementById("directionSelect").value;
+    const floor = document.getElementById("floorSelect").value;
+    const interior = document.getElementById("interiorSelect").value;
+    const resultBox = document.getElementById("resultBox");
+
+    if (!region || !apt || !size) {
+        resultBox.innerHTML = "지역, 아파트, 평형을 먼저 선택하세요.";
+        return;
+    }
+
+    let url = "http://192.168.0.35:8000/analyze_price?"
+        + "region=" + encodeURIComponent(region)
+        + "&apt_name=" + encodeURIComponent(apt)
+        + "&size=" + encodeURIComponent(size);
+
+    if (userPrice) {
+        url += "&user_price=" + encodeURIComponent(userPrice);
+    }
+    if (direction) {
+        url += "&direction=" + encodeURIComponent(direction);
+    }
+    if (floor) {
+        url += "&floor_level=" + encodeURIComponent(floor);
+    }
+    if (interior) {
+        url += "&interior=" + encodeURIComponent(interior);
+    }
+
+    const analyzeBtn = document.querySelector("button");
+
+    // 🔥 버튼 잠금
+    analyzeBtn.disabled = true;
+
+    resultBox.innerHTML = "<div class='loading-text'>🔍 분석 중입니다...</div>";
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            if (data.결과) {
+                resultBox.innerHTML = data.결과;
+                return;
+            }
+
+            let resultClass = "result-mid";
+
+            if (data.가격판단 === "고평가") {
+                resultClass = "result-high";
+            } else if (data.가격판단 === "저평가") {
+                resultClass = "result-low";
+            }
+
+            resultBox.className = resultClass;
+            
+            resultBox.innerHTML = `
+                
+                <div class="result-title">
+                   ${data.아파트} ${data.평형}㎡
+                </div>
+
+                <div class="result-badge">
+                    
+                    ${(() => {
+                        let badgeColor = "#eef4ff";
+                        let textColor = "#1f4fa3";
+
+                        if (data.가격판단 === "고평가") {
+                            badgeColor = "#ffecec";
+                            textColor = "#d93025";
+                        } else if (data.가격판단 === "저평가") {
+                            badgeColor = "#e8f7ec";
+                            textColor = "#188038";
+                        }
+
+                        return `<div class="result-badge" style="background:${badgeColor}; color:${textColor}">
+                            ${
+                                data.사용자입력가격
+                                ? `입력한 ${data.사용자입력가격.toLocaleString()}만원은 현재 기준 ${data.가격판단}입니다.`
+                                : `${data.가격판단}`
+                            }
+                        </div>`;
+                    })()}
+                </div>
+
+                <div class="top-conclusion">
+                    <div class="top-conclusion-label">지금 매수 판단</div>
+                    <div class="top-conclusion-text">${data.한줄결론}</div>
+                </div>
+                <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">추천 매수가</div>
+                    <div class="summary-value">${data.추천매수가.toLocaleString()}만원</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">보정 추천가</div>
+                    <div class="summary-value">${data.보정추천가.toLocaleString()}만원</div>
+                </div>
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">평균가</div>
+                    <div class="summary-value">${data.평균가격.toLocaleString()}만원</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">최고/최저</div>
+                    <div class="summary-value">${data.최고가.toLocaleString()} / ${data.최저가.toLocaleString()}</div>
+                </div>
+            </div>
+
+            <div class="section-title">시장 상태</div>
+            <p>거래건수: ${data.거래건수}건</p>
+            <p>최근 3개월: ${data.최근3개월거래건수}건 (${data.거래활발도})</p>
+            <p>추세: ${data.추세} (${data["상승률(%)"]}%)</p>
+
+            <div class="section-title">최근 거래</div>
+            <ul class="recent-trades">
+                ${(data.최근거래5건 || []).map(t => `<li>${t.date} / ${t.price.toLocaleString()}만원</li>`).join("")}
+            </ul>
+
+            <div class="notice-box">
+                ${data.실거래가기준안내}
+            </div>
+        `;
+
+        analyzeBtn.disabled = false;
+        })
+        .catch(err => {
+            console.log("❌ 분석 에러:", err);
+            resultBox.innerHTML = "분석 중 오류가 발생했습니다.";
+
+            // 🔥 버튼 다시 활성화
+            analyzeBtn.disabled = false;
+        });
+}
+
+
+</script>
+
+</body>
+</html>

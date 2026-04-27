@@ -1,0 +1,2403 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.6/kakao.min.js"></script>
+
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#1d4ed8">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="아파트 AI 분석">
+<link rel="apple-touch-icon" href="/static/app_icon.png">
+
+<title>아파트 실거래가 AI 분석 리포트</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    padding: 20px;
+    margin: 0;
+}
+
+.container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+h2 {
+    margin-bottom: 20px;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #0f172a;
+    text-align: center;   
+}
+
+.card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    margin-top: 16px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+    color: #334155;
+}
+
+input, select, button {
+    width: 100%;
+    max-width: 100%;
+    padding: 14px;
+    margin-top: 10px;
+    margin-bottom: 8px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+button {
+    background: #1f6feb;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #1558b0;
+}
+
+.list {
+    border: 1px solid #ccc;
+    background: white;
+    width: 100%;
+    max-width: 400px;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+.item {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.item:hover {
+    background: #f3f7ff;
+}
+
+.item:last-child {
+    border-bottom: none;
+}
+
+#resultBox {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #d8e2f0;
+    background: #ffffff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 700px;
+    line-height: 1.7;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.result-title {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 14px;
+}
+
+.result-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 20px !important;   /* ⭐ 강제 적용 */
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    margin-bottom: 10px;
+    background: #eef4ff;
+    color: #1f4fa3;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.summary-card {
+    border: 1px solid #e6eaf0;
+    border-radius: 10px;
+    padding: 14px;
+    background: #fafcff;
+    margin-bottom: 6px;
+}
+
+.summary-label {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px;
+}
+
+.summary-value {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.section-title {
+    margin-top: 24px;
+    margin-bottom: 12px;
+
+    font-size: 22px;
+    font-weight: 700;
+    color: #1d4ed8;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
+}
+
+.section-content {
+    text-align: center;
+}
+
+.recent-trades {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.notice-box {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #fff8e8;
+    border: 1px solid #f1dfaa;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.conclusion-box {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 10px;
+    background: #f4f8ff;
+    border: 1px solid #dbe7ff;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 12px;
+        font-size: 16px;
+    }
+
+    .card {
+        width: 100%;
+        background: rgba(255,255,255,0.92);
+        border: 1px solid rgba(148,163,184,0.18);
+        border-radius: 24px;
+        padding: 20px 18px;
+        margin-bottom: 16px;
+        box-shadow:
+        0 20px 40px rgba(15,23,42,0.08),
+        0 6px 18px rgba(37,99,235,0.06);
+        backdrop-filter: blur(8px);
+    }
+
+    input, select, button, .list {
+        max-width: 100%;
+        font-size: 16px;
+    }
+
+    label {
+        font-size: 15px;
+    }
+
+    .item {
+        font-size: 15px;
+    }
+
+    #resultBox {
+        max-width: 100%;
+        padding: 16px;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-label {
+        font-size: 14px;
+    }
+
+    .summary-value {
+        font-size: 22px;
+    }
+
+    .result-title {
+        font-size: 24px;
+    }
+
+    .top-conclusion-label {
+        font-size: 14px;
+    }
+
+    .top-conclusion-text {
+        font-size: 22px;
+    }
+
+    .result-badge {
+        font-size: 18px !important;
+    }
+
+    .section-title {
+        font-size: 18px;
+    }
+
+    #resultBox p,
+    #resultBox li,
+    .notice-box,
+    .highlight-desc {
+        font-size: 15px;
+    }
+
+    .highlight-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #1f2937;
+        margin-bottom: 6px;
+    }
+
+    button {
+        padding: 16px;
+        font-size: 17px;
+    }
+
+    .row {
+        flex-wrap: wrap;
+    }
+
+    .half,
+    .third,
+    .region-col,
+    .dong-col {
+        flex: 1 1 100%;
+    }
+}
+
+.top-conclusion {
+    margin-bottom: 18px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #f4f8ff;
+    border: 1px solid #dbe7ff;
+}
+
+.top-conclusion-label {
+    font-size: 13px;
+    color: #4a5a7a;
+    margin-bottom: 6px;
+    font-weight: bold;
+}
+
+.top-conclusion-text {
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+}
+
+.region-col {
+    flex: 1.4;
+    min-width: 0;
+}
+
+.dong-col {
+    flex: 1;
+    min-width: 180px;
+}
+
+.region-col input,
+.dong-col select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.region-col .list {
+    width: 100%;
+    max-width: 100%;
+}
+
+@media (max-width: 768px) {
+    .row {
+        flex-wrap: wrap;
+    }
+
+    .region-col,
+    .dong-col {
+        flex: 1 1 100%;
+    }
+}
+
+.row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: nowrap;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ⭐ 핵심: 50:50 */
+.half {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 입력창 꽉 채우기 */
+.half input,
+.half select {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* 자동완성 리스트도 맞추기 */
+.half .list {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* 모바일 */
+@media (max-width: 768px) {
+    .row {
+        flex-wrap: wrap;
+    }
+
+    .half {
+        flex: 1 1 100%;
+    }
+}
+
+.third {
+    flex: 1;
+    min-width: 0;
+}
+
+.third select {
+    width: 100%;
+    max-width: 100%;
+}
+
+button {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 10px;
+}
+
+.highlight-card {
+    margin-top: 16px;
+    margin-bottom: 16px;
+    padding: 16px;
+    border-radius: 14px;
+    background: #f8fbff;
+    border: 1px solid #dbe7ff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.highlight-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.highlight-desc {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.highlight-card input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background: white;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#closeModal {
+    float: right;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+/* ===== 레이아웃 흔들림 방지 기본 세팅 ===== */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* ===== 전체 화면 배경 및 중앙 정렬 ===== */
+body {
+    background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    overflow-y: auto;
+    color: #0f172a;
+}
+
+/* ===== 앱 전체 래퍼 ===== */
+.app-shell {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 16px 12px 40px;
+}
+
+/* ===== 실제 콘텐츠 영역 ===== */
+.app-container {
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+}
+
+/* ===== 카드형 입력 UI ===== */
+.card {
+    width: 100%;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid #dbeafe;
+    border-radius: 24px;
+    padding: 20px 18px;
+    box-shadow: 0 18px 40px rgba(37, 99, 235, 0.12);
+    margin-bottom: 16px;
+}
+
+/* ===== input / select / button 가로 넘침 방지 ===== */
+input, select, button, textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* ===== 혹시 특정 요소가 화면을 밀어내는 경우 대비 ===== */
+img, table, pre {
+    max-width: 100%;
+}
+
+/* ===== 모달 전체 ===== */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    justify-content: center;
+    align-items: center; 
+    padding-top: 0px; 
+    z-index: 9999;
+}
+
+/* ===== 모달 박스 ===== */
+.modal-content {
+    width: 100%;
+    max-width: 420px;
+    height: 92vh;
+    background: #fff;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ===== 상단 헤더 ===== */
+.modal-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 40px;
+    padding: 2px 10px 2px 10px !important;
+    margin: 0 !important;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+}
+
+.modal-title {
+    display: block;
+    flex: 1;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1;
+    margin: 0;
+    margin-top: -1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.close-btn {
+    display: inline-flex !important;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    margin-left: 12px;
+    margin-top: -2px;
+    border: none;
+    background: #f3f4f6;
+    color: #111827;
+    border-radius: 10px;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 0 0 40px;
+}
+
+/* ===== 내용 영역 (스크롤 담당) ===== */
+.modal-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 10px 14px 12px 14px;
+}
+
+/* ===== 하단 버튼 ===== */
+.modal-footer {
+    position: sticky;
+    bottom: 0;
+
+    padding: 10px 14x;
+
+    background: #fff;
+    border-top: 1px solid #eee;
+}
+
+/* 메인 버튼 */
+.primary-btn {
+    width: 100%;
+    height: 48px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: #2563eb;
+    color: white;
+
+    font-size: 20px;
+    font-weight: 600;
+    display: flex;              /* ⭐ 추가 */
+    align-items: center;        /* ⭐ 핵심 */
+    justify-content: center;    /* ⭐ 가로 중앙 */
+
+    line-height: 1;             /* ⭐ 추가 (밀림 방지) */
+}
+
+.modal-body {
+    background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.10), transparent 28%),
+        radial-gradient(circle at top right, rgba(14,165,233,0.10), transparent 24%),
+        linear-gradient(180deg, #f5f9ff 0%, #eef4ff 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    overflow-y: auto;
+    color: #0f172a;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+.modal-body {
+    overscroll-behavior: contain;
+}
+
+html, body {
+    height: auto;
+    min-height: 100%;
+}
+
+.app-shell {
+    min-height: 100vh;
+    align-items: flex-start;
+}
+
+.price-main {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #111827;
+}
+
+.price-unit {
+    font-size: 14px;
+    margin-left: 4px;
+    color: #6b7280;
+}
+
+.price-highlight {
+    color: #2563eb;  /* 핵심 강조 (추천가) */
+}
+
+.price-sub {
+    font-size: 22px;
+    font-weight: 700;
+    color: #374151;
+}
+
+#analyzeBtn {
+    height: 56px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+}
+
+.primary-btn:active {
+    transform: scale(0.97);
+}
+
+#resultBox:empty {
+    display: none;
+}
+
+.main-title {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.main-title h2 {
+    margin: 0;
+    font-size: 27px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #0f172a;
+}
+
+.subtitle {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #64748b;
+    letter-spacing: -0.2px;
+}
+
+.section-value {
+    text-align: center;
+    font-weight: 600;
+}
+
+.recent-trades.center {
+    text-align: center;
+    list-style: none;
+    padding-left: 0;
+}
+
+.recent-trades.center li {
+    margin-bottom: 6px;
+}
+
+.form-section-title {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #592bff;
+    letter-spacing: -0.2px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;                       /* 기본 검정 테두리 제거 */
+    border-color: #fdba74;               /* ⭐ 연한 오렌지 */
+    box-shadow:
+        0 0 0 4px rgba(253, 186, 116, 0.22),
+        0 10px 24px rgba(249, 115, 22, 0.10);  /* 부드러운 glow */
+        transform: translateY(-1px);
+}
+
+.ai-explain-box {
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #fffaf5 0%, #fff7ed 100%);
+    border: 1px solid #fed7aa;
+    box-shadow: 0 8px 20px rgba(249, 115, 22, 0.08);
+}
+
+.ai-explain-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #9a3412;
+    margin-bottom: 10px;
+    letter-spacing: -0.2px;
+}
+
+.ai-explain-text {
+    font-size: 15px;
+    line-height: 1.75;
+    color: #44403c;
+    word-break: keep-all;
+}
+
+.ai-explain-summary {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.splash-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(14,165,233,0.14), transparent 24%),
+        linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+}
+
+.splash-screen.hide {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(0.98);
+}
+
+.splash-content {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    text-align: center;
+
+    display: grid;
+    justify-items: center;
+    row-gap: 12px;
+
+    animation: splashEntrance 0.9s ease-out;
+}
+
+.splash-icon {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+        animation:
+            splashSoftFloat 0.8s ease-out,
+            splashFloat 1.6s ease-in-out infinite;
+}
+
+.splash-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 20px;   /* 앱 아이콘 느낌 */
+}
+
+.splash-title {
+    display: block;
+    width: 100%;
+    margin: 0;
+
+    font-size: 28px !important;   /* ⭐ 강제 복구 */
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+
+    text-align: center;
+    animation: splashSoftFloat 0.95s ease-out;
+}
+
+.splash-subtitle {
+    display: block;
+    width: 100%;
+    margin: 0;
+
+    font-size: 15px;
+    color: #64748b;
+    letter-spacing: -0.2px;
+
+    text-align: center;
+    animation: splashSoftFloat 1.1s ease-out;
+}
+
+@keyframes splashFloat {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+    100% { transform: translateY(0); }
+}
+
+@keyframes splashEntrance {
+    0% {
+        opacity: 0;
+        transform: translateY(14px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes splashSoftFloat {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.splash-loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.splash-loader span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2563eb;
+    opacity: 0.4;
+    animation: splashDot 1.2s infinite ease-in-out;
+}
+
+.splash-loader span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.splash-loader span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes splashDot {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.3;
+    }
+    40% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+.splash-progress {
+    width: 100%;
+    margin-top: 18px;
+    text-align: center;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #38bdf8);
+    border-radius: 999px;
+    transition: width 0.2s ease;
+}
+
+.progress-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+}
+
+input,
+select {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border: 1.5px solid #dbe3ee;
+    border-radius: 14px;
+    min-height: 52px;
+    padding: 14px 16px;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 500;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.15s ease;
+
+    width: 100%;
+    min-width: 0;
+}
+
+input::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #64748b 50%),
+        linear-gradient(135deg, #64748b 50%, transparent 50%);
+    background-position:
+        calc(100% - 18px) calc(50% - 2px),
+        calc(100% - 12px) calc(50% - 2px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 40px;
+}
+
+.row.three-cols {
+    display: flex;
+    gap: 10px;
+}
+
+.row.three-cols .col.third {
+    flex: 1;
+    min-width: 0;   /* 🔥 핵심 */
+}
+
+.share-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.share-btn {
+    flex: 1;
+    height: 50px;
+    border-radius: 12px;
+    border: none;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+    line-height: 1;
+
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.share-btn.kakao {
+    background: #fee500;
+    color: #3c1e1e;
+}
+
+.share-btn.link {
+    background: #e2e8f0;
+    color: #1f2937;
+}
+
+.share-btn.naver {
+    background: #03c75a;
+    color: #fff;
+}
+
+.share-btn {
+    transition: all 0.2s ease;
+}
+
+/* 클릭 효과 */
+.share-btn:active {
+    transform: scale(0.97);
+}
+
+/* 마우스 호버 (PC) */
+.share-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* 카카오 버튼 */
+.share-btn.kakao {
+    background: #FEE500;
+    color: #000;
+}
+
+/* 링크 버튼 */
+.share-btn.link {
+    background: #ff7a18;
+    color: #fff;
+}
+
+.price-strong {
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: #0f172a;
+}
+
+.trade-card-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.trade-card {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #ffffff;
+    border: 1px solid #dbeafe;
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.08);
+}
+
+.trade-date {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.trade-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+    color: #334155;
+}
+
+.trade-info strong {
+    font-size: 18px;
+    color: #0f172a;
+}
+
+.price-adjusted {
+    color: #ef4444 !important;
+    font-weight: 700;
+}
+
+.price-adjusted {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.trade-card {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid #dbeafe;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
+}
+
+.trade-date {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.trade-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.trade-floor {
+    font-size: 15px;
+    font-weight: 700;
+    color: #475569;
+}
+
+.trade-price {
+    font-size: 21px;
+    font-weight: 800;
+    color: #ef4444;
+}
+
+input, select {
+    font-size: 16px;
+}
+
+button {
+    min-height: 44px;
+}
+
+body {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.market-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.market-card {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border-radius: 14px;
+    padding: 12px 10px;
+    text-align: center;
+    border: 1px solid #cbd5f5;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
+}
+
+.market-label {
+    font-size: 14px;
+    color: #0f172a;
+    margin-bottom: 6px;
+}
+
+.market-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.market-sub {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+.trend-rate-up {
+    color: #ef4444;   /* 빨강 (상승) */
+    font-weight: 700;
+}
+
+.trend-rate-down {
+    color: #3b82f6;   /* 파랑 (하락) */
+    font-weight: 700;
+}
+
+.trend-rate-neutral {
+    color: #0f172a;   /* 검정 (보합) */
+    font-weight: 700;
+}
+
+</style>
+</head>
+
+<body>
+<body>
+
+<div id="splashScreen" class="splash-screen">
+    <div class="splash-content">
+        <div class="splash-icon">
+            <img src="/static/app_icon.png" alt="앱 아이콘">
+        </div>
+        <div class="splash-title">실거래가 AI 분석 리포트</div>
+        <div class="splash-subtitle">실거래를 통한 AI가 적정 매수가를 분석합니다</div>
+        <div class="splash-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">AI 모텔 계산 중... 0%</div>
+            </div>   
+        </div>
+</div>
+
+<div class="app-shell">
+    <div class="app-container">
+        <div class="container">
+
+    <div class="main-title">
+        <h2>아파트 실거래가 AI 분석 리포트</h2>
+        <p class="subtitle">실거래 데이터를 기반으로 적정 매수가를 정밀 분석합니다</p>
+    </div>
+
+    <div class="card">
+
+        <!-- 지역, 동 입력 -->
+        <div class="form-section-title">1단계 · 지역 선택</div>
+        <div class="row">
+            <div class="col half">
+                <label for="regionInput">📍 지역 (시 또는 구 를 입력하세요)</label>
+                <input type="text" id="regionInput" placeholder="지역 입력">
+                <div id="regionList" class="list"></div>
+            </div>
+
+            <div class="col half">
+                <label for="dongSelect">📍 동 선택 (선택)</label>
+                <select id="dongSelect">
+                    <option value="">동 선택</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 아파트 , 평형 -->
+        <div class="form-section-title">2단계 · 아파트와 면적 선택</div>
+        <div class="row">
+            <div class="col half">
+                <label for="aptInput">🏢 아파트</label>
+                <input type="text" id="aptInput" placeholder="아파트 입력">
+                <div id="aptList" class="list"></div>
+            </div>
+
+            <div class="col half">
+                <label for="sizeSelect">📐 전용면적 (최근 1년간 거래가 없는 평형은 제외)</label>
+                <select id="sizeSelect">
+                    <option value="">평형 선택</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-section-title">3단계 · 매수 조건 입력</div>
+        <div class="highlight-card">
+            <div class="highlight-title">💰 희망 매매가 (선택)</div>
+            <div class="highlight-desc">생각하는 매매가를 입력하면 적정성을 판단합니다</div>
+            <input type="number" id="userPriceInput" placeholder="예: 91000 (단위: 만원)">
+        </div>
+
+        <div class="row three-cols">
+            <div class="col third">
+                <label for="directionSelect">📌 방 향 선 택</label>
+                <select id="directionSelect">
+                    <option value="">선택</option>
+                    <option value="남향">남향</option>
+                    <option value="동향">동향</option>
+                    <option value="서향">서향</option>
+                    <option value="북향">북향</option>
+                </select>
+            </div>
+
+            <div class="col third">
+                <label for="floorSelect">📌 층 별 선 택</label>
+                <select id="floorSelect">
+                    <option value="">선택</option>
+                    <option value="저층">저층</option>
+                    <option value="중층">중층</option>
+                    <option value="고층">고층</option>
+                </select>
+            </div>
+
+            <div class="col third">
+                <label for="interiorSelect">📌 실 내 상 태</label>
+                <select id="interiorSelect">
+                    <option value="">선택</option>
+                    <option value="좋음">좋음</option>
+                    <option value="보통">보통</option>
+                    <option value="나쁨">나쁨</option>
+                </select>
+            </div>
+        </div>
+
+        <button id="analyzeBtn" type="button" onclick="console.log('버튼클릭'); analyzePrice();">분석하기</button>
+    </div>
+
+        <div id="resultBox"></div>
+    </div>
+
+    <div id="reportModal" class="modal" style="display: none;">
+        <div class="modal-content">
+
+            <!-- 🔹 상단 헤더 -->
+            <div class="modal-header">
+                <span class="modal-title">아파트 분석 결과</span>
+                <button class="close-btn" onclick="closeModal()">✕</button>
+            </div>
+
+            <!-- 🔹 스크롤 영역 -->
+            <div id="modalResult" class="modal-body">
+                <!-- 결과 내용 들어가는 영역 -->
+            </div>
+
+            <!-- 🔹 하단 고정 버튼 -->
+            <div class="modal-footer">
+                <div class="share-row">
+                    <button class="share-btn kakao" onclick="shareKakao()">카카오  공유</button>
+                    <button class="share-btn link" onclick="console.log('링크복사클릭'); copyLink()">링크 복사</button>
+                    <button class="share-btn naver" onclick="openNaverRealEstate()">네이버 검색</button>
+                </div>
+                <button class="primary-btn" onclick="closeModal()">닫기</button>
+            </div>
+        </div>
+    </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+
+let lastResult = null;
+
+if (window.Kakao && !Kakao.isInitialized()) {
+    Kakao.init("83b7bc708aba1fdf59d4d433ce96e55b");
+}
+console.log("카카오 초기화:", window.Kakao ? Kakao.isInitialized() : "SDK 없음");
+
+function buildShareUrl() {
+    const shareRegion = document.getElementById("regionInput")?.value || "";
+    const shareApt = document.getElementById("aptInput")?.value || "";
+    const shareSize = document.getElementById("sizeSelect")?.value || "";
+    const sharePrice = document.getElementById("userPriceInput")?.value || "";
+
+    return (
+        window.location.origin +
+        "/?region=" + encodeURIComponent(shareRegion) +
+        "&apt=" + encodeURIComponent(shareApt) +
+        "&size=" + encodeURIComponent(shareSize) +
+        "&price=" + encodeURIComponent(sharePrice)
+    );
+}
+
+function shareKakao() {
+
+    if (!lastResult) {
+        alert("먼저 분석을 실행해주세요.");
+        return;
+    }
+
+    if (!window.Kakao) {
+        alert("카카오 SDK가 로드되지 않았습니다.");
+        return;
+    }
+
+    if (!Kakao.isInitialized()) {
+        alert("카카오 SDK 초기화 실패");
+        return;
+    }
+
+    const shareUrl = buildShareUrl();
+
+    const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
+    const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
+
+    const kakaoText = `📊 아파트 AI 분석 결과
+
+🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
+
+💰 내가 생각한 가격: ${userPrice}만원
+🎯 AI 추천 매수가: ${recommendPrice}만원
+
+📈 ${lastResult?.한줄결론 || ""}
+
+👉 자세히 보기
+${shareUrl}`;
+
+    Kakao.Share.sendDefault({
+        objectType: "text",
+        text: kakaoText,
+        link: {
+            mobileWebUrl: shareUrl,
+            webUrl: shareUrl
+        },
+        buttonTitle: "분석 결과 보기"
+    });
+}
+
+function openNaverRealEstate() {
+    window.open("https://land.naver.com/", "_blank");
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+        document.execCommand("copy");
+        alert("분석 결과 링크가 복사되었습니다.");
+    } catch (err) {
+        alert("복사 실패 😢");
+    }
+
+    document.body.removeChild(textarea);
+}
+
+window.addEventListener("load", function () {
+    fillFromQuery();
+
+    const splash = document.getElementById("splashScreen");
+    if (!splash) return;
+
+    let progress = 0;
+    const progressFill = document.getElementById("progressFill");
+    const progressText = document.getElementById("progressText");
+
+    const progressTimer = setInterval(() => {
+        progress += Math.floor(Math.random() * 8) + 3;
+
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(progressTimer);
+
+            setTimeout(() => {
+                splash.classList.add("hide");
+            }, 300);
+        }
+
+        if (progressFill) {
+            progressFill.style.width = progress + "%";
+        }
+
+        if (progressText) {
+            let loadingMessage = "AI 분석 준비 중...";
+
+            if (progress >= 25 && progress < 50) {
+                loadingMessage = "실거래 데이터 불러오는 중...";
+            } else if (progress >= 50 && progress < 75) {
+                loadingMessage = "시장 흐름 분석 중...";
+            } else if (progress >= 75 && progress < 100) {
+                loadingMessage = "AI 리포트 생성 중...";
+            } else if (progress === 100) {
+                loadingMessage = "분석 준비 완료";
+            }
+
+            progressText.innerText = `${loadingMessage} ${progress}%`;
+        }
+    }, 120);
+});
+
+let shareText = "";
+let progress = 0;
+const progressFill = document.getElementById("progressFill");
+const progressText = document.getElementById("progressText");
+
+const progressTimer = setInterval(() => {
+    progress += Math.floor(Math.random() * 8) + 3;  // 3~10씩 증가
+
+    if (progress >= 100) {
+        progress = 100;
+        clearInterval(progressTimer);
+
+        setTimeout(() => {
+            const splash = document.getElementById("splashScreen");
+            if (splash) splash.classList.add("hide");
+        }, 300);  // ⭐ 살짝 여유 주고 닫힘
+    }
+
+    if (progressFill) {
+        progressFill.style.width = progress + "%";
+    }
+
+    if (progressText) {
+        let loadingMessage = "AI 분석 준비 중...";
+    
+        if (progress >= 25 && progress < 50) {
+            loadingMessage = "실거래 데이터 불러오는 중...";
+        } else if (progress >= 50 && progress < 75) {
+            loadingMessage = "시장 흐름 분석 중...";
+        } else if (progress >= 75 && progress < 100) {
+            loadingMessage = "AI 리포트 생성 중...";
+        } else if (progress === 100) {
+            loadingMessage = "분석 준비 완료";
+        }
+
+        progressText.innerText = `${loadingMessage} ${progress}%`;
+    }
+}, 120);
+
+// 🔥 캐시
+let aptCache = {};
+let aptTimer = null;
+let dongCache = {};
+let lastDongRegion = "";
+let dongLoading = false;
+
+const regionInput = document.getElementById("regionInput");
+const dongSelect = document.getElementById("dongSelect");
+
+// 정보 내용 클리어
+function resetAfterRegionChange() {
+    document.getElementById("aptInput").value = "";
+    document.getElementById("aptList").innerHTML = "";
+
+    const sizeSelect = document.getElementById("sizeSelect");
+    sizeSelect.innerHTML = '<option value="">평형 선택</option>';
+
+    document.getElementById("userPriceInput").value = "";
+    document.getElementById("directionSelect").value = "";
+    document.getElementById("floorSelect").value = "";
+    document.getElementById("interiorSelect").value = "";
+
+    document.getElementById("resultBox").innerHTML = "";
+}
+
+// 아파트 변경시 초기화
+function resetAfterAptChange() {
+    const sizeSelect = document.getElementById("sizeSelect");
+    sizeSelect.innerHTML = '<option value="">평형 선택</option>';
+
+    document.getElementById("userPriceInput").value = "";
+    document.getElementById("directionSelect").value = "";
+    document.getElementById("floorSelect").value = "";
+    document.getElementById("interiorSelect").value = "";
+
+    document.getElementById("resultBox").innerHTML = "";
+}
+
+// 🔥 지역 자동완성
+document.getElementById("regionInput").addEventListener("input", function () {
+    
+    resetAfterRegionChange();
+    document.getElementById("dongSelect").innerHTML = '<option value="">동 선택(선택사항)</option>';
+
+    const keyword = this.value;
+
+    if (keyword.length < 1) {
+        document.getElementById("regionList").innerHTML = "";
+        return;
+    }
+
+    fetch("http://192.168.0.35:8000/regions?keyword=" + encodeURIComponent(keyword))
+        .then(res => res.json())
+        .then(data => {
+
+            const list = document.getElementById("regionList");
+            list.innerHTML = "";
+
+            if (!data.검색결과) return;
+
+            data.검색결과.forEach(item => {
+
+                const div = document.createElement("div");
+                div.className = "item";
+                div.innerText = item;
+
+                div.onclick = function () {
+                    document.getElementById("regionInput").value = item;
+                    list.innerHTML = "";
+
+                    document.getElementById("aptInput").value = "";
+                    document.getElementById("aptList").innerHTML = "";
+                    document.getElementById("dongSelect").innerHTML = '<option value="">동 선택(선택사항)</option>';
+
+                    resetAfterRegionChange();
+                    loadDongs(item);
+                };
+
+                list.appendChild(div);
+            });
+
+        });
+});
+
+document.getElementById("dongSelect").addEventListener("change", function () {
+    const region = document.getElementById("regionInput").value;
+
+    resetAfterRegionChange();
+
+    if (!region) return;
+});
+
+// 동 조회 함수
+async function loadDongs(region) {
+
+    if (!region) {
+        dongSelect.innerHTML = '<option value="">동 선택</option>';
+        return;
+    }
+
+    // ✅ 캐시 있으면 바로 사용
+    if (dongCache[region]) {
+        renderDongs(dongCache[region]);
+        return;
+    }
+
+    dongSelect.innerHTML = '<option value="">🔍 동 검색중...</option>';
+
+    try {
+        const res = await fetch(`http://192.168.0.35:8000/dongs?region=${encodeURIComponent(region)}`);
+        const data = await res.json();
+
+        const dongs = data["동목록"] || [];
+
+        // ✅ 캐시에 저장
+        dongCache[region] = dongs;
+
+        renderDongs(dongs);
+
+    } catch (e) {
+        dongSelect.innerHTML = '<option value="">동 조회 실패</option>';
+        console.error(e);
+    }
+}
+
+function renderDongs(dongs) {
+    dongSelect.innerHTML = '<option value="">동 선택</option>';
+
+    if (dongs.length === 0) {
+        dongSelect.innerHTML = '<option value="">동 없음</option>';
+        return;
+    }
+
+    dongs.forEach(dong => {
+        const option = document.createElement("option");
+        option.value = dong;
+        option.textContent = dong;
+        dongSelect.appendChild(option);
+    });
+}
+
+function searchApts() {
+
+    const region = document.getElementById("regionInput").value;
+    const keyword = document.getElementById("aptInput").value;
+
+    console.log("지역:", region, "검색어:", keyword);
+
+    fetch("http://192.168.0.35:8000/apts?region="
+        + encodeURIComponent(region)
+        + "&keyword="
+        + encodeURIComponent(keyword))
+    .then(res => res.json())
+    .then(data => {
+
+        console.log("응답:", data);
+
+        const listEl = document.getElementById("aptList");
+
+        if (!listEl) {
+            console.log("❌ aptList 없음");
+            return;
+        }
+
+        listEl.innerHTML = "";
+
+        if (!data || !data.검색결과) {
+            console.log("❌ 데이터 구조 이상");
+            return;
+        }
+
+        data.검색결과.forEach(item => {
+
+            const div = document.createElement("div");
+            div.innerText = item;
+
+            // 🔥 일단 클릭 확인만
+            div.onclick = function () {
+                console.log("클릭됨:", item);
+            };
+
+            listEl.appendChild(div);
+        });
+
+    })
+    .catch(err => {
+        console.log("❌ 에러:", err);
+    });
+}
+
+
+
+function showSizes(data) {
+    const select = document.getElementById("sizeSelect");
+    select.innerHTML = '<option value="">평형 선택</option>';
+
+    if (!data || !data.평형목록 || data.평형목록.length === 0) {
+        select.innerHTML = '<option value="">평형 없음</option>';
+        return;
+    }
+
+    data.평형목록.forEach(size => {
+        const option = document.createElement("option");
+        option.value = size;
+        option.text = size + "㎡";
+        select.appendChild(option);
+    });
+}
+
+// 🔥 아파트 자동완성 (디바운싱)
+document.getElementById("aptInput").addEventListener("input", function () {
+
+    resetAfterAptChange();
+
+    const keyword = this.value;
+    const region = document.getElementById("regionInput").value;
+
+    clearTimeout(aptTimer);
+
+    aptTimer = setTimeout(() => {
+
+        if (!region || keyword.length < 1) {
+            document.getElementById("aptList").innerHTML = "";
+            return;
+        }
+
+        fetchApts(region, keyword);
+
+    }, 300);
+});
+
+
+// 🔥 아파트 가져오기 (캐시 포함)
+function fetchApts(region, keyword = "") {
+    const selectedDong = document.getElementById("dongSelect").value;
+    const cacheKey = region + "_" + selectedDong;
+
+    if (!keyword && !selectedDong) {
+        document.getElementById("aptList").innerHTML = "";
+        return;
+    }
+
+    document.getElementById("aptList").innerHTML = "<div class='item loading-text'>🔍 아파트 검색중...</div>";
+
+    if (aptCache[cacheKey]) {
+        filterApts(aptCache[cacheKey], keyword);
+        return;
+    }
+
+    let url = "http://192.168.0.35:8000/apts?region=" + encodeURIComponent(region) + "&keyword=";
+    if (selectedDong) {
+        url += "&dong=" + encodeURIComponent(selectedDong);
+    }
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            aptCache[cacheKey] = data.검색결과 || [];
+            filterApts(aptCache[cacheKey], keyword);
+        })
+        .catch(err => {
+            console.log("❌ 아파트 조회 에러:", err);
+            document.getElementById("aptList").innerHTML = "<div class='item'>조회 오류</div>";
+        });
+}
+
+
+
+// 🔥 필터 (프론트에서 처리)
+function filterApts(list, keyword) {
+    const listEl = document.getElementById("aptList");
+    listEl.innerHTML = "";
+
+    const keywordNorm = (keyword || "").replace(/\s/g, "").toLowerCase();
+    const selectedDong = document.getElementById("dongSelect").value;
+
+    let filtered = list;
+
+    if (selectedDong) {
+        filtered = filtered.filter(apt => (apt.dong || "") === selectedDong);
+    }
+
+    if (keywordNorm) {
+        filtered = filtered.filter(apt =>
+            (apt.name || "").replace(/\s/g, "").toLowerCase().includes(keywordNorm)
+        );
+    }
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = "<div class='item'>검색 결과 없음</div>";
+        return;
+    }
+
+    filtered.slice(0, 20).forEach(apt => {
+        const aptName = apt.name || "";
+        const aptDong = apt.dong || "";
+
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerText = aptDong ? `${aptName} (${aptDong})` : aptName;
+
+
+
+        div.onclick = function () {
+            document.getElementById("aptInput").value = aptName;
+            listEl.innerHTML = "";
+
+            resetAfterAptChange();
+
+            const region = document.getElementById("regionInput").value;
+            const sizeSelect = document.getElementById("sizeSelect");
+            sizeSelect.innerHTML = '<option value="">🔍 평형 검색중...</option>';
+
+            fetch("http://192.168.0.35:8000/sizes?region="
+                + encodeURIComponent(region)
+                + "&apt_name="
+                + encodeURIComponent(aptName))
+                .then(res => res.json())
+                .then(data => {
+                showSizes(data);
+            })
+            .catch(err => {
+                console.log("❌ 평형 조회 에러:", err);
+                sizeSelect.innerHTML = '<option value="">평형 조회 오류</option>';
+            });
+};
+
+
+
+        listEl.appendChild(div);
+    });
+}
+
+
+// 🔥 평형 로드
+function loadSizes() {
+
+    const region = document.getElementById("regionInput").value;
+    const apt = document.getElementById("aptInput").value;
+
+    if (!region || !apt) return;
+
+    fetch(
+        "http://192.168.0.35:8000/sizes?region=" +
+        encodeURIComponent(region) +
+        "&apt_name=" +
+        encodeURIComponent(apt)
+    )
+    .then(res => res.json())
+    .then(data => {
+
+        const select = document.getElementById("sizeSelect");
+        select.innerHTML = "";
+
+        const defaultOption = document.createElement("option");
+        defaultOption.text = "평형 선택";
+        defaultOption.value = "";
+        select.appendChild(defaultOption);
+
+        const sizes = data["평형목록"];
+
+        if (!sizes) return;
+
+        sizes.forEach(size => {
+            const option = document.createElement("option");
+            option.value = size;
+            option.text = size + "㎡";
+            select.appendChild(option);
+        });
+    });
+}
+
+
+function analyzePrice() {
+    console.log("🔥 analyzePrice 실행됨");
+
+        
+    const region = document.getElementById("regionInput").value;
+    const apt = document.getElementById("aptInput").value;
+    const size = document.getElementById("sizeSelect").value;
+    const userPrice = document.getElementById("userPriceInput").value;
+    const direction = document.getElementById("directionSelect").value;
+    const floor = document.getElementById("floorSelect").value;
+    const interior = document.getElementById("interiorSelect").value;
+    console.log(region, apt, size);
+
+    const resultBox = document.getElementById("resultBox");
+    const modal = document.getElementById("reportModal");
+    const modalResult = document.getElementById("modalResult");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerText = "실거래가 데이터 수집중...";
+
+    const shareUrl = `${window.location.origin}/?apt=${apt}&size=${size}&price=${userPrice}`;
+    console.log("modal:", modal);
+    console.log("modalResult:", modalResult);
+
+    if (!region || !apt || !size) {
+        resultBox.innerHTML = "지역, 아파트, 평형을 먼저 선택하세요.";
+        return;
+    }
+
+    if (!modal || !modalResult) {
+        resultBox.innerHTML = "모달 요소를 찾지 못했습니다. reportModal / modalResult 위치를 확인하세요.";
+        return;
+    }
+
+    let url = "http://192.168.0.35:8000/analyze_price?"
+        + "region=" + encodeURIComponent(region)
+        + "&apt_name=" + encodeURIComponent(apt)
+        + "&size=" + encodeURIComponent(size);
+
+    if (userPrice) url += "&user_price=" + encodeURIComponent(userPrice);
+    if (direction) url += "&direction=" + encodeURIComponent(direction);
+    if (floor) url += "&floor_level=" + encodeURIComponent(floor);
+    if (interior) url += "&interior=" + encodeURIComponent(interior);
+
+    analyzeBtn.disabled = true;
+    
+    const shareUrlBase = window.location.origin;
+    console.log("분석 요청 URL:", url);
+
+    fetch(url)
+        .then(res => {
+            console.log("응답 상태:", res.status);
+            return res.json();
+        })
+        .then(data => {
+            try {
+                lastResult = data;
+                if (data.결과) {
+                    resultBox.innerHTML = data.결과;
+                    analyzeBtn.disabled = false;
+                    analyzeBtn.innerText = "분석하기";
+                    return;
+                }
+
+                let resultClass = "result-mid";
+                if (data.가격판단 === "고평가") {
+                    resultClass = "result-high";
+                } else if (data.가격판단 === "저평가") {
+                    resultClass = "result-low";
+                }
+
+                let aiExplain = "";
+
+                const trendText = data.추세 || "-";
+                const volumeText = data.거래활발도 || "-";
+                const recentCount = data.최근3개월거래건수 || 0;
+
+                if (data.가격판단 === "고평가") {
+                    aiExplain = "입력한 가격이 현재 실거래 흐름과 비교해 다소 높은 편입니다. 최근 거래 수준과 보정 추천가를 함께 보면서 보수적으로 접근하는 것이 좋습니다.";
+                } else if (data.가격판단 === "저평가") {
+                    aiExplain = "입력한 가격이 현재 실거래 흐름보다 낮은 편이라 가격 경쟁력이 있어 보입니다. 다만 실제 매물 상태와 급매 여부는 추가 확인이 필요합니다.";
+                } else {
+                    aiExplain = "입력한 가격이 현재 실거래 흐름과 큰 차이 없이 적정 범위에 들어와 있습니다. 최근 거래 추세와 내부 상태를 함께 보고 최종 판단하는 것이 좋습니다.";
+                }
+
+                let conditionParts = [];
+
+                if (direction) {
+                    conditionParts.push(`${direction} 기준이 반영되었고`);
+                }
+
+                if (floor) {
+                    conditionParts.push(`${floor} 조건이 함께 고려되었으며`);
+                }
+
+                if (interior) {
+                    conditionParts.push(`내부 상태는 ${interior}으로 입력되어 보정 추천가에 영향을 줍니다`);
+                }
+
+                if (conditionParts.length > 0) {
+                    aiExplain += " " + conditionParts.join(" ") + ".";
+                }
+
+                let aiSummary = "";
+
+                if (data.가격판단 === "고평가") {
+                    aiSummary = "현재 시세 대비 높은 가격으로 신중한 접근이 필요합니다.";
+                } else if (data.가격판단 === "저평가") {
+                    aiSummary = "현재 시세 대비 매수 기회로 볼 수 있는 가격입니다.";
+                } else {
+                    aiSummary = "현재 시세 기준에서 적정한 가격 범위에 있습니다.";
+                }
+
+                modalResult.classList.remove("result-high", "result-mid", "result-low");
+                modalResult.classList.add(resultClass);
+
+                const shareApt = document.getElementById("aptInput").value;
+                const shareSize = document.getElementById("sizeSelect").value;
+                const sharePrice = document.getElementById("userPriceInput").value;
+                const shareRegion = document.getElementById("regionInput").value;
+
+                const shareUrl =
+                    window.location.origin +
+                    "/?region=" + encodeURIComponent(shareRegion || "") +
+                    "&apt=" + encodeURIComponent(shareApt || "") +
+                    "&size=" + encodeURIComponent(shareSize || "") +
+                    "&price=" + encodeURIComponent(sharePrice || "");
+
+                console.log("최종 shareUrl:", shareUrl);
+                //console.log("shareApt:", shareApt);
+                //console.log("shareSize:", shareSize);
+                //console.log("sharePrice:", sharePrice);
+                //console.log("공유링크:", shareUrl);
+
+                shareText = [
+                    "📊 아파트 AI 분석 결과",
+                    "",
+                    `📍 ${shareRegion}`,
+                    `🏢 ${shareApt}`,
+                    `📐 ${shareSize}㎡`,
+                    `💰 추천가: ${Number(data.추천매수가 || 0).toLocaleString()}만원`,
+                    `📌 결과: ${data.한줄결론 || data.가격판단 || "-"}`,
+                    "",
+                    "👉 자세히 보기",
+                    shareUrl
+                ].join("\n");
+                //console.log("shareText:", shareText);
+
+                const rate = data["상승률(%)"] ?? 0;
+
+                const rateText =
+                    rate > 0 ? `<span style="color:#ef4444">+${rate}%</span>` :
+                    rate < 0 ? `<span style="color:#3b82f6">${rate}%</span>` :
+                    `${rate}%`;
+
+                console.log("최근거래5건:", data.최근거래5건);
+                modalResult.innerHTML = `
+                    <div class="result-title">
+                        ${data.아파트} ${data.평형}㎡
+                        </div>
+                        ${(() => {
+                            let badgeColor = "#eef4ff";
+                            let textColor = "#1f4fa3";
+
+                            if (data.가격판단 === "고평가") {
+                                badgeColor = "#ffecec";
+                                textColor = "#d93025";
+                            } else if (data.가격판단 === "저평가") {
+                                badgeColor = "#e8f7ec";
+                                textColor = "#188038";
+                            }
+
+                            return `
+                            <div class="result-badge" style="background:${badgeColor}; color:${textColor}">
+                                ${
+                                    data.사용자입력가격
+                                        ? `입력하신 <span class="price-strong">${Number(data.사용자입력가격).toLocaleString()}만원</span>은 현재 기준 ${data.가격판단}된 거래 가격 입니다.`
+                                        : `${data.가격판단 || "-"}`
+                                }
+                            </div>`;
+                        })()}
+
+                        <div class="top-conclusion">
+
+                    <div class="top-conclusion">
+                        <div class="top-conclusion-label">지금 매수 판단</div>
+                        <div class="top-conclusion-text">${data.한줄결론 || ""}</div>
+                    </div>
+
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <div class="summary-label">추천 매수가</div>
+                            <div class="summary-value">
+                                <span class="price-main price-highlight">
+                                    ${Number(data.추천매수가 || 0).toLocaleString()}
+                                </span>
+                                <span class="price-unit">만원</span>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">보정 추천가</div>
+                            <div class="summary-value">
+                                <span class="price-sub price-adjusted">
+                                    ${Number(data.보정추천가 || 0).toLocaleString()}
+                                </span>
+                                <span class="price-unit">만원</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <div class="summary-label">평균가</div>
+                            <div class="summary-value">
+                                ${Number(data.평균가격 || 0).toLocaleString()}만원
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">최고가 / 최저가</div>
+                            <div class="summary-value">
+                                ${Number(data.최고가 || 0).toLocaleString()} / 
+                                ${Number(data.최저가 || 0).toLocaleString()}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 🔥 시장 상태 -->
+                    <div class="section-title">📊 시장 상태 분석</div>
+
+                    <div class="market-summary">
+                        <div class="market-card">
+                            <div class="market-label">거래 건수</div>
+                            <div class="market-value">${data.거래건수 || 0}건</div>
+                        </div>
+
+                        <div class="market-card">
+                            <div class="market-label">최근 3개월</div>
+                            <div class="market-value">${data.최근3개월거래건수 || 0}건</div>
+                            <div class="market-sub">${data.거래활발도 || "-"}</div>
+                        </div>
+
+                        <div class="market-card">
+                            <div class="market-label">시장 추세</div>
+                            <div class="market-value">${data.추세 || "-"}</div>
+                            <div class="market-sub trend-rate-${(data["상승률(%)"] ?? 0) > 0 ? 'up' : (data["상승률(%)"] ?? 0) < 0 ? 'down' : 'neutral'}">
+                                ${
+                                    (data["상승률(%)"] ?? 0) > 0
+                                        ? `+${data["상승률(%)"]}%`
+                                        : `${data["상승률(%)"] ?? 0}%`
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 🔥 최근 거래 -->
+                    <div class="section-title">📈 최근 거래 내역</div>
+
+                    <div class="trade-card-list">
+                        ${(data.최근거래5건 || []).map(t => `
+                            <div class="trade-card">
+                                <div class="trade-date">${t.date || "-"}</div>
+                                <div class="trade-info">
+                                    <span class="trade-floor">
+                                        ${t.floor !== null && t.floor !== undefined ? t.floor + "층" : "층수 -"}
+                                    </span>
+                                    <strong class="trade-price">
+                                        ${Number(t.price || 0).toLocaleString()}만원
+                                    </strong>
+                                </div>
+                            </div>
+                        `).join("")}
+                    </div>
+
+                    <div class="notice-box">
+                        ${data.실거래가기준안내 || ""}
+                    </div>
+
+                    <div class="ai-explain-box">
+                        <div class="ai-explain-title">AI 분석 요약</div>
+                        <div class="ai-explain-summary">${aiSummary}</div>
+                        <div class="ai-explain-text">${aiExplain}</div>
+                    </div>
+                `;
+
+                modal.style.display = "flex";
+                console.log("모달 열기 직전");
+                console.log(modal);
+                resultBox.innerHTML = "";
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerText = "분석하기";
+            } catch (e) {
+                console.error("렌더링 에러:", e);
+                resultBox.innerHTML = "렌더링 오류: " + e.message;
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerText = "분석하기";
+            }
+        })
+        .catch(err => {
+            console.log("❌ 분석 에러:", err);
+            alert("분석 에러: " + err.message);
+            resultBox.innerHTML = "분석 중 오류가 발생했습니다: " + err.message;
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerText = "분석하기";
+        });  
+}
+
+function closeModal() {
+    document.getElementById("reportModal").style.display = "none";
+    document.body.classList.remove("modal-open");
+}
+
+window.onclick = function (event) {
+    const modal = document.getElementById("reportModal");
+    if (event.target === modal) {
+        closeModal();
+    }
+};
+
+function copyLink() {
+
+    if (!lastResult) {
+        alert("먼저 분석을 실행해주세요.");
+        return;
+    }
+
+    const shareUrl = buildShareUrl();
+
+    const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
+    const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
+
+    const text = `📊 아파트 AI 분석 결과
+
+🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
+
+💰 내가 생각한 가격: ${userPrice}만원
+🎯 AI 추천 매수가: ${recommendPrice}만원
+
+📈 ${lastResult?.한줄결론 || ""}
+
+👉 자세히 보기
+${shareUrl}`;
+
+    // 🔥 최신 브라우저 (HTTPS)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+            .then(() => alert("링크가 복사되었습니다!"))
+            .catch(() => fallbackCopy(text));
+    } else {
+        // 🔥 fallback (모바일/HTTP)
+        fallbackCopy(text);
+    }
+}
+
+
+// 🔥 fallback 복사 함수
+function fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+        document.execCommand("copy");
+        alert("링크가 복사되었습니다!");
+    } catch (err) {
+        alert("복사 실패 😢");
+    }
+
+    document.body.removeChild(textarea);
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+        document.execCommand("copy");
+        alert("분석 결과 링크가 복사되었습니다.");
+    } catch (err) {
+        alert("복사 실패 😢");
+    }
+
+    document.body.removeChild(textarea);
+}
+
+
+
+function fillFromQuery() {
+    // console.log("fillFromQuery 실행됨");
+    // console.log("현재 URL:", window.location.href);
+    // console.log("쿼리스트링:", window.location.search);
+
+    const params = new URLSearchParams(window.location.search);
+
+    const region = params.get("region") || "";
+    const apt = params.get("apt") || "";
+    const size = params.get("size") || "";
+    const price = params.get("price") || "";
+
+    // console.log("apt 파라미터:", apt);
+    // console.log("size 파라미터:", size);
+    // console.log("price 파라미터:", price);
+
+    const regionInput = document.getElementById("regionInput");
+    const aptInput = 
+        document.getElementById("aptInput") ||
+        document.getElementById("apt");
+    const sizeSelect = 
+        document.getElementById("sizeSelect") ||
+        document.getElementById("size");
+    const userPriceInput = 
+        document.getElementById("userPriceInput") ||
+        document.getElementById("price");
+
+    // console.log("regionInput 요소:", regionInput);
+    // console.log("aptInput 요소:", aptInput);
+    // console.log("sizeSelect 요소:", sizeSelect);
+    // console.log("userPriceInput 요소:", userPriceInput);
+
+    if (regionInput && region) {
+    regionInput.value = region;
+    }
+
+    if (aptInput && apt) {
+        aptInput.value = apt;
+    }
+
+    if (userPriceInput && price) {
+        userPriceInput.value = price;
+    }
+
+    if (sizeSelect && size) {
+        const exists = Array.from(sizeSelect.options).some(opt => opt.value === size);
+        if (!exists) {
+            const option = document.createElement("option");
+            option.value = size;
+            option.text = size + "㎡";
+            sizeSelect.appendChild(option);
+        }
+        sizeSelect.value = size;
+    }
+
+    const hasQuery = region && apt && size && price;
+
+    if (hasQuery) {
+        setTimeout(() => {
+            const sizeSelect = document.getElementById("sizeSelect");
+            const aptInput = document.getElementById("aptInput");
+            const regionInput = document.getElementById("regionInput");
+
+            //console.log("자동분석 직전 region:", regionInput?.value);
+            //console.log("자동분석 직전 apt:", aptInput?.value);
+            //console.log("자동분석 직전 size:", sizeSelect?.value);
+
+            if (regionInput?.value && aptInput?.value && sizeSelect?.value) {
+                //console.log("자동 분석 실행됨");
+                analyzePrice();
+            } else {
+                //console.log("자동 분석 보류 - 값 아직 미완성");
+            }
+        }, 2500);
+    }
+
+    // console.log("최종 aptInput 값:", aptInput?.value);
+    // console.log("최종 sizeSelect 값:", sizeSelect?.value);
+    // console.log("최종 userPriceInput 값:", userPriceInput?.value);
+}
+
+
+
+</script>
+
+</body>
+</html>
