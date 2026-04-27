@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="아파트 AI 분석">
 <link rel="apple-touch-icon" href="/static/app_icon.png">
 
-<title>아파트 실거래가 AI 분석 리포트</title>
+<title>얼마일까? - 실거래가 AI 분석</title>
 
 <style>
 body {
@@ -2231,31 +2231,31 @@ function analyzePrice() {
         });  
 }
 
-document.getElementById("reportModal").style.display = "none";
-    document.body.classList.remove("modal-open");
+//document.getElementById("reportModal").style.display = "none";
+//    document.body.classList.remove("modal-open");
 
     // 공유 링크로 들어온 경우 입력값 초기화
-    const params = new URLSearchParams(window.location.search);
-    const hasSharedQuery =
-        params.has("region") ||
-        params.has("apt") ||
-        params.has("size") ||
-        params.has("price");
+//    const params = new URLSearchParams(window.location.search);
+//    const hasSharedQuery =
+//        params.has("region") ||
+//        params.has("apt") ||
+//        params.has("size") ||
+//        params.has("price");
 
-    if (hasSharedQuery) {
-        document.getElementById("regionInput").value = "";
-        document.getElementById("aptInput").value = "";
-        document.getElementById("userPriceInput").value = "";
+//    if (hasSharedQuery) {
+//        document.getElementById("regionInput").value = "";
+//        document.getElementById("aptInput").value = "";
+//        document.getElementById("userPriceInput").value = "";
 
-        document.getElementById("dongSelect").innerHTML = '<option value="">동 선택</option>';
-        document.getElementById("sizeSelect").innerHTML = '<option value="">평형 선택</option>';
-        document.getElementById("regionList").innerHTML = "";
-        document.getElementById("aptList").innerHTML = "";
-        document.getElementById("resultBox").innerHTML = "";
+//        document.getElementById("dongSelect").innerHTML = '<option value="">동 선택</option>';
+//        document.getElementById("sizeSelect").innerHTML = '<option value="">평형 선택</option>';
+//        document.getElementById("regionList").innerHTML = "";
+//        document.getElementById("aptList").innerHTML = "";
+//        document.getElementById("resultBox").innerHTML = "";
 
         // 주소창 쿼리 제거
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
+//        window.history.replaceState({}, document.title, window.location.pathname);
+//    }
 
 
 
@@ -2306,19 +2306,6 @@ window.onclick = function (event) {
     }
 };
 
-window.onclick = function (event) {
-    const modal = document.getElementById("reportModal");
-    if (event.target === modal) {
-        closeModal();
-    }
-};
-
-window.onclick = function (event) {
-    const modal = document.getElementById("reportModal");
-    if (event.target === modal) {
-        closeModal();
-    }
-};
 
 function copyLink() {
 
@@ -2446,7 +2433,7 @@ function fillFromQuery() {
         sizeSelect.value = size;
     }
 
-    const hasQuery = region && apt && size && price;
+    const hasQuery = region && apt && size;
 
     if (hasQuery) {
         setTimeout(() => {
