@@ -2231,9 +2231,31 @@ function analyzePrice() {
         });  
 }
 
-function closeModal() {
-    document.getElementById("reportModal").style.display = "none";
+document.getElementById("reportModal").style.display = "none";
     document.body.classList.remove("modal-open");
+
+    // 공유 링크로 들어온 경우 입력값 초기화
+    const params = new URLSearchParams(window.location.search);
+    const hasSharedQuery =
+        params.has("region") ||
+        params.has("apt") ||
+        params.has("size") ||
+        params.has("price");
+
+    if (hasSharedQuery) {
+        document.getElementById("regionInput").value = "";
+        document.getElementById("aptInput").value = "";
+        document.getElementById("userPriceInput").value = "";
+
+        document.getElementById("dongSelect").innerHTML = '<option value="">동 선택</option>';
+        document.getElementById("sizeSelect").innerHTML = '<option value="">평형 선택</option>';
+        document.getElementById("regionList").innerHTML = "";
+        document.getElementById("aptList").innerHTML = "";
+        document.getElementById("resultBox").innerHTML = "";
+
+        // 주소창 쿼리 제거
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 }
 
 window.onclick = function (event) {
