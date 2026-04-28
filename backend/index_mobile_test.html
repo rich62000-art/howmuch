@@ -1753,6 +1753,15 @@ async function loadDongs(region) {
         dongCache[region] = dongs;
 
         renderDongs(dongs);
+        setTimeout(() => {
+        fetch(`/apts?region=${encodeURIComponent(region)}&keyword=`)
+            .then(res => res.json())
+            .then(data => {
+                aptCache[region + "_"] = data.검색결과 || [];
+                console.log("아파트 미리 로딩 완료");
+            })
+            .catch(err => console.log("아파트 미리 로딩 실패:", err));
+        }, 100);
 
     } catch (e) {
         const dongLoading = document.getElementById("dongLoading");
@@ -2018,6 +2027,11 @@ function loadSizes() {
 
 
 function analyzePrice() {
+
+    const btn = document.getElementById("analyzeBtn");
+    btn.disabled = true;
+    btn.innerText = "분석중...";
+
     // 🔥 로딩 시작
     const loadingBox = document.getElementById("analysisLoadingBox");
     const progressFill = document.getElementById("analysisProgressFill");
@@ -2035,7 +2049,14 @@ function analyzePrice() {
         }
 
         progressFill.style.width = progress + "%";
-        progressText.innerText = progress + "%";
+
+        let message = "실거래 데이터 불러오는 중...";
+
+        if (progress > 30) message = "시장 흐름 분석 중...";
+        if (progress > 60) message = "AI 적정가 판단 중...";
+        if (progress > 85) message = "분석 리포트 생성 중...";
+
+        progressText.innerText = message + " " + progress + "%";
     }, 300);
     
     console.log("🔥 analyzePrice 실행됨");
@@ -2353,6 +2374,9 @@ function analyzePrice() {
             analyzeBtn.disabled = false;
             analyzeBtn.innerText = "분석하기";
         });  
+
+    btn.disabled = false;
+    btn.innerText = "분석하기";
 }
 
 //document.getElementById("reportModal").style.display = "none";
