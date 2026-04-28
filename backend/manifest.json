@@ -1,6 +1,6 @@
 {
-  "name": "아파트 실거래가 AI 분석 리포트",
-  "short_name": "실거래가 AI 분석",
+  "name": "얼마일까?",
+  "short_name": "얼마일까?",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
