@@ -1738,6 +1738,11 @@ async function loadDongs(region) {
 
     dongSelect.innerHTML = '<option value="" class="loading-text loading-dots">동 검색중</option>';
 
+    const dongLoading = document.getElementById("dongLoading");
+    if (dongLoading) {
+        dongLoading.style.display = "block";
+    }
+
     try {
         const res = await fetch(`/dongs?region=${encodeURIComponent(region)}`);
         const data = await res.json();
@@ -1750,12 +1755,21 @@ async function loadDongs(region) {
         renderDongs(dongs);
 
     } catch (e) {
+        const dongLoading = document.getElementById("dongLoading");
+        if (dongLoading) {
+            dongLoading.style.display = "none";
+        }
+
         dongSelect.innerHTML = '<option value="">동 조회 실패</option>';
         console.error(e);
     }
 }
 
 function renderDongs(dongs) {
+    const dongLoading = document.getElementById("dongLoading");
+    if (dongLoading) {
+        dongLoading.style.display = "none";
+    }
     dongSelect.innerHTML = '<option value="">동 선택</option>';
 
     if (dongs.length === 0) {
