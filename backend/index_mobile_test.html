@@ -1235,6 +1235,35 @@ body {
     font-weight: 700;
 }
 
+.loading-text {
+    color: #ef4444;        /* 빨간색 */
+    font-weight: 700;
+    text-align: center;
+    padding: 10px;
+
+    animation: blink 1s infinite;
+}
+
+/* 깜빡임 효과 */
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+.loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%   { content: ''; }
+    25%  { content: '.'; }
+    50%  { content: '..'; }
+    75%  { content: '...'; }
+    100% { content: ''; }
+}
+
 </style>
 </head>
 
@@ -1657,7 +1686,7 @@ async function loadDongs(region) {
         return;
     }
 
-    dongSelect.innerHTML = '<option value="">🔍 동 검색중...</option>';
+    dongSelect.innerHTML = '<option value="" class="loading-text loading-dots">동 검색중</option>';
 
     try {
         const res = await fetch(`/dongs?region=${encodeURIComponent(region)}`);
