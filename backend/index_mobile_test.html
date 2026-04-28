@@ -1742,7 +1742,7 @@ async function loadDongs(region) {
     if (dongLoading) {
         dongLoading.style.display = "block";
     }
-
+    dongSelect.innerHTML = '<option value="">동 선택</option>';
     try {
         const res = await fetch(`/dongs?region=${encodeURIComponent(region)}`);
         const data = await res.json();
