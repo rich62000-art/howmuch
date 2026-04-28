@@ -1264,6 +1264,46 @@ body {
     100% { content: ''; }
 }
 
+.analysis-loading-box {
+    display: none;
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 16px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    text-align: center;
+}
+
+.analysis-loading-title {
+    color: #ef4444;
+    font-weight: 800;
+    margin-bottom: 10px;
+    animation: blink 1s infinite;
+}
+
+.analysis-progress-bar {
+    width: 100%;
+    height: 10px;
+    background: #fee2e2;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.analysis-progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444, #f97316);
+    border-radius: 999px;
+    transition: width 0.2s ease;
+}
+
+.analysis-progress-text {
+    margin-top: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #991b1b;
+}
+
 </style>
 </head>
 
@@ -1311,6 +1351,9 @@ body {
                 <select id="dongSelect">
                     <option value="">동 선택</option>
                 </select>
+                <div id="dongLoading" class="loading-text" style="display:none;">
+                    🔍 동 검색중...
+                </div>
             </div>
         </div>
 
@@ -1372,6 +1415,13 @@ body {
         </div>
 
         <button id="analyzeBtn" type="button" onclick="console.log('버튼클릭'); analyzePrice();">분석하기</button>
+        <div id="analysisLoadingBox" class="analysis-loading-box">
+            <div class="analysis-loading-title">AI 분석중...</div>
+            <div class="analysis-progress-bar">
+                <div id="analysisProgressFill" class="analysis-progress-fill"></div>
+            </div>
+            <div id="analysisProgressText" class="analysis-progress-text">0%</div>
+        </div>
     </div>
 
         <div id="resultBox"></div>
@@ -1954,6 +2004,26 @@ function loadSizes() {
 
 
 function analyzePrice() {
+    // 🔥 로딩 시작
+    const loadingBox = document.getElementById("analysisLoadingBox");
+    const progressFill = document.getElementById("analysisProgressFill");
+    const progressText = document.getElementById("analysisProgressText");
+
+    loadingBox.style.display = "block";
+
+    let progress = 0;
+
+    const progressTimer = setInterval(() => {
+        progress += Math.floor(Math.random() * 10) + 5;
+
+        if (progress >= 90) {
+            progress = 90; // 끝까지 안 가게 (대기 느낌)
+        }
+
+        progressFill.style.width = progress + "%";
+        progressText.innerText = progress + "%";
+    }, 300);
+    
     console.log("🔥 analyzePrice 실행됨");
 
         
@@ -2250,6 +2320,17 @@ function analyzePrice() {
                 analyzeBtn.disabled = false;
                 analyzeBtn.innerText = "분석하기";
             }
+
+            // 🔥 로딩 종료
+            clearInterval(progressTimer);
+
+            progressFill.style.width = "100%";
+            progressText.innerText = "100%";
+
+            setTimeout(() => {
+                loadingBox.style.display = "none";
+            }, 300);
+
         })
         .catch(err => {
             console.log("❌ 분석 에러:", err);
