@@ -1437,25 +1437,13 @@ function shareKakao() {
 ${shareUrl}`;
 
     Kakao.Share.sendDefault({
-        objectType: "feed",
-        content: {
-            title: "아파트 AI 분석 결과",
-            description: kakaoText,
-            imageUrl: "https://howmuch-xt70.onrender.com/static/app_icon.png",
+        objectType: "text",
+            text: kakaoText,
             link: {
-                mobileWebUrl: "https://howmuch-xt70.onrender.com",
-                webUrl: "https://howmuch-xt70.onrender.com"
-            }
-        },
-        buttons: [
-            {
-                title: "분석 결과 보기",
-                link: {
-                    mobileWebUrl: "https://howmuch-xt70.onrender.com",
-                    webUrl: "https://howmuch-xt70.onrender.com"
-                }
-            }
-        ]
+                mobileWebUrl: shareUrl,
+                webUrl: shareUrl
+            },
+            buttonTitle: "본문 링크를 눌러 주세요."
     });
 }
 
