@@ -1602,7 +1602,7 @@ document.getElementById("regionInput").addEventListener("input", function () {
         return;
     }
 
-    fetch("http://192.168.0.35:8000/regions?keyword=" + encodeURIComponent(keyword))
+    fetch("/regions?keyword=" + encodeURIComponent(keyword))
         .then(res => res.json())
         .then(data => {
 
@@ -1660,7 +1660,7 @@ async function loadDongs(region) {
     dongSelect.innerHTML = '<option value="">🔍 동 검색중...</option>';
 
     try {
-        const res = await fetch(`http://192.168.0.35:8000/dongs?region=${encodeURIComponent(region)}`);
+        const res = await fetch(`/dongs?region=${encodeURIComponent(region)}`);
         const data = await res.json();
 
         const dongs = data["동목록"] || [];
@@ -1699,7 +1699,7 @@ function searchApts() {
 
     console.log("지역:", region, "검색어:", keyword);
 
-    fetch("http://192.168.0.35:8000/apts?region="
+    fetch("/apts?region="
         + encodeURIComponent(region)
         + "&keyword="
         + encodeURIComponent(keyword))
@@ -1800,7 +1800,7 @@ function fetchApts(region, keyword = "") {
         return;
     }
 
-    let url = "http://192.168.0.35:8000/apts?region=" + encodeURIComponent(region) + "&keyword=";
+    let url = "/apts?region=" + encodeURIComponent(region) + "&keyword=";
     if (selectedDong) {
         url += "&dong=" + encodeURIComponent(selectedDong);
     }
@@ -1864,7 +1864,7 @@ function filterApts(list, keyword) {
             const sizeSelect = document.getElementById("sizeSelect");
             sizeSelect.innerHTML = '<option value="">🔍 평형 검색중...</option>';
 
-            fetch("http://192.168.0.35:8000/sizes?region="
+            fetch("/sizes?region="
                 + encodeURIComponent(region)
                 + "&apt_name="
                 + encodeURIComponent(aptName))
@@ -1894,7 +1894,7 @@ function loadSizes() {
     if (!region || !apt) return;
 
     fetch(
-        "http://192.168.0.35:8000/sizes?region=" +
+        "/sizes?region=" +
         encodeURIComponent(region) +
         "&apt_name=" +
         encodeURIComponent(apt)
@@ -1959,7 +1959,7 @@ function analyzePrice() {
         return;
     }
 
-    let url = "http://192.168.0.35:8000/analyze_price?"
+    let url = "/analyze_price?"
         + "region=" + encodeURIComponent(region)
         + "&apt_name=" + encodeURIComponent(apt)
         + "&size=" + encodeURIComponent(size);
