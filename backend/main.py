@@ -484,9 +484,9 @@ def analyze_price(
 ):
     cache_key = f"{normalize_region(region)}_{normalize(apt_name)}_{size}_{direction or 'none'}_{floor_level or 'none'}_{interior or 'none'}_{user_price or 'none'}"
 
-    # if cache_key in analysis_cache:
-    #    print("⚡ 분석 캐시 사용")
-    #    return analysis_cache[cache_key]
+    if cache_key in analysis_cache:
+       print("⚡ 분석 캐시 사용")
+       return analysis_cache[cache_key]
     # analysis_cache[cache_key] = result
     
     LAWD_CD = find_lawd_cd(region)
