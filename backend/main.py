@@ -611,8 +611,23 @@ def analyze_price(
 
         change_rate = round(diff_rate, 2)
     else:
-        trend = "보류"
-        change_rate = 0
+        if len(prices) >= 5:
+            recent_avg = sum(prices[:5]) / len(prices[:5])
+            past_avg = sum(prices[-5:]) / len(prices[-5:])
+
+            diff_rate = ((recent_avg - past_avg) / past_avg) * 100
+
+            if diff_rate >= 2:
+                trend = "상승"
+            elif diff_rate <= -2:
+                trend = "하락"
+            else:
+                trend = "보합"
+
+            change_rate = round(diff_rate, 2)
+        else:
+            trend = "보류"
+            change_rate = 0
 
     # 5. 추천 매수가
     if trend == "하락":
