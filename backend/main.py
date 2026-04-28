@@ -78,9 +78,10 @@ def find_lawd_cd(region: str):
     return None
 
 def warmup_region(region: str):
-    print(f"🔥 워밍업 시작: {region}")
+    print(f"🔥 백그라운드 워밍업 시작: {region}")
     try:
-        fetch_trade_items(region, 6)
+        fetch_trade_items(region, 12)
+        print(f"✅ 백그라운드 워밍업 완료: {region}")
     except Exception as e:
         print("워밍업 실패:", e)
 
