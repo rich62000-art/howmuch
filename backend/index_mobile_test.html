@@ -1716,10 +1716,16 @@ document.getElementById("regionInput").addEventListener("input", function () {
 
 document.getElementById("dongSelect").addEventListener("change", function () {
     const region = document.getElementById("regionInput").value;
+    const selectedDong = document.getElementById("dongSelect").value;
 
-    resetAfterRegionChange();
+    resetAfterAptChange();
 
-    if (!region) return;
+    document.getElementById("aptInput").value = "";
+    document.getElementById("aptList").innerHTML = "";
+
+    if (!region || !selectedDong) return;
+
+    fetchApts(region, "");
 });
 
 // 동 조회 함수
@@ -1902,7 +1908,8 @@ function fetchApts(region, keyword = "") {
         return;
     }
 
-    let url = "/apts?region=" + encodeURIComponent(region) + "&keyword=";
+    let url = "http://192.168.0.35:8000/apts?region=" + encodeURIComponent(region) + "&keyword=";
+
     if (selectedDong) {
         url += "&dong=" + encodeURIComponent(selectedDong);
     }
