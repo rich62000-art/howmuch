@@ -1883,7 +1883,19 @@ document.getElementById("aptInput").addEventListener("input", function () {
 
     aptTimer = setTimeout(() => {
 
-        if (!region || keyword.length < 1) {
+        if (!region) {
+            document.getElementById("aptList").innerHTML = "";
+            return;
+        }
+
+        const selectedDong = document.getElementById("dongSelect").value;
+
+        if (keyword.length < 1 && selectedDong) {
+            fetchApts(region, "");
+            return;
+        }
+
+        if (keyword.length < 1 && !selectedDong) {
             document.getElementById("aptList").innerHTML = "";
             return;
         }
