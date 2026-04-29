@@ -1723,9 +1723,8 @@ document.getElementById("dongSelect").addEventListener("change", function () {
     document.getElementById("aptInput").value = "";
     document.getElementById("aptList").innerHTML = "";
 
-    if (!region || !selectedDong) return;
-
-    fetchApts(region, "");
+    if (!region || !selectedDong) {
+        return;
     }
 
     console.log("동 선택됨:", selectedDong);
@@ -2621,7 +2620,10 @@ function fillFromQuery() {
     // console.log("최종 userPriceInput 값:", userPriceInput?.value);
 }
 
-
+setTimeout(() => {
+    const splash = document.getElementById("splashScreen");
+    if (splash) splash.classList.add("hide");
+}, 3000);
 
 </script>
 
