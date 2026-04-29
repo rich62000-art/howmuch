@@ -1736,7 +1736,7 @@ document.getElementById("dongSelect").addEventListener("change", function () {
 async function loadDongs(region) {
 
     if (!region) {
-        dongSelect.innerHTML = '<option value="">동 선택</option>';
+        dongSelect.innerHTML = '<option value="">동을 선택 하세요</option>';
         return;
     }
 
@@ -1898,21 +1898,18 @@ document.getElementById("aptInput").addEventListener("input", function () {
 // 🔥 아파트 가져오기 (캐시 포함)
 function fetchApts(region, keyword = "") {
     const selectedDong = document.getElementById("dongSelect").value;
-    const cacheKey = region + "_" + selectedDong;
+    const cacheKey = region + "_" + (selectedDong || "all");
 
-    if (!keyword && !selectedDong) {
+    if (!region) {
         document.getElementById("aptList").innerHTML = "";
         return;
     }
 
-    document.getElementById("aptList").innerHTML = "<div class='item loading-text'>🔍 아파트 검색중...</div>";
+    document.getElementById("aptList").innerHTML =
+        "<div class='item loading-text'>🔍 아파트 검색중...</div>";
 
-    if (aptCache[cacheKey]) {
-        filterApts(aptCache[cacheKey], keyword);
-        return;
-    }
-
-    let url = "http://192.168.0.35:8000/apts?region=" + encodeURIComponent(region) + "&keyword=";
+    let url = "/apts?region=" + encodeURIComponent(region)
+        + "&keyword=" + encodeURIComponent(keyword || "");
 
     if (selectedDong) {
         url += "&dong=" + encodeURIComponent(selectedDong);
@@ -1921,14 +1918,22 @@ function fetchApts(region, keyword = "") {
     console.log("아파트 요청 URL:", url);
 
     fetch(url)
-        .then(res => res.json())
+        .then(res => {
+            console.log("아파트 응답 상태:", res.status);
+            return res.json();
+        })
         .then(data => {
-            aptCache[cacheKey] = data.검색결과 || [];
-            filterApts(aptCache[cacheKey], keyword);
+            console.log("아파트 응답 데이터:", data);
+
+            const result = data.검색결과 || [];
+
+            aptCache[cacheKey] = result;
+            filterApts(result, keyword || "");
         })
         .catch(err => {
             console.log("❌ 아파트 조회 에러:", err);
-            document.getElementById("aptList").innerHTML = "<div class='item'>조회 오류</div>";
+            document.getElementById("aptList").innerHTML =
+                "<div class='item'>아파트 조회 오류</div>";
         });
 }
 
