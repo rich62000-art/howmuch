@@ -1757,21 +1757,16 @@ async function loadDongs(region) {
         const res = await fetch(`/dongs?region=${encodeURIComponent(region)}`);
         const data = await res.json();
 
+        console.log("동 응답 상태:", res.status);
+        console.log("동 응답 데이터:", data);
+
         const dongs = data["동목록"] || [];
 
         // ✅ 캐시에 저장
         dongCache[region] = dongs;
 
         renderDongs(dongs);
-        setTimeout(() => {
-        fetch(`/apts?region=${encodeURIComponent(region)}&keyword=`)
-            .then(res => res.json())
-            .then(data => {
-                aptCache[region + "_"] = data.검색결과 || [];
-                console.log("아파트 미리 로딩 완료");
-            })
-            .catch(err => console.log("아파트 미리 로딩 실패:", err));
-        }, 100);
+        
 
     } catch (e) {
         const dongLoading = document.getElementById("dongLoading");
