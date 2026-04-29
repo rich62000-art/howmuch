@@ -1726,6 +1726,11 @@ document.getElementById("dongSelect").addEventListener("change", function () {
     if (!region || !selectedDong) return;
 
     fetchApts(region, "");
+    }
+
+    console.log("동 선택됨:", selectedDong);
+
+    fetchApts(region, "");
 });
 
 // 동 조회 함수
@@ -1913,6 +1918,8 @@ function fetchApts(region, keyword = "") {
     if (selectedDong) {
         url += "&dong=" + encodeURIComponent(selectedDong);
     }
+
+    console.log("아파트 요청 URL:", url);
 
     fetch(url)
         .then(res => res.json())
