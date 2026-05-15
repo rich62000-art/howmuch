@@ -5980,7 +5980,7 @@ document.querySelectorAll(".top-tab").forEach(tab => {
             document.getElementById("priceInputTitle").innerText = "예상 총 매입가 입력";
             document.getElementById("userPriceInput").placeholder = "예: 85000 (단위: 만원)";
             document.getElementById("priceInputDesc").innerText =
-                "분양가 + 프리미엄 + 옵션비 포함 기준으로 입력하세요.";
+                "분양가 + 프리미엄 + 옵션 포함 기준으로 입력하세요";
             
         } else {
             document.getElementById("aptInput").placeholder = "아파트 단지 입력";
@@ -7103,7 +7103,7 @@ function analyzePrice() {
 
                 const heroDescText =
                     selectedPropertyType === "presale"
-                        ? "분양가 + 프리미엄 + 옵션비 포함 기준으로 판단합니다"
+                        ? "분양가 + 프리미엄 + 옵션 포함 기준으로 판단합니다"
                         : "현재 시세 기준 적정 범위 가격입니다";
 
                 function formatKoreanPrice(value) {
