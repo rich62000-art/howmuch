@@ -6,16 +6,16 @@
 
 <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.6/kakao.min.js"></script>
 
-<link rel="manifest" href="/static/manifest.json">
+<link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1d4ed8">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="실거래가 AI 분석">
-<link rel="apple-touch-icon" href="/static/app_icon.png">
+<meta name="apple-mobile-web-app-title" content="실거래가 AI분석">
+<link rel="apple-touch-icon" href="/app_icon_v1.png">
 
-<title>얼마일까? - 실거래가 AI 분석</title>
+<title>실거래가 AI분석</title>
 
 <style>
 body {
@@ -1099,12 +1099,6 @@ select {
     letter-spacing: -0.2px;
 }
 
-.share-btn.naver {
-    border: 1.5px solid #22c55e;
-
-    color: #16a34a;
-}
-
 .share-btn {
     transition: all 0.2s ease;
 }
@@ -1122,20 +1116,6 @@ select {
         0 10px 20px rgba(15,23,42,0.10);
 
     background: white;
-}
-
-/* 카카오 버튼 */
-.share-btn.kakao {
-     border: 1.5px solid #facc15;
-
-    color: #ca8a04;
-}
-
-/* 링크 버튼 */
-.share-btn.link {
-    border: 1.5px solid #fb923c;
-
-    color: #ea580c;
 }
 
 .price-strong {
@@ -5326,29 +5306,6 @@ body {
     left: 140%;
 }
 
-/* ===== 모달 하단 공유 버튼 최종 스타일 ===== */
-
-.share-btn.kakao,
-.share-btn.link,
-.share-btn.naver {
-    background: rgba(255,255,255,0.94) !important;
-    box-shadow: 0 6px 14px rgba(15,23,42,0.06) !important;
-}
-
-.share-btn.kakao {
-    border: 1.5px solid #facc15 !important;
-    color: #ca8a04 !important;
-}
-
-.share-btn.link {
-    border: 1.5px solid #fb923c !important;
-    color: #ea580c !important;
-}
-
-.share-btn.naver {
-    border: 1.5px solid #22c55e !important;
-    color: #16a34a !important;
-}
 
 /* ===== 모달 닫기 버튼 최종 ===== */
 
@@ -5473,6 +5430,49 @@ body {
 
     line-height: 1 !important;
 }
+/* ===== 공유 버튼 최종 강제 스타일 ===== */
+
+.share-btn.kakao,
+.share-btn.link,
+.share-btn.naver {
+
+    background: #ffffff !important;
+
+    background-image: none !important;
+
+    box-shadow:
+        0 6px 16px rgba(15,23,42,0.06) !important;
+}
+
+/* 카카오 */
+.share-btn.kakao {
+
+    border: 1.5px solid #facc15 !important;
+
+    color: #ca8a04 !important;
+
+    -webkit-text-fill-color: #ca8a04 !important;
+}
+
+/* 링크복사 */
+.share-btn.link {
+
+    border: 1.5px solid #fb923c !important;
+
+    color: #ea580c !important;
+
+    -webkit-text-fill-color: #ea580c !important;
+}
+
+/* 네이버 */
+.share-btn.naver {
+
+    border: 1.5px solid #22c55e !important;
+
+    color: #16a34a !important;
+
+    -webkit-text-fill-color: #16a34a !important;
+}
 </style>
 </head>
 
@@ -5481,7 +5481,7 @@ body {
 <div id="splashScreen" class="splash-screen">
     <div class="splash-content">
         <div class="splash-icon">
-            <img src="/static/app_icon.png" alt="앱 아이콘">
+            <img src="/static/app_icon_v1.png" alt="앱 아이콘">
         </div>
         <div class="splash-title">실거래가 AI 분석 리포트</div>
         <div class="splash-subtitle">실거래를 통한 AI가 적정 매수가를 분석합니다</div>
@@ -6922,8 +6922,8 @@ function analyzePrice() {
         analyzeBtn.disabled = false;
         analyzeBtn.innerText =
             selectedPropertyType === "presale"
-                ? "분양권 분석하기"
-                : "아파트 분석하기";
+                ? "✨ 분양권 분석하기"
+                : "✨ 아파트 분석하기";
 
         return;
     }
@@ -7630,8 +7630,8 @@ function analyzePrice() {
 
                 analyzeBtn.innerText =
                     selectedPropertyType === "presale"
-                        ? "분양권 분석하기"
-                        : "아파트 분석하기";
+                        ? "✨ 분양권 분석하기"
+                        : "✨ 아파트 분석하기";
             } catch (e) {
                 console.error("렌더링 에러:", e);
                 resultBox.innerHTML = "렌더링 오류: " + e.message;
@@ -7657,8 +7657,8 @@ function analyzePrice() {
             analyzeBtn.disabled = false;
             analyzeBtn.innerText = 
                 selectedPropertyType === "presale"
-                    ? "분양권 분석하기"
-                    : "아파트 분석하기";
+                    ? "✨ 분양권 분석하기"
+                    : "✨ 아파트 분석하기";
             analyzeBtn.disabled = false;
             
         });  

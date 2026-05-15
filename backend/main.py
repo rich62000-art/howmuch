@@ -15,6 +15,20 @@ from difflib import SequenceMatcher
 
 app = FastAPI()
 
+@app.get("/manifest.json")
+def manifest():
+    return FileResponse(
+        "manifest.json",
+        media_type="application/manifest+json"
+    )
+
+@app.get("/app_icon_v1.png")
+def app_icon():
+    return FileResponse(
+        "app_icon_v1.png",
+        media_type="image/png"
+    )
+
 app.mount("/static", StaticFiles(directory="."), name="static")
 
 # CORS
