@@ -890,6 +890,21 @@ def analyze_price(
         for key in sorted(monthly_volume_map.keys())
     ]
 
+    # 🔥 최근 6개월 거래만 표시
+    six_months_ago = datetime.today() - timedelta(days=180)
+
+    recent_trades = []
+
+    for t in trades:
+
+        try:
+            d = datetime.strptime(t["date"], "%Y-%m-%d")
+
+            if d >= six_months_ago:
+                recent_trades.append(t)
+
+        except:
+            continue
 
 
     # 최근 거래 5건
@@ -1439,3 +1454,7 @@ def privacy():
     </body>
     </html>
     """
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
