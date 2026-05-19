@@ -1962,8 +1962,7 @@ body {
 }
 
 .modal-content {
-    width: 92% !important;
-    max-width: 980px !important;
+    width: min(96vw, 1180px) !important;
     height: 88vh !important;
 
     border-radius: 28px !important;
@@ -1981,7 +1980,7 @@ body {
 @media (max-width: 768px) {
 
     .modal-content {
-         width: 100vw !important;
+        width: 100vw !important;
         max-width: 100vw !important;
         height: 100vh !important;
         max-height: 100vh !important;
@@ -5503,6 +5502,128 @@ body {
 
     font-weight: 800 !important;
 }
+
+#sidoSelect,
+#sigunguSelect {
+
+    width: 100%;
+
+    height: 54px;
+
+    border-radius: 16px;
+
+    border: 1.5px solid #dbe3f0;
+
+    background: rgba(255,255,255,0.95);
+
+    padding: 0 16px;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    color: #1e293b;
+
+    margin-bottom: 10px;
+
+    outline: none;
+
+    appearance: none;
+}
+
+#sidoSelect,
+#sigunguSelect {
+    appearance: none;
+    -webkit-appearance: none;
+
+    background-image:
+        linear-gradient(45deg, transparent 50%, #64748b 50%),
+        linear-gradient(135deg, #64748b 50%, transparent 50%);
+
+    background-position:
+        calc(100% - 18px) calc(50% - 2px),
+        calc(100% - 12px) calc(50% - 2px);
+
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+
+    padding-right: 42px !important;
+}
+.presale-notice {
+    width: 100%;
+    margin: 8px 0 14px;
+
+    padding: 12px 14px;
+
+    border-radius: 16px;
+
+    background: linear-gradient(180deg, #fff7ed 0%, #fffaf5 100%);
+    border: 1px solid #fed7aa;
+
+    font-size: 12px;
+    line-height: 1.55;
+
+    color: #9a3412;
+    font-weight: 700;
+
+    box-shadow: 0 8px 18px rgba(249,115,22,0.08);
+}
+
+.market-card-sub.trend-rate-up {
+    color: #ef4444 !important;
+    font-weight: 800 !important;
+}
+
+.market-card-sub.trend-rate-down {
+    color: #3b82f6 !important;
+    font-weight: 800 !important;
+}
+
+.market-card-sub.trend-rate-neutral {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+}
+
+.volume-chart-box {
+    margin-top: 10px;
+    padding: 14px;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #dbeafe;
+}
+
+.volume-row {
+    display: grid;
+    grid-template-columns: 52px 1fr 42px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.volume-month {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+}
+
+.volume-bar-wrap {
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.volume-bar {
+    height: 100%;
+    background: #2563eb;
+    border-radius: 999px;
+}
+
+.volume-count {
+    font-size: 12px;
+    font-weight: 800;
+    color: #0f172a;
+    text-align: right;
+}
 </style>
 </head>
 
@@ -5599,15 +5720,26 @@ body {
             </div>
         </div>
 
+        
+
         <div class="row">
             <div class="col half">
-                <label for="regionInput">시/구 선택</label>
-                <input type="text" id="regionInput" placeholder="📍 지역명을 입력하세요">
-                <div id="regionList" class="list"></div>
+                <label for="regionInput">(1) 시/도 선택</label>
+                <select id="sidoSelect">
+                    <option value="">시/도 선택</option>
+                </select>
+                
+                <label for="regionInput">(2) 시/구/군 선택</label>
+                <select id="sigunguSelect">
+                    <option value="">시/군/구 선택</option>
+                </select>
+
+                <input type="hidden" id="regionInput">
+
             </div>
 
             <div class="col half">
-                <label for="dongSelect">동/리 선택</label>
+                <label for="dongSelect">(3) 동/리 선택</label>
                 <div class="apt-input-wrap">
                     <input 
                         type="text" 
@@ -5637,6 +5769,13 @@ body {
             </div>
         </div>
 
+        <div id="presaleNotice" class="presale-notice" style="display:none;">
+                    ※ 분양권 일부 단지는 공공데이터에 과거 분양권 거래 이력이 남아 있어
+                    현재 입주 완료된 아파트라도 분양권 목록에 표시될 수 있습니다.
+                    실제 분양권 거래 가능 여부는 최신 매물 정보를 통해 다시 확인해 주세요.
+        </div>
+
+
         <!-- 아파트 , 평형 -->
         <div class="step-title">
             <div class="step-num">02</div>
@@ -5654,6 +5793,7 @@ body {
 
         <div class="row">
             <div class="col half">
+                             
                 <label for="aptInput">아파트 명을 선택하세요</label>
                 <div class="apt-input-wrap">
                     <input type="text" id="aptInput" placeholder="🏢 단지명을 직접 입력">
@@ -5705,7 +5845,13 @@ body {
         <div class="highlight-card">
             <div class="highlight-title" id="priceInputTitle">💰 희망 매매가 (선택)</div>
             <div class="highlight-desc" id="priceInputDesc">생각하는 매매가를 입력하면 적정성을 판단합니다</div>
-            <input type="number" id="userPriceInput" placeholder="예: 93000 (단위: 만원)">
+            <input
+                type="text"
+                id="userPriceInput"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                placeholder="예: 93000 (단위: 만원)"
+            >
         </div>
 
          
@@ -5757,7 +5903,7 @@ body {
             </div>
             <div id="analysisProgressText" class="analysis-progress-text">0%</div>
         </div>
-        <button id="analyzeBtn" type="button" onclick="console.log('버튼클릭'); analyzePrice();">✨ 아파트 분석하기</button>
+        <button id="analyzeBtn" type="button" onclick="analyzePrice();">✨ 아파트 분석하기</button>
         
     </div>
 
@@ -5925,12 +6071,29 @@ document.querySelectorAll(".top-tab").forEach(tab => {
             ? "presale"
             : "apt";
 
-        console.log("선택:", selectedPropertyType);
         document.getElementById("aptInput").value = "";
         document.getElementById("aptList").innerHTML = "";
 
-        document.getElementById("regionInput").value = "";
-        document.getElementById("regionList").innerHTML = "";
+        const regionInput = document.getElementById("regionInput");
+        if (regionInput) {
+            regionInput.value = "";
+        }
+
+        const regionList = document.getElementById("regionList");
+        if (regionList) {
+            regionList.innerHTML = "";
+        }
+
+        const sidoSelect = document.getElementById("sidoSelect");
+        if (sidoSelect) {
+            sidoSelect.value = "";
+        }
+
+        const sigunguSelect = document.getElementById("sigunguSelect");
+        if (sigunguSelect) {
+            sigunguSelect.innerHTML = "<option value=''>시/군/구 선택</option>";
+        }
+
         const dongInput = document.getElementById("dongInput");
         if (dongInput) {
             dongInput.value = "";
@@ -5998,7 +6161,8 @@ document.querySelectorAll(".top-tab").forEach(tab => {
         } else {
             document.getElementById("analyzeBtn").innerText = "✨ 아파트 분석하기";
         }
-
+        document.getElementById("presaleNotice").style.display =
+            selectedPropertyType === "presale" ? "block" : "none";
 
     });
 });
@@ -6131,6 +6295,140 @@ window.addEventListener("load", function () {
         }
     }, 120);
 });
+
+
+// ===== 지역 리스트 =====
+
+const sidoList = [
+    "서울특별시",
+    "부산광역시",
+    "대구광역시",
+    "인천광역시",
+    "광주광역시",
+    "대전광역시",
+    "울산광역시",
+    "세종특별자치시",
+    "경기도",
+    "강원특별자치도",
+    "충청북도",
+    "충청남도",
+    "전북특별자치도",
+    "전라남도",
+    "경상북도",
+    "경상남도",
+    "제주특별자치도"
+];
+
+const sidoSelect =
+    document.getElementById("sidoSelect");
+
+const sigunguSelect =
+    document.getElementById("sigunguSelect");
+
+if (sidoSelect && sigunguSelect) {
+
+    // 시도 채우기
+    sidoList.forEach(sido => {
+
+        const option = document.createElement("option");
+
+        option.value = sido;
+        option.textContent = sido;
+
+        sidoSelect.appendChild(option);
+    });
+
+    // 시군구 변경
+    sidoSelect.addEventListener("change", function () {
+
+    const selectedSido = sidoSelect.value;
+
+        sigunguSelect.innerHTML =
+            '<option value="">시/군/구 불러오는 중...</option>';
+
+        if (!selectedSido) {
+            sigunguSelect.innerHTML =
+                '<option value="">시/군/구 선택</option>';
+            return;
+        }
+
+        // 세종특별자치시 예외 처리
+        if (selectedSido === "세종특별자치시") {
+
+            sigunguSelect.innerHTML =
+                '<option value="세종시">세종시</option>';
+
+            sigunguSelect.value = "세종시";
+
+            sigunguSelect.dispatchEvent(new Event("change"));
+
+            return;
+        }
+
+        fetch(`/sigungu?sido=${encodeURIComponent(selectedSido)}`)
+            .then(res => res.json())
+            .then(data => {
+
+                sigunguSelect.innerHTML =
+                    '<option value="">시/군/구 선택</option>';
+
+                (data.검색결과 || []).forEach(sigungu => {
+
+                    const option = document.createElement("option");
+
+                    option.value = sigungu;
+                    option.textContent = sigungu;
+
+                    sigunguSelect.appendChild(option);
+                });
+            })
+            .catch(err => {
+                console.error("시군구 로딩 오류:", err);
+
+                sigunguSelect.innerHTML =
+                    '<option value="">시/군/구 불러오기 실패</option>';
+            });
+    });
+}
+
+
+
+sigunguSelect.addEventListener("change", function () {
+
+
+    const sido = sidoSelect.value;
+    const sigungu = sigunguSelect.value;
+
+    if (!sido || !sigungu) return;
+
+    const fullRegion = `${sido} ${sigungu}`;
+
+    // 기존 코드 호환용: 숨겨진 regionInput이 있으면 값 넣기
+    const regionInput = document.getElementById("regionInput");
+    if (regionInput) {
+        regionInput.value = fullRegion;
+    }
+
+    // 기존 동/단지/평형 초기화
+    document.getElementById("aptInput").value = "";
+    document.getElementById("aptList").innerHTML = "";
+    document.getElementById("sizeSelect").innerHTML = "<option value=''>평형 선택</option>";
+
+    const dongInput = document.getElementById("dongInput");
+    if (dongInput) dongInput.value = "";
+
+    const dongList = document.getElementById("dongList");
+    if (dongList) {
+        dongList.innerHTML = "";
+        dongList.style.display = "none";
+    }
+
+    // 핵심: 기존 동 로딩 함수 호출
+    loadDongs(fullRegion);
+});
+
+
+
 
 // 🔥 캐시
 let aptCache = {};
@@ -6268,8 +6566,6 @@ document.getElementById("dongSelect").addEventListener("change", function () {
         return;
     }
 
-    console.log("동 선택됨:", selectedDong);
-
     fetchApts(region, "");
 });
 
@@ -6328,9 +6624,6 @@ async function loadDongs(region) {
         );
 
         const data = await res.json();
-
-        console.log("동 응답 상태:", res.status);
-        console.log("동 응답 데이터:", data);
 
         const dongs = data["동목록"] || [];
 
@@ -6421,8 +6714,6 @@ function searchApts() {
         + encodeURIComponent(selectedPropertyType))
     .then(res => res.json())
     .then(data => {
-
-        console.log("응답:", data);
 
         const listEl = document.getElementById("aptList");
 
@@ -6516,51 +6807,52 @@ document.getElementById("aptInput").addEventListener("input", function () {
 
         fetchApts(region, keyword);
 
-    }, 300);
+    }, 450);
 });
 
 
 // 🔥 아파트 가져오기 (캐시 포함)
 function fetchApts(region, keyword = "") {
-    const selectedDong = document.getElementById("dongSelect").value;
-    const cacheKey =
-        selectedPropertyType + "_" + region + "_" + (selectedDong || "all");
-    if (!region) {
-        document.getElementById("aptList").innerHTML = "";
+    const selectedDong = document.getElementById("dongSelect").value || "";
+    const cacheKey = selectedPropertyType + "_" + region + "_all";
+
+    const listEl = document.getElementById("aptList");
+    
+
+    // ✅ 이미 불러온 지역이면 서버 재호출 금지
+    if (aptCache[cacheKey]) {
+        filterApts(aptCache[cacheKey], keyword || "");
         return;
     }
 
-    document.getElementById("aptList").innerHTML =
-        "<div class='item loading-text'>🔍 아파트 검색중...</div>";
-
-    let url = "/apts?region=" + encodeURIComponent(region)
-        + "&type=" + encodeURIComponent(selectedPropertyType)
-        + "&keyword=" + encodeURIComponent(keyword || "");
-
-    if (selectedDong) {
-        url += "&dong=" + encodeURIComponent(selectedDong);
+    if (!region) {
+        listEl.innerHTML = "";
+        return;
     }
 
-    
-    console.log("아파트 요청 URL:", url);
+    // ✅ 이미 지역 전체 단지 목록이 있으면 서버 재호출 없이 프론트 필터
+    if (aptCache[cacheKey]) {
+        filterApts(aptCache[cacheKey], keyword || "");
+        return;
+    }
+
+    listEl.innerHTML = "<div class='item loading-text'>🔍 아파트 검색중...</div>";
+
+    const url =
+        "/apts?region=" + encodeURIComponent(region) +
+        "&type=" + encodeURIComponent(selectedPropertyType) +
+        "&keyword=";
 
     fetch(url)
-        .then(res => {
-            console.log("아파트 응답 상태:", res.status);
-            return res.json();
-        })
+        .then(res => res.json())
         .then(data => {
-            console.log("아파트 응답 데이터:", data);
-
             const result = data.검색결과 || [];
-
             aptCache[cacheKey] = result;
             filterApts(result, keyword || "");
         })
         .catch(err => {
             console.log("❌ 아파트 조회 에러:", err);
-            document.getElementById("aptList").innerHTML =
-                "<div class='item'>아파트 조회 오류</div>";
+            listEl.innerHTML = "<div class='item'>아파트 조회 오류</div>";
         });
 }
 
@@ -6583,14 +6875,11 @@ function filterApts(list, keyword) {
 
     // 🔥 아파트만 프론트에서 동 필터 적용
     // 분양권은 백엔드 응답 결과를 그대로 우선 렌더링
-    if (selectedPropertyType === "apt" && selectedDong) {
+    if (selectedDong) {
         filtered = filtered.filter(apt => (apt.dong || "") === selectedDong);
     }
 
-    console.log("필터 전:", list);
-    console.log("선택 동:", selectedDong);
-    console.log("필터 후:", filtered);
-
+    
     if (keywordNorm) {
         filtered = filtered.filter(apt =>
             (apt.name || "").replace(/\s/g, "").toLowerCase().includes(keywordNorm)
@@ -6641,9 +6930,6 @@ function filterApts(list, keyword) {
                 sizeSelect.innerHTML = '<option value="">평형 조회 오류</option>';
             });
 };
-
-
-
         listEl.appendChild(div);
     });
 }
@@ -6919,7 +7205,9 @@ function analyzePrice() {
     const region = document.getElementById("regionInput").value;
     const apt = document.getElementById("aptInput").value;
     const size = document.getElementById("sizeSelect").value;
-    const userPrice = document.getElementById("userPriceInput").value;
+    const userPrice = parseInt(
+        document.getElementById("userPriceInput").value.replace(/[^0-9]/g, "")
+    ) || 0;
     const direction = document.getElementById("directionSelect").value;
     const floor = document.getElementById("floorSelect").value;
     const interior = document.getElementById("interiorSelect").value;
@@ -6972,8 +7260,7 @@ function analyzePrice() {
     analyzeBtn.disabled = true;
     
     const shareUrlBase = window.location.origin;
-    console.log("분석 요청 URL:", url);
-
+    
     fetch(url)
         .then(res => {
             console.log("응답 상태:", res.status);
@@ -6986,7 +7273,7 @@ function analyzePrice() {
         })
     
         .then(data => {
-            console.log("분석 응답 데이터:", data);
+            
             try {
                 
                 lastResult = data;
@@ -7087,10 +7374,7 @@ function analyzePrice() {
                     rate > 0 ? `<span style="color:#ef4444">+${rate}%</span>` :
                     rate < 0 ? `<span style="color:#3b82f6">${rate}%</span>` :
                     `${rate}%`;
-
-                console.log("최근거래5건:", data.최근거래5건);
-               
-
+              
                 const heroBadgeText =
                     selectedPropertyType === "presale"
                         ? "AI 종합 판단"
@@ -7103,7 +7387,7 @@ function analyzePrice() {
 
                 const heroDescText =
                     selectedPropertyType === "presale"
-                        ? "분양가 + 프리미엄 + 옵션 포함 기준으로 판단합니다"
+                        ? "분양가 + 프리미엄 + 옵션가 포함 기준으로 판단합니다"
                         : "현재 시세 기준 적정 범위 가격입니다";
 
                 function formatKoreanPrice(value) {
@@ -7491,7 +7775,7 @@ function analyzePrice() {
 
                             <!-- 거래 건수 -->
                             <div class="market-card">
-                                <div class="market-card-label">거래 건수</div>
+                                <div class="market-card-label">연간 거래량</div>
 
                                 <div class="market-card-value">
                                     ${data.거래건수 || 0}건
@@ -7533,12 +7817,18 @@ function analyzePrice() {
                                                 신뢰도 ${data.추세신뢰도 || "-"}
                                             </div>
 
-                                            <div class="market-card-sub trend-rate-${(data["상승률(%)"] ?? 0) > 0 ? 'up' : (data["상승률(%)"] ?? 0) < 0 ? 'down' : 'neutral'}">
-                                                ${data["상승률텍스트"] || (
-                                                    (data["상승률(%)"] ?? 0) > 0
-                                                        ? `+${data["상승률(%)"]}%`
-                                                        : `${data["상승률(%)"] ?? 0}%`
-                                                )}
+                                            <div class="market-sub trend-rate-${
+                                                Number(data["상승률(%)"] || 0) > 0
+                                                    ? 'up'
+                                                    : Number(data["상승률(%)"] || 0) < 0
+                                                        ? 'down'
+                                                        : 'neutral'
+                                            }">
+                                                ${
+                                                    Number(data["상승률(%)"] || 0) > 0
+                                                        ? '+' + Number(data["상승률(%)"] || 0)
+                                                        : Number(data["상승률(%)"] || 0)
+                                                }%
                                             </div>
                                         `
                                 }
@@ -7629,6 +7919,25 @@ function analyzePrice() {
                         })()}
                     </div>
               
+                    <div class="section-title">📊 최근 12개월 거래량</div>
+
+                    <div class="volume-chart-box">
+                        ${(data.거래량월별 || []).map(v => {
+                            const maxCount = Math.max(...(data.거래량월별 || []).map(x => Number(x.count || 0)), 1);
+                            const width = Math.max((Number(v.count || 0) / maxCount) * 100, v.count > 0 ? 8 : 0);
+
+                            return `
+                                <div class="volume-row">
+                                    <div class="volume-month">${String(v.month || "").slice(2).replace("-", ".")}</div>
+                                    <div class="volume-bar-wrap">
+                                        <div class="volume-bar" style="width:${width}%"></div>
+                                    </div>
+                                    <div class="volume-count">${v.count || 0}건</div>
+                                </div>
+                            `;
+                        }).join("")}
+                    </div>
+
                     <div class="ai-explain-box">
                         <div class="ai-explain-title">💡 AI 분석</div>
                         <div class="ai-explain-text">
@@ -7795,24 +8104,6 @@ function fallbackCopy(text) {
 
     document.body.removeChild(textarea);
 }
-
-function fallbackCopy(text) {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-
-    try {
-        document.execCommand("copy");
-        alert("분석 결과 링크가 복사되었습니다.");
-    } catch (err) {
-        alert("복사 실패 😢");
-    }
-
-    document.body.removeChild(textarea);
-}
-
-
 
 function fillFromQuery() {
     // console.log("fillFromQuery 실행됨");

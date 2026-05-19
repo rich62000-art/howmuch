@@ -80,6 +80,10 @@ def normalize_region(text: str) -> str:
     return text
 
 def find_lawd_cd(region: str):
+    if "세종" in region:
+        return "36110"
+
+   
     region_norm = normalize_region(region)
 
     if region_norm in lawd_cache:
@@ -238,9 +242,7 @@ def fetch_trade_items(region: str, months_count: int = 6):
 
                 if DEBUG:
                     print("🔥 분양권 요청 완료")
-                print("분양권 응답 상태:", res.status_code)
-                print("분양권 응답 앞부분:", res.text[:300])
-
+                    
 
                 if not res.text.strip().startswith("<"):
                     print("분양권 XML 아님, 건너뜀:", month, res.text[:100])
@@ -274,16 +276,14 @@ def fetch_trade_items(region: str, months_count: int = 6):
 
 # 🔥 분양권 거래 데이터 가져오기
 def fetch_presale_items(region: str, months_count: int = 6):
-
-    print("🔥 fetch_presale_items 실행됨:", region)
-
+    
     LAWD_CD = find_lawd_cd(region)
 
     if not LAWD_CD:
         return []
 
     url = "https://apis.data.go.kr/1613000/RTMSDataSvcSilvTrade/getRTMSDataSvcSilvTrade"
-    print("🔥 분양권 URL:", url)
+    
     months = []
 
     today = datetime.today()
@@ -298,8 +298,6 @@ def fetch_presale_items(region: str, months_count: int = 6):
 
         months.append(f"{year}{month:02d}")
 
-    print("분양권 최종 조회 월 목록:", months)
-
     all_items = []
 
     for month in months:
@@ -309,9 +307,7 @@ def fetch_presale_items(region: str, months_count: int = 6):
             print(f"⚡ 분양권 캐시 사용: {month}")
             all_items.extend(trade_cache[cache_key])
             continue
-
-        print("분양권 조회 월:", month)
-
+       
         params = {
             "serviceKey": SERVICE_KEY,
             "pageNo": "1",
@@ -328,42 +324,34 @@ def fetch_presale_items(region: str, months_count: int = 6):
 
             if DEBUG:
                 print("🔥 분양권 요청 완료")
-            print("분양권 응답 상태:", res.status_code)
+                print("분양권 응답 상태:", res.status_code)
 
             text = res.text.strip()
             if DEBUG:
                 print("분양권 응답 앞부분:", text[:300])
 
             if not text.startswith("<"):
-                print("분양권 XML 아님, 임시 데이터 사용:", month)
 
-                temp_items = [
-                    {
-                        "apt_name": "의왕푸르지오포레움1블럭",
-                        "dong": "",
-                        "apt_dong": "",
-                        "size": 50,
-                        "price": 0,
-                        "date": "분양권",
-                        "floor": None,
-                        "name": "의왕푸르지오포레움1블럭",
-                        "name_norm": normalize("의왕푸르지오포레움1블럭")
-                    }
-                ]
+                if DEBUG:
+                    print("분양권 XML 오류:", month)
 
-                trade_cache[cache_key] = temp_items
-                return temp_items
+                continue
             
-            root = ET.fromstring(text)
+            try:
+                root = ET.fromstring(text)
+            except Exception as e:
+
+                if DEBUG:
+                    print("XML 파싱 실패:", month, e)
+
+                continue
 
         except Exception as e:
             print("분양권 요청/파싱 오류:", e)
             continue
 
         items = root.findall(".//item")
-
-        print("분양권 item 수:", len(items))
-
+        
         for item in items:
 
             apt_name = item.findtext("aptNm", "").strip()
@@ -377,8 +365,6 @@ def fetch_presale_items(region: str, months_count: int = 6):
             ).strip()
 
             if apt_name:
-
-                print("분양권 단지 추가:", apt_name, dong)
 
                 price = item.findtext("dealAmount", "").replace(",", "").strip()
                 size = item.findtext("excluUseAr", "").strip()
@@ -477,21 +463,7 @@ def get_dongs(region: str, type: str = "apt"):
     dong_cache[cache_key] = result
     return result
 
-    # 🔥 백그라운드로 12개월 미리 준비
-    # threading.Thread(target=warmup_region, args=(region,), daemon=True).start()
-
-    dongs = set()
-
-    for item in items:
-        dong = item["dong"]
-        if dong:
-            dongs.add(dong)
-
-    result = {"동목록": sorted(list(dongs))}
-    dong_cache[cache_key] = result
-    return result
-
-
+    
 # 🔥 지역 검색
 @app.get("/regions")
 def search_region(keyword: str):
@@ -521,7 +493,58 @@ def search_region(keyword: str):
 
     return {"검색결과": results[:20]}
 
-# 🔥 아파트 검색 (핵심)
+@app.get("/sigungu")
+def get_sigungu(sido: str):
+
+    result = []
+
+    for name, code in lawd_map.items():
+
+        if not name.startswith(sido):
+            continue
+
+        parts = name.split()
+
+        if len(parts) >= 2:
+
+            # 경기도 안양시 동안구
+            if len(parts) >= 3 and parts[1].endswith("시"):
+                sigungu = parts[1] + " " + parts[2]
+            else:
+                sigungu = parts[1]
+
+            if sigungu not in result:
+                result.append(sigungu)
+
+    result.sort()
+
+
+    # ===== 구가 있는 시 제거 =====
+
+    filtered = []
+
+    for item in result:
+
+        # 안양시 같은 단독 시
+        if item.endswith("시"):
+
+            has_sub_gu = any(
+                x.startswith(item + " ")
+                for x in result
+            )
+
+            # 안양시 동안구 같은 게 있으면 제거
+            if has_sub_gu:
+                continue
+
+        filtered.append(item)
+
+    result = filtered
+
+    return {
+        "검색결과": result
+    }
+
 @app.get("/apts")
 def search_apts(
     region: str,
@@ -529,86 +552,57 @@ def search_apts(
     dong: str = "",
     type: str = "apt"
 ):
+    region_norm = normalize_region(region)
 
-
-    print("🔥 /apts 호출됨")
-    print("region:", region)
-    print("dong:", dong)
-    print("type:", type)
-
-    print("검색 타입:", type)
-    LAWD_CD = find_lawd_cd(region)
-
-    if not LAWD_CD:
+    if not find_lawd_cd(region):
         return {"검색결과": []}
 
     list_months = 10 if type == "presale" else 12
-    cache_key = f"{type}_{normalize_region(region)}_{dong or 'all'}_{list_months}m"
 
-    if cache_key not in apt_cache:
-        # 동별 자동완성은 실거래 데이터 기준으로 생성
-        if type == "presale":
-            print("🔥 분양권 함수 호출 직전")
-            items = fetch_presale_items(region, list_months)
+    # ✅ 동별 캐시가 아니라 지역 전체 단지 캐시 1개만 생성
+    base_cache_key = f"{type}_{region_norm}_{list_months}m_all"
 
-        else:
-            items = fetch_trade_items(region, list_months)
-            
+    if base_cache_key not in apt_cache:
+        items = fetch_presale_items(region, list_months) if type == "presale" else fetch_trade_items(region, list_months)
+
         apt_list = []
         seen = set()
 
         for item in items:
             apt_name = item.get("apt_name", "")
             umd_name = item.get("dong", "")
-            print("검색용 단지:", apt_name)
 
             if not apt_name:
                 continue
-            
-            if dong and umd_name != dong:
-                continue
 
             key = (apt_name, umd_name)
-
             if key in seen:
                 continue
 
             seen.add(key)
 
-            print("결과 추가:", apt_name)
-
-            display_name = apt_name
-
-#            if type == "presale":
-#                display_name = apt_name + " (분양권)"
-
             apt_list.append({
-                "name": display_name,
+                "name": apt_name,
                 "real_name": apt_name,
                 "dong": umd_name,
                 "name_norm": normalize(apt_name)
             })
 
-
-
-        apt_cache[cache_key] = apt_list
+        apt_cache[base_cache_key] = apt_list
 
     keyword_norm = normalize(keyword)
-
     result = []
 
-    for apt in apt_cache[cache_key]:
-        if keyword_norm and keyword_norm not in apt["name_norm"]:
+    for apt in apt_cache[base_cache_key]:
+        if dong and apt.get("dong") != dong:
+            continue
+
+        if keyword_norm and keyword_norm not in apt.get("name_norm", ""):
             continue
 
         result.append(apt)
 
-    if not result and not keyword_norm:
-        result = apt_cache[cache_key]
-
-    if type == "presale" and not result:
-        return {"검색결과": []}
-    return {"검색결과": result[:200]}
+    return {"검색결과": result[:100]}
 
 @app.get("/price")
 def get_price(region: str, apt_name: str):
@@ -741,9 +735,7 @@ def analyze_price(
     interior: str | None = None,
     type: str = "apt"
 ):
-    print("분석 타입:", type)
-
-
+    
     def presale_fallback():
         fallback_price = user_price or 0
 
@@ -768,7 +760,7 @@ def analyze_price(
                 }
             ],
             "한줄결론": "분양권 실거래 데이터가 부족해 입력한 총 매입가 기준으로 참고 분석을 제공합니다.",
-            "AI설명": "분양권 거래 데이터가 부족하여 예상 총 매입가를 기준으로 임시 분석했습니다.",
+            "AI설명": "분양권 거래 데이터가 부족하여 예상 총 매입가를 기준으로 참고 분석했습니다.",
             "가격판단": "참고",
             "최근3개월거래건수": 0,
             "거래활발도": "-",
@@ -787,10 +779,10 @@ def analyze_price(
     cache_key = f"{type}_{normalize_region(region)}_{normalize(apt_name)}_{size}_{direction or 'none'}_{floor_level or 'none'}_{interior or 'none'}_{user_price or 'none'}"
 
     if cache_key in analysis_cache:
-        if type == "presale":
-            print("⚡ 분양권 분석 캐시 사용")
-        else:
-            print("⚡ 아파트 분석 캐시 사용")
+    #    if type == "presale":
+    #        print("⚡ 분양권 분석 캐시 사용")
+    #    else:
+    #        print("⚡ 아파트 분석 캐시 사용")
 
         return analysis_cache[cache_key]
         
@@ -802,7 +794,7 @@ def analyze_price(
 
     trades = []
     if type == "presale":
-        items = fetch_presale_items(region, 1)
+        items = fetch_presale_items(region, 3)
     else:
         items = fetch_trade_items(region, 9)
 
@@ -810,8 +802,7 @@ def analyze_price(
         name = item["apt_name"]
 
         if is_same_apartment_name(apt_name, name) and is_same_size(size, item["size"]):
-            # print("매칭:", name, item["size"], item["date"], item["price"])
-            # print("매칭됨:", apt_name, name, "선택평형:", size, "거래평형:", item["size"])
+            
             trades.append({
                 "price": item["price"],
                 "date": item["date"],
@@ -863,6 +854,43 @@ def analyze_price(
         t for t in trades
         if is_same_size(size, t.get("size"))
     ]
+
+
+    # 🔥 최근 12개월 월별 거래량
+    today = datetime.today()
+    monthly_volume_map = {}
+
+    for i in range(12):
+        target_month = today.month - i
+        target_year = today.year
+
+        while target_month <= 0:
+            target_month += 12
+            target_year -= 1
+
+        month_key = f"{target_year}-{target_month:02d}"
+        monthly_volume_map[month_key] = 0
+
+    for t in trades:
+        try:
+            d = datetime.strptime(t["date"], "%Y-%m-%d")
+            month_key = d.strftime("%Y-%m")
+
+            if month_key in monthly_volume_map:
+                monthly_volume_map[month_key] += 1
+
+        except:
+            continue
+
+    monthly_volume = [
+        {
+            "month": key,
+            "count": monthly_volume_map[key]
+        }
+        for key in sorted(monthly_volume_map.keys())
+    ]
+
+
 
     # 최근 거래 5건
     recent_trades = trades[:5]
@@ -1057,23 +1085,50 @@ def analyze_price(
     # 🔥 거래 부족
     else:
 
-        if type == "presale" and len(recent_prices) >= 3 and len(past_prices) == 0:
-            trend = "최근 거래 활발"
+         # ✅ 분양권: 최근 거래는 충분한데 과거 비교 데이터가 없는 경우
+        if type == "presale" and len(recent_prices) >= 6 and len(past_prices) == 0:
+            trend = "거래 활발"
+            change_rate = 0
+            change_rate_text = "비교 기준 부족"
+            trend_confidence = "보통"
+
+            trend_comment = (
+                "최근 3개월 거래는 활발하지만, 이전 기간 비교 데이터가 부족해 상승률 계산은 제한적입니다."
+            )
+
+            ai_comment = (
+                "최근 3개월 거래가 활발하게 발생하고 있어 시장 관심도는 높은 편입니다. "
+                "다만 이전 기간 거래 데이터가 부족하여 상승 또는 하락 추세를 강하게 단정하기보다는, "
+                "최근 거래가 집중된 분양권으로 참고 판단하는 것이 적절합니다."
+            )
+
+        elif type == "presale" and len(recent_prices) >= 3 and len(past_prices) == 0:
+            trend = "거래 보통"
             change_rate = 0
             change_rate_text = "비교 기준 부족"
             trend_confidence = "참고"
 
-        trend_confidence = "낮음"
+            trend_comment = (
+                "최근 거래는 확인되지만, 이전 기간 비교 데이터가 부족해 방향성 판단은 제한적입니다."
+            )
 
-        trend_comment = (
-            "최근 거래 건수가 부족하여 시장 흐름을 명확히 판단하기 어려운 상태입니다."
-        )
+            ai_comment = (
+                "최근 거래는 확인되지만 이전 기간과 비교할 거래 데이터가 부족합니다. "
+                "따라서 상승·하락보다는 최근 거래 형성 가격과 매물 호가를 함께 보는 것이 좋습니다."
+            )
 
-        ai_comment = (
-            "거래 데이터가 충분하지 않아 강한 추세를 판단하기는 어렵습니다. "
-            "현재 분석 결과는 참고 수준으로 활용하는 것이 좋으며, "
-            "최근 호가와 인근 단지 거래 흐름을 함께 확인하는 것이 안전합니다."
-        )
+        else:
+            trend_confidence = "낮음"
+
+            trend_comment = (
+                "최근 거래 건수가 부족하여 시장 흐름을 명확히 판단하기 어려운 상태입니다."
+            )
+
+            ai_comment = (
+                "거래 데이터가 충분하지 않아 강한 추세를 판단하기는 어렵습니다. "
+                "현재 분석 결과는 참고 수준으로 활용하는 것이 좋으며, "
+                "최근 호가와 인근 단지 거래 흐름을 함께 확인하는 것이 안전합니다."
+            )
 
     # 🔥 AI 설명 생성
     if "상승" in trend:
@@ -1256,6 +1311,7 @@ def analyze_price(
         "추천매수가": recommended_buy_price,
         "보정추천가": adjusted_buy_price,
         "최근거래5건": recent_trades,
+        "거래량월별": monthly_volume,
         "최근3개월거래건수": recent_3m_count,
         "거래활발도": trade_activity,
         "사용자입력가격": user_price,
