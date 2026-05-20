@@ -5596,7 +5596,18 @@ body {
     grid-template-columns: 52px 1fr 42px;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+.volume-track {
+    width: 100%;
+    height: 14px;
+
+    background: #e5edf8;
+
+    border-radius: 999px;
+
+    overflow: hidden;
 }
 
 .volume-month {
@@ -5613,9 +5624,14 @@ body {
 }
 
 .volume-bar {
-    height: 100%;
-    background: #2563eb;
+     height: 14px;
     border-radius: 999px;
+
+    background: linear-gradient(90deg, #60a5fa, #2563eb);
+
+    box-shadow: 0 4px 10px rgba(37,99,235,0.18);
+
+    transition: width 0.35s ease;
 }
 
 .volume-count {
@@ -5626,7 +5642,8 @@ body {
 }
 
 .volume-bar-max {
-    background: linear-gradient(90deg, #ef4444, #f97316) !important;
+    background: linear-gradient(90deg, #fb7185, #ef4444) !important;
+    box-shadow: 0 6px 14px rgba(239,68,68,0.24);
 }
 
 .dong-row {
@@ -5706,6 +5723,60 @@ body {
 /* 시/군/구 ↔ 동/리 간격 축소 */
 .dong-row {
     margin-top: -10px !important;
+}
+
+#aptInput {
+    caret-color: transparent;
+}
+
+@keyframes volumeGrow {
+
+    from {
+        transform: scaleX(0);
+        opacity: 0.3;
+    }
+
+    to {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+}
+
+.volume-bar {
+    transform-origin: left;
+    animation: volumeGrow 0.6s ease;
+}
+
+.toast-message {
+
+    position: fixed;
+
+    left: 50%;
+    bottom: 90px;
+
+    transform: translateX(-50%);
+
+    background: rgba(15,23,42,0.92);
+
+    color: white;
+
+    padding: 14px 18px;
+
+    border-radius: 14px;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    z-index: 999999;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: opacity 0.25s ease;
+}
+
+.toast-message.show {
+    opacity: 1;
 }
 </style>
 </head>
@@ -5868,7 +5939,7 @@ body {
 
             <div class="step-text">
                 <div class="step-main">
-                    아파트와 면적 선택
+                    아파트/분양권 , 면적 선택
                 </div>
 
                 <div class="step-sub">
@@ -5880,14 +5951,16 @@ body {
         <div class="row">
             <div class="col half">
                              
-                <label for="aptInput">아파트 단지를 선택하세요</label>
+                <label for="aptInput">
+                    단지명을 선택하세요
+                    <span class="label-sub">(실거래가 없는 단지는 제외)</span>
+                </label>
                 <div class="apt-input-wrap">
                     <input 
                         type="text" 
                         id="aptInput" 
                         placeholder="🏢 단지 선택"
                         onclick="openAptList()"
-                        onfocus="openAptList()"
                     >
                     <span class="apt-arrow" onclick="openAptList()">▾</span>
 
@@ -5911,13 +5984,13 @@ body {
                         onclick="toggleSizeList()"
                     >
                     <span class="apt-arrow" onclick="toggleSizeList()">▾</span>
+
+                    <div id="sizeList" class="list overlay-list" style="display:none;"></div>
                 </div>
 
                 <select id="sizeSelect" style="display:none;">
                     <option value="">평형 선택</option>
                 </select>
-
-                <div id="sizeList" class="list" style="display:none;"></div>
             </div>
         </div>
 
@@ -6152,6 +6225,20 @@ let lastResult = null;
 
 let selectedPropertyType = "apt";
 
+function showToast(message) {
+
+    const toast = document.getElementById("toastMessage");
+
+    toast.innerText = message;
+
+    toast.classList.add("show");
+
+    clearTimeout(window.toastTimer);
+
+    window.toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2200);
+}
 
 document.querySelectorAll(".top-tab").forEach(tab => {
     tab.addEventListener("click", function () {
@@ -6230,7 +6317,7 @@ document.querySelectorAll(".top-tab").forEach(tab => {
 
 
         if (selectedPropertyType === "presale") {
-            document.getElementById("aptInput").placeholder = "분양권 단지 입력";
+            document.getElementById("aptInput").placeholder = "🏢 분양권 단지 입력";
 
             document.querySelector(".condition-section").style.display = "none";
             document.getElementById("priceInputTitle").innerText = "예상 총 매입가 입력";
@@ -6239,7 +6326,7 @@ document.querySelectorAll(".top-tab").forEach(tab => {
                 "분양가 + 프리미엄 + 옵션 포함 기준으로 입력하세요";
             
         } else {
-            document.getElementById("aptInput").placeholder = "아파트 단지 입력";
+            document.getElementById("aptInput").placeholder = "🏢 아파트 단지 입력";
 
             document.querySelector(".condition-section").style.display = "block";
             document.getElementById("priceInputTitle").innerText = "희망 매매가 입력";
@@ -6283,17 +6370,17 @@ function buildShareUrl() {
 function shareKakao() {
 
     if (!lastResult) {
-        alert("먼저 분석을 실행해주세요.");
+        showToast("먼저 분석을 실행해주세요.");
         return;
     }
 
     if (!window.Kakao) {
-        alert("카카오 SDK가 로드되지 않았습니다.");
+        showToast("카카오 SDK가 로드되지 않았습니다.");
         return;
     }
 
     if (!Kakao.isInitialized()) {
-        alert("카카오 SDK 초기화 실패");
+        showToast("카카오 SDK 초기화 실패");
         return;
     }
 
@@ -6337,9 +6424,9 @@ function fallbackCopy(text) {
 
     try {
         document.execCommand("copy");
-        alert("분석 결과 링크가 복사되었습니다.");
+        showToast("분석 결과 링크가 복사되었습니다.");
     } catch (err) {
-        alert("복사 실패 😢");
+        showToast("복사 실패 😢");
     }
 
     document.body.removeChild(textarea);
@@ -6526,7 +6613,9 @@ sigunguSelect.addEventListener("change", function () {
 // 🔥 캐시
 let aptCache = {};
 let aptTimer = null;
+let aptFetchController = null;
 let dongCache = {};
+let dongFetchController = null;
 let lastDongRegion = "";
 let dongLoading = false;
 let dongProgressTimer = null;
@@ -6672,8 +6761,30 @@ async function loadDongs(region) {
 
     // ✅ 캐시 있으면 바로 사용
     const dongCacheKey = selectedPropertyType + "_" + region;
+
     if (dongCache[dongCacheKey]) {
-        renderDongs(dongCache[dongCacheKey]);
+        const cachedDongs = dongCache[dongCacheKey];
+        renderDongs(cachedDongs);
+
+        setTimeout(() => {
+            const dongList = document.getElementById("dongList");
+
+            if (cachedDongs.length === 0) {
+                if (dongList) {
+                    dongList.innerHTML =
+                        '<div class="item">최근 실거래 단지가 없습니다</div>';
+                    dongList.style.display = "block";
+                }
+                return;
+            }
+
+            renderDongList();
+
+            if (dongList) {
+                dongList.style.display = "block";
+            }
+        }, 150);
+
         return;
     }
 
@@ -6709,12 +6820,25 @@ async function loadDongs(region) {
 
     dongSelect.innerHTML = '<option value="">동 선택</option>';
 
+    // ✅ 이전 동 조회 요청 취소
+    if (dongFetchController) {
+        dongFetchController.abort();
+    }
+
+    dongFetchController = new AbortController();
     
     try {
         const res = await fetch(
             `/dongs?region=${encodeURIComponent(region)}`
-            + `&type=${encodeURIComponent(selectedPropertyType)}`
+            + `&type=${encodeURIComponent(selectedPropertyType)}`,
+            {
+                signal: dongFetchController.signal
+            }
         );
+
+        if (!res.ok) {
+            throw new Error("동 조회 서버 오류: " + res.status);
+        }
 
         const data = await res.json();
 
@@ -6724,9 +6848,23 @@ async function loadDongs(region) {
         dongCache[dongCacheKey] = dongs;
 
         renderDongs(dongs);
-        // 👉 추가 (핵심)
+
+        const dongList = document.getElementById("dongList");
+
+        if (dongs.length === 0) {
+            if (dongList) {
+                dongList.innerHTML =
+                    '<div class="item">최근 실거래 단지가 없습니다</div>';
+                dongList.style.display = "block";
+            }
+            return;
+        }
+
         renderDongList();
-        document.getElementById("dongList").style.display = "block";
+
+        if (dongList) {
+            dongList.style.display = "block";
+        }
 
     } catch (e) {
         const dongLoading = document.getElementById("dongLoading");
@@ -6774,7 +6912,18 @@ function renderDongs(dongs) {
     dongSelect.innerHTML = '<option value="">동 선택</option>';
 
     if (dongs.length === 0) {
-        dongSelect.innerHTML = '<option value="">동 없음</option>';
+        dongSelect.innerHTML =
+        '<option value="">실거래 단지 없음</option>';
+
+        const dongList = document.getElementById("dongList");
+
+        if (dongList) {
+            dongList.innerHTML =
+                '<div class="item">실거래 단지 없음</div>';
+
+            dongList.style.display = "block";
+        }
+
         return;
     }
 
@@ -6866,7 +7015,9 @@ function showSizes(data) {
     });
 
     renderSizeList();
-    sizeList.style.display = "block";
+    if ((data.평형목록 || []).length > 0) {
+        sizeList.style.display = "block";
+    }
 }
 
 // 🔥 아파트 자동완성 (디바운싱)
@@ -6906,47 +7057,54 @@ document.getElementById("aptInput").addEventListener("input", function () {
 
 // 🔥 아파트 가져오기 (캐시 포함)
 function fetchApts(region, keyword = "") {
-    const selectedDong = document.getElementById("dongSelect").value || "";
-    const cacheKey = selectedPropertyType + "_" + region + "_all";
+
+    if (aptFetchController) {
+        aptFetchController.abort();
+    }
+
+    aptFetchController = new AbortController();
 
     const listEl = document.getElementById("aptList");
-    
-
-    // ✅ 이미 불러온 지역이면 서버 재호출 금지
-    if (aptCache[cacheKey]) {
-        filterApts(aptCache[cacheKey], keyword || "");
-        return;
-    }
+    const cacheKey = selectedPropertyType + "_" + region + "_all";
 
     if (!region) {
         listEl.innerHTML = "";
         return;
     }
 
-    // ✅ 이미 지역 전체 단지 목록이 있으면 서버 재호출 없이 프론트 필터
+    // ✅ 캐시 있으면 서버 호출 없이 바로 필터
     if (aptCache[cacheKey]) {
         filterApts(aptCache[cacheKey], keyword || "");
         return;
     }
 
-    listEl.innerHTML = "<div class='item loading-text'>🔍 아파트 검색중...</div>";
+    listEl.innerHTML = "<div class='item loading-text'>🔍 아파트 검색중.</div>";
 
-    const url =
-        "/apts?region=" + encodeURIComponent(region) +
-        "&type=" + encodeURIComponent(selectedPropertyType) +
-        "&keyword=";
-
-    fetch(url)
-        .then(res => res.json())
-        .then(data => {
-            const result = data.검색결과 || [];
-            aptCache[cacheKey] = result;
-            filterApts(result, keyword || "");
-        })
-        .catch(err => {
-            console.log("❌ 아파트 조회 에러:", err);
-            listEl.innerHTML = "<div class='item'>아파트 조회 오류</div>";
-        });
+    fetch(
+        "/apts?region=" +
+        encodeURIComponent(region) +
+        "&type=" +
+        encodeURIComponent(selectedPropertyType) +
+        "&keyword=",
+        {
+            signal: aptFetchController.signal
+        }
+    )
+    .then(res => {
+        if (!res.ok) {
+            throw new Error("서버 응답 오류: " + res.status);
+        }
+        return res.json();
+    })
+    .then(data => {
+        const result = data.검색결과 || [];
+        aptCache[cacheKey] = result;
+        filterApts(result, keyword || "");
+    })
+    .catch(err => {
+        console.log("❌ 아파트 조회 에러:", err);
+        listEl.innerHTML = "<div class='item'>아파트 조회 오류</div>";
+    });
 }
 
 
@@ -6980,7 +7138,11 @@ function filterApts(list, keyword) {
     }
 
     if (filtered.length === 0) {
-        listEl.innerHTML = "<div class='item'>검색 결과 없음</div>";
+        listEl.innerHTML =
+            "<div class='item'>최근 실거래 단지가 없습니다</div>";
+
+        listEl.style.display = "block";
+
         return;
     }
 
@@ -7014,7 +7176,12 @@ function filterApts(list, keyword) {
                 "&type=" +
                 encodeURIComponent(selectedPropertyType)
             )
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error("평형 조회 서버 오류: " + res.status);
+                }
+                return res.json();
+            })
             .then(data => {
                 showSizes(data);
             })
@@ -7030,15 +7197,21 @@ function filterApts(list, keyword) {
 function openAptList() {
     const region = document.getElementById("regionInput").value;
     const dong = document.getElementById("dongSelect").value;
+    const aptInput = document.getElementById("aptInput");
 
     if (!region) {
-        alert("지역을 먼저 선택하세요");
+        aptInput.blur();
+        showToast("먼저 시/도와 시/군/구를 선택하세요.");
         return;
     }
 
-    const aptInput = document.getElementById("aptInput");
-    aptInput.value = "";   // 🔥 초기화
-    // 🔥 강제로 리스트 호출
+    if (!dong) {
+        aptInput.blur();
+        showToast("먼저 동/리를 선택하세요.");
+        return;
+    }
+
+    aptInput.value = "";
     fetchApts(region, "");
 }
 
@@ -7236,24 +7409,33 @@ function renderRecentTradeChart(trades) {
 
 
 function analyzePrice() {
+
+    if (analyzeBtn.disabled) {
+        return;
+    }
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerText = "분석중...";
+
+
     const checkRegion = document.getElementById("regionInput").value.trim();
     const checkAptName = document.getElementById("aptInput").value.trim();
     const checkSize = document.getElementById("sizeSelect").value;
 
     if (!checkRegion) {
-        alert("지역을 먼저 선택해 주세요.");
+        showToast("지역을 먼저 선택해 주세요.");
         document.getElementById("regionInput").focus();
         return;
     }
 
     if (!checkAptName) {
-        alert("아파트를 선택해 주세요.");
+        showToast("아파트를 선택해 주세요.");
         document.getElementById("aptInput").focus();
         return;
     }
 
     if (!checkSize) {
-        alert("전용면적을 선택해 주세요.");
+        showToast("전용면적을 선택해 주세요.");
         document.getElementById("sizeInput").focus();
         return;
     }
@@ -7323,7 +7505,7 @@ function analyzePrice() {
             selectedPropertyType === "presale"
                 ? "✨ 분양권 분석하기"
                 : "✨ 아파트 분석하기";
-
+        
         return;
     }
 
@@ -7359,13 +7541,24 @@ function analyzePrice() {
             console.log("응답 상태:", res.status);
 
             if (!res.ok) {
-                throw new Error("서버 오류: " + res.status);
+                throw new Error("분석 서버 오류: " + res.status);
             }
 
             return res.json();
         })
     
         .then(data => {
+            if (data.결과 === "데이터 없음") {
+                showToast("해당 조건의 실거래 데이터가 없습니다.");
+                closeModal();
+                return;
+            }
+
+            if (data.결과 === "지역 오류") {
+                showToast("지역 정보를 다시 선택해 주세요.");
+                closeModal();
+                return;
+            }
             
             try {
                 
@@ -8022,7 +8215,7 @@ function analyzePrice() {
                             return `
                                 <div class="volume-row">
                                     <div class="volume-month">${String(v.month || "").slice(2).replace("-", ".")}</div>
-                                    <div class="volume-bar-wrap">
+                                    <div class="volume-track">
                                         <div 
                                             class="volume-bar ${Number(v.count || 0) === maxCount ? 'volume-bar-max' : ''}" 
                                             style="width:${width}%">
@@ -8090,15 +8283,14 @@ function analyzePrice() {
         })
         .catch(err => {
             console.log("❌ 분석 에러:", err);
-            alert("분석 에러: " + err.message);
+            showToast("분석 에러: " + err.message);
             resultBox.innerHTML = "분석 중 오류가 발생했습니다: " + err.message;
             analyzeBtn.disabled = false;
             analyzeBtn.innerText = 
                 selectedPropertyType === "presale"
                     ? "✨ 분양권 분석하기"
                     : "✨ 아파트 분석하기";
-            analyzeBtn.disabled = false;
-            
+                      
         });  
 
 }
@@ -8154,7 +8346,7 @@ window.onclick = function (event) {
 function copyLink() {
 
     if (!lastResult) {
-        alert("먼저 분석을 실행해주세요.");
+        showToast("먼저 분석을 실행해주세요.");
         return;
     }
 
@@ -8178,7 +8370,7 @@ ${shareUrl}`;
     // 🔥 최신 브라우저 (HTTPS)
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text)
-            .then(() => alert("링크가 복사되었습니다!"))
+            .then(() => showToast("링크가 복사되었습니다!"))
             .catch(() => fallbackCopy(text));
     } else {
         // 🔥 fallback (모바일/HTTP)
@@ -8196,9 +8388,9 @@ function fallbackCopy(text) {
 
     try {
         document.execCommand("copy");
-        alert("링크가 복사되었습니다!");
+        showToast("링크가 복사되었습니다!");
     } catch (err) {
-        alert("복사 실패 😢");
+        showToast("복사 실패 😢");
     }
 
     document.body.removeChild(textarea);
@@ -8375,7 +8567,13 @@ function renderSizeList() {
 }
 
 function toggleSizeList() {
+    const apt = document.getElementById("aptInput").value;
     const list = document.getElementById("sizeList");
+
+    if (!apt) {
+        showToast("먼저 아파트 단지를 선택하세요.");
+        return;
+    }
 
     if (list.style.display === "none" || list.style.display === "") {
         list.style.display = "block";
@@ -8409,5 +8607,6 @@ function openAsilSearch() {
 }
 </script>
 
+<div id="toastMessage" class="toast-message"></div>
 </body>
 </html>

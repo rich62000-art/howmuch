@@ -8,6 +8,7 @@ session = requests.Session()
 import xml.etree.ElementTree as ET
 import re
 from datetime import datetime, timedelta
+import time
 import threading
 
 from fastapi.staticfiles import StaticFiles
@@ -50,6 +51,8 @@ dong_cache = {}
 apt_cache = {}
 areas_cache = {}
 lawd_cache = {}
+
+MAX_ANALYSIS_CACHE = 1000
 
 SERVICE_KEY = "59c26233a7edcacf04e5d2a957e2e4e4c4a7d9d76b5925d23460aab1557e542e"
 
@@ -97,12 +100,15 @@ def find_lawd_cd(region: str):
     return None
 
 def warmup_region(region: str):
-    print(f"🔥 백그라운드 워밍업 시작: {region}")
+    if DEBUG:
+        print(f"🔥 백그라운드 워밍업 시작: {region}")
     try:
         fetch_trade_items(region, 12)
-        print(f"✅ 백그라운드 워밍업 완료: {region}")
+        if DEBUG:
+            print(f"✅ 백그라운드 워밍업 완료: {region}")
     except Exception as e:
-        print("워밍업 실패:", e)
+        if DEBUG:
+            print("워밍업 실패:", e)
 
 
 # 문자열 정규화
@@ -217,9 +223,21 @@ def fetch_trade_items(region: str, months_count: int = 6):
         cache_key = f"trade_items_{normalize_region(region)}_{month}"
 
         if cache_key in trade_cache:
-            print(f"⚡ 월 캐시 사용: {month}")
-            all_items.extend(trade_cache[cache_key])
-            continue
+            cache_data = trade_cache[cache_key]
+
+            # ✅ 예전 방식 캐시(list)도 안전하게 처리
+            if isinstance(cache_data, list):
+                all_items.extend(cache_data)
+                continue
+
+            # ✅ 새 방식 캐시(dict) 처리
+            if time.time() - cache_data["time"] < 3600:
+                all_items.extend(cache_data["data"])
+                continue
+
+            del trade_cache[cache_key]
+
+
 
         month_items = []
         page = 1
@@ -245,13 +263,15 @@ def fetch_trade_items(region: str, months_count: int = 6):
                     
 
                 if not res.text.strip().startswith("<"):
-                    print("분양권 XML 아님, 건너뜀:", month, res.text[:100])
-                    continue
+                    if DEBUG:
+                        print("분양권 XML 아님, 건너뜀:", month, res.text[:100])
+                    break
                
                 root = ET.fromstring(res.content)
 
             except Exception as e:
-                print("요청/파싱 오류:", e)
+                if DEBUG:
+                    print("요청/파싱 오류:", e)
                 break
 
             if page == 1:
@@ -269,7 +289,10 @@ def fetch_trade_items(region: str, months_count: int = 6):
 
             page += 1
 
-        trade_cache[cache_key] = month_items
+        trade_cache[cache_key] = {
+            "time": time.time(),
+            "data": month_items
+        }
         all_items.extend(month_items)
 
     return all_items
@@ -304,9 +327,19 @@ def fetch_presale_items(region: str, months_count: int = 6):
         month_items = []
         cache_key = f"presale_{normalize_region(region)}_{month}"
         if cache_key in trade_cache:
-            print(f"⚡ 분양권 캐시 사용: {month}")
-            all_items.extend(trade_cache[cache_key])
-            continue
+            cache_data = trade_cache[cache_key]
+
+            # ✅ 예전 방식 캐시(list)도 안전 처리
+            if isinstance(cache_data, list):
+                all_items.extend(cache_data)
+                continue
+
+            # ✅ 새 방식 캐시(dict) 처리
+            if time.time() - cache_data["time"] < 3600:
+                all_items.extend(cache_data["data"])
+                continue
+
+            del trade_cache[cache_key]
        
         params = {
             "serviceKey": SERVICE_KEY,
@@ -347,7 +380,8 @@ def fetch_presale_items(region: str, months_count: int = 6):
                 continue
 
         except Exception as e:
-            print("분양권 요청/파싱 오류:", e)
+            if DEBUG:
+                print("분양권 요청/파싱 오류:", e)
             continue
 
         items = root.findall(".//item")
@@ -390,61 +424,24 @@ def fetch_presale_items(region: str, months_count: int = 6):
                     "name_norm": normalize(apt_name)
                 })
 
-        trade_cache[cache_key] = month_items
+        trade_cache[cache_key] = {
+            "time": time.time(),
+            "data": month_items
+        }
         all_items.extend(month_items)                
 
     return all_items
 
 
-# 🔥 아파트 가져오기 (필요할 때만)
-def fetch_apts(LAWD_CD):
-    print("🔥 fetch_apts 실행됨")
 
-    url = "https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade"
-
-    months = get_recent_months(6)
-    names = set()
-
-    for month in months:
-        page = 1
-
-        while page <= 5:
-            params = {
-                "serviceKey": SERVICE_KEY,
-                "pageNo": str(page),
-                "numOfRows": "100",
-                "LAWD_CD": LAWD_CD,
-                "DEAL_YMD": month
-            }
-
-            try:
-                res = requests.get(url, params=params, timeout=10)
-                root = ET.fromstring(res.content)
-            except Exception as e:
-                print("아파트 조회 오류:", e)
-                break
-
-            items = root.findall(".//item")
-            if not items:
-                break
-
-            for item in items:
-                name = item.findtext("aptNm", "").strip()
-                if name:
-                    names.add(name)
-
-            page += 1
-
-        print(f"{month} 데이터 수집 완료, 현재 아파트 수: {len(names)}")
-
-    return sorted(list(names))
 
 @app.get("/dongs")
 def get_dongs(region: str, type: str = "apt"):
     cache_key = f"{type}_{normalize_region(region)}"
 
     if cache_key in dong_cache:
-        print("⚡ 동 캐시 사용")
+        if DEBUG:
+            print("⚡ 동 캐시 사용")
         return dong_cache[cache_key]
 
     if type == "presale":
@@ -628,7 +625,7 @@ def get_price(region: str, apt_name: str):
                 "DEAL_YMD": month
             }
 
-            res = requests.get(url, params=params)
+            res = session.get(url, params=params, timeout=10)
 
             try:
                 root = ET.fromstring(res.content)
@@ -687,7 +684,7 @@ def get_avg_price(region: str, apt_name: str, size: int):
                 "DEAL_YMD": month
             }
 
-            res = requests.get(url, params=params)
+            res = session.get(url, params=params, timeout=10)
 
             try:
                 root = ET.fromstring(res.content)
@@ -779,11 +776,6 @@ def analyze_price(
     cache_key = f"{type}_{normalize_region(region)}_{normalize(apt_name)}_{size}_{direction or 'none'}_{floor_level or 'none'}_{interior or 'none'}_{user_price or 'none'}"
 
     if cache_key in analysis_cache:
-    #    if type == "presale":
-    #        print("⚡ 분양권 분석 캐시 사용")
-    #    else:
-    #        print("⚡ 아파트 분석 캐시 사용")
-
         return analysis_cache[cache_key]
         
     LAWD_CD = find_lawd_cd(region)
@@ -794,9 +786,9 @@ def analyze_price(
 
     trades = []
     if type == "presale":
-        items = fetch_presale_items(region, 3)
+        items = fetch_presale_items(region, 12)
     else:
-        items = fetch_trade_items(region, 9)
+        items = fetch_trade_items(region, 12)
 
     for item in items:
         name = item["apt_name"]
@@ -814,7 +806,7 @@ def analyze_price(
 
     if len(trades) < 5:
         if type == "presale":
-            items = fetch_presale_items(region, 3)
+            items = fetch_presale_items(region, 18)
         else:
             items = fetch_trade_items(region, 18)
 
@@ -825,8 +817,7 @@ def analyze_price(
             name = item["apt_name"]
 
             if is_same_apartment_name(apt_name, name) and is_same_size(size, item["size"]):
-                # print("매칭:", name, item["size"], item["date"], item["price"])
-                # print("매칭됨:", apt_name, name, "선택평형:", size, "거래평형:", item["size"])
+                
                 trades.append({
                     "price": item["price"],
                     "date": item["date"],
@@ -840,6 +831,8 @@ def analyze_price(
         
         if type == "presale":
             result = presale_fallback()
+            if len(analysis_cache) >= MAX_ANALYSIS_CACHE:
+                analysis_cache.pop(next(iter(analysis_cache)))
             analysis_cache[cache_key] = result
             return result
         
@@ -854,6 +847,15 @@ def analyze_price(
         t for t in trades
         if is_same_size(size, t.get("size"))
     ]
+
+
+    # 🔥 최근 12개월 월별 거래량
+   
+    # ✅ 12개월 그래프의 최근 3개 월 합계와 기준 통일
+    
+    
+    recent_prices = []
+    past_prices = []
 
 
     # 🔥 최근 12개월 월별 거래량
@@ -889,6 +891,13 @@ def analyze_price(
         }
         for key in sorted(monthly_volume_map.keys())
     ]
+
+    recent_3m_count = sum(
+        int(v.get("count", 0))
+        for v in monthly_volume[-3:]
+    )
+
+
 
     # 🔥 최근 6개월 거래만 표시
     six_months_ago = datetime.today() - timedelta(days=180)
@@ -935,20 +944,11 @@ def analyze_price(
         avg_price = 0
 
     # 최근 3개월 거래 건수 / 활발도
-    today = datetime.today()
-    three_months_ago = today - timedelta(days=90)
-
-    recent_prices = []
-    past_prices = []
-
-    recent_3m_count = 0
-    for t in trades:
-        try:
-            d = datetime.strptime(t["date"], "%Y-%m-%d")
-            if d >= three_months_ago:
-                recent_3m_count += 1
-        except:
-            continue
+    # ✅ 거래량 그래프의 최근 3개월 합계와 동일 기준
+    recent_3m_count = sum(
+        int(v.get("count", 0))
+        for v in monthly_volume[-3:]
+    )
 
     if recent_3m_count >= 6:
         trade_activity = "(거래 활발)"
@@ -1312,7 +1312,7 @@ def analyze_price(
     result = {
         "아파트": apt_name,
         "평형": size,
-        "거래건수": len(prices),
+        "거래건수": sum(int(v.get("count", 0)) for v in monthly_volume),
         "평균가격": avg_price,
         "가중평균가격": weighted_avg_price,
         "최고가": high_price,
@@ -1336,6 +1336,8 @@ def analyze_price(
         "참고": "동·층·향·내부상태·급매 여부는 반영되지 않은 참고용 분석입니다."
     }
     if type == "presale" or result.get("거래건수", 0) >= 3:
+        if len(analysis_cache) >= MAX_ANALYSIS_CACHE:
+            analysis_cache.pop(next(iter(analysis_cache)))
         analysis_cache[cache_key] = result
 
     return result
@@ -1352,7 +1354,8 @@ def get_sizes(region: str, apt_name: str, type: str = "apt"):
         cache_key = f"presale_size_{normalize_region(region)}_{normalize(apt_name)}"
 
         if cache_key in areas_cache:
-            print("⚡ 분양권 평형 캐시 사용")
+            if DEBUG:
+                print("⚡ 분양권 평형 캐시 사용")
             return areas_cache[cache_key]
 
         sizes = set()
@@ -1387,14 +1390,15 @@ def get_sizes(region: str, apt_name: str, type: str = "apt"):
     cache_key = f"{type}_{normalize_region(region)}_{normalize(apt_name)}"
 
     if cache_key in areas_cache:
-        print("⚡ 캐시 사용")
+        if DEBUG:
+            print("⚡ 캐시 사용")
         return areas_cache[cache_key]
 
 
     apt_name_norm = normalize(apt_name)
     sizes = set()
 
-    for months_count in [6, 12, 24]:
+    for months_count in [12]:
         items = fetch_trade_items(region, months_count)
         sizes = set()
 
