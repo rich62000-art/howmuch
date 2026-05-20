@@ -5624,6 +5624,89 @@ body {
     color: #0f172a;
     text-align: right;
 }
+
+.volume-bar-max {
+    background: linear-gradient(90deg, #ef4444, #f97316) !important;
+}
+
+.dong-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.dong-input-col {
+    flex: 1;
+    min-width: 0;
+
+    margin-top: -30px;
+}
+
+.dong-loading-col {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 모바일 */
+@media (max-width: 768px) {
+
+    .dong-row {
+        flex-wrap: nowrap !important;
+    }
+
+    .dong-input-col,
+    .dong-loading-col {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+    }
+
+    .dong-loading-box {
+        margin-top: 28px;
+        height: 52px;
+
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .dong-loading-title {
+        font-size: 11px;
+    }
+}
+
+.dong-row {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+    position: relative;
+}
+
+.dong-input-col,
+.dong-loading-col {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+}
+
+.dong-input-col {
+    position: relative;
+    margin-top: -4px;
+}
+
+.overlay-list {
+    position: absolute !important;
+    top: 58px;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 0 !important;
+}
+
+/* 시/군/구 ↔ 동/리 간격 축소 */
+.dong-row {
+    margin-top: -10px !important;
+}
 </style>
 </head>
 
@@ -5712,6 +5795,7 @@ body {
     <div class="card">
 
         <!-- 지역, 동 입력 -->
+        
         <div class="step-title">
             <div class="step-num">01</div>
             <div class="step-text">
@@ -5720,26 +5804,26 @@ body {
             </div>
         </div>
 
-        
-
         <div class="row">
             <div class="col half">
-                <label for="regionInput">(1) 시/도 선택</label>
+                <label for="sidoSelect">(1) 시/도 선택</label>
                 <select id="sidoSelect">
-                    <option value="">시/도 선택</option>
+                    <option value="">🏙️ 시/도 선택</option>
                 </select>
-                
-                <label for="regionInput">(2) 시/구/군 선택</label>
-                <select id="sigunguSelect">
-                    <option value="">시/군/구 선택</option>
-                </select>
-
-                <input type="hidden" id="regionInput">
-
             </div>
 
             <div class="col half">
+                <label for="sigunguSelect">(2) 시/군/구 선택</label>
+                <select id="sigunguSelect">
+                    <option value="">🏙️ 시/군/구 선택</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row dong-row">
+            <div class="col dong-input-col">
                 <label for="dongSelect">(3) 동/리 선택</label>
+
                 <div class="apt-input-wrap">
                     <input 
                         type="text" 
@@ -5751,14 +5835,14 @@ body {
                     <span class="apt-arrow" onclick="toggleDongList()">▾</span>
                 </div>
 
-                <!-- 기존 select는 숨김 (데이터용 유지) -->
                 <select id="dongSelect" style="display:none;">
                     <option value="">동 선택</option>
                 </select>
 
-                <!-- 펼쳐지는 리스트 -->
-                <div id="dongList" class="list" style="display:none;"></div>
+                <div id="dongList" class="list overlay-list" style="display:none;"></div>
+            </div>
 
+            <div class="dong-loading-col">
                 <div id="dongLoading" class="dong-loading-box" style="display:none;">
                     <div class="dong-loading-title">🔍 동 검색 + 실거래가 데이터 수집중...</div>
                     <div class="dong-progress-bar">
@@ -5767,6 +5851,8 @@ body {
                     <div id="dongProgressText" class="dong-progress-text">0%</div>
                 </div>
             </div>
+
+            <input type="hidden" id="regionInput">
         </div>
 
         <div id="presaleNotice" class="presale-notice" style="display:none;">
@@ -5794,7 +5880,7 @@ body {
         <div class="row">
             <div class="col half">
                              
-                <label for="aptInput">아파트 명을 선택하세요</label>
+                <label for="aptInput">아파트 단지를 선택하세요</label>
                 <div class="apt-input-wrap">
                     <input 
                         type="text" 
@@ -5804,8 +5890,9 @@ body {
                         onfocus="openAptList()"
                     >
                     <span class="apt-arrow" onclick="openAptList()">▾</span>
+
+                    <div id="aptList" class="list overlay-list"></div>
                 </div>
-                <div id="aptList" class="list"></div>
             </div>
 
             <div class="col half">
@@ -7936,9 +8023,15 @@ function analyzePrice() {
                                 <div class="volume-row">
                                     <div class="volume-month">${String(v.month || "").slice(2).replace("-", ".")}</div>
                                     <div class="volume-bar-wrap">
-                                        <div class="volume-bar" style="width:${width}%"></div>
+                                        <div 
+                                            class="volume-bar ${Number(v.count || 0) === maxCount ? 'volume-bar-max' : ''}" 
+                                            style="width:${width}%">
+                                        </div>
                                     </div>
-                                    <div class="volume-count">${v.count || 0}건</div>
+                                    <div class="volume-count">
+                                        ${v.count || 0}건
+                                        ${Number(v.count || 0) === maxCount ? '🔥' : ''}
+                                    </div>
                                 </div>
                             `;
                         }).join("")}
