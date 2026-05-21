@@ -6616,6 +6616,7 @@ let aptTimer = null;
 let aptFetchController = null;
 let dongCache = {};
 let dongFetchController = null;
+let analyzeFetchController = null;
 let lastDongRegion = "";
 let dongLoading = false;
 let dongProgressTimer = null;
@@ -6867,6 +6868,9 @@ async function loadDongs(region) {
         }
 
     } catch (e) {
+        if (e.name === "AbortError") {
+            return;
+        }
         const dongLoading = document.getElementById("dongLoading");
         if (dongLoading) {
             dongLoading.style.display = "none";
@@ -7410,11 +7414,18 @@ function renderRecentTradeChart(trades) {
 
 function analyzePrice() {
 
+    const analyzeBtn = document.getElementById("analyzeBtn");
+
     if (analyzeBtn.disabled) {
-        return;
+       return;
     }
 
     analyzeBtn.disabled = true;
+
+    document.getElementById("aptInput").disabled = true;
+    document.getElementById("sizeInput").disabled = true;
+    document.getElementById("dongInput").disabled = true;
+
     analyzeBtn.innerText = "분석중...";
 
 
@@ -7491,8 +7502,7 @@ function analyzePrice() {
     const resultBox = document.getElementById("resultBox");
     const modal = document.getElementById("reportModal");
     const modalResult = document.getElementById("modalResult");
-    const analyzeBtn = btn;
-
+  
     const shareUrl = `${window.location.origin}/?apt=${apt}&size=${size}&price=${userPrice}`;
     console.log("modal:", modal);
     console.log("modalResult:", modalResult);
@@ -7536,7 +7546,15 @@ function analyzePrice() {
     
     const shareUrlBase = window.location.origin;
     
-    fetch(url)
+    if (analyzeFetchController) {
+        analyzeFetchController.abort();
+    }
+
+    analyzeFetchController = new AbortController();
+
+    fetch(url, {
+        signal: analyzeFetchController.signal
+    })
         .then(res => {
             console.log("응답 상태:", res.status);
 
@@ -8253,6 +8271,7 @@ function analyzePrice() {
                 renderRecentTradeChart(data.최근거래5건);
 
                 modal.style.display = "flex";
+                document.body.style.overflow = "hidden";
                 document.body.classList.add("modal-open");
 
                 resultBox.innerHTML = "";
@@ -8267,6 +8286,9 @@ function analyzePrice() {
                 console.error("렌더링 에러:", e);
                 resultBox.innerHTML = "렌더링 오류: " + e.message;
                 analyzeBtn.disabled = false;
+                document.getElementById("aptInput").disabled = false;
+                document.getElementById("sizeInput").disabled = false;
+                document.getElementById("dongInput").disabled = false;
                 analyzeBtn.innerText = "분석하기";
             }
 
@@ -8282,23 +8304,39 @@ function analyzePrice() {
 
         })
         .catch(err => {
+            if (err.name === "AbortError") {
+                return;
+            }
+
             console.log("❌ 분석 에러:", err);
             showToast("분석 에러: " + err.message);
             resultBox.innerHTML = "분석 중 오류가 발생했습니다: " + err.message;
+        })
+        .finally(() => {
+            const analysisLoading = document.getElementById("analysisLoading");
+
+            if (analysisLoading) {
+                analysisLoading.style.display = "none";
+            }
             analyzeBtn.disabled = false;
-            analyzeBtn.innerText = 
+
+            analyzeBtn.innerText =
                 selectedPropertyType === "presale"
                     ? "✨ 분양권 분석하기"
                     : "✨ 아파트 분석하기";
-                      
-        });  
 
+            document.getElementById("aptInput").disabled = false;
+            document.getElementById("sizeInput").disabled = false;
+            document.getElementById("dongInput").disabled = false;
+        });
+                           
 }
 
 function closeModal() {
     const modal = document.getElementById("reportModal");
     if (modal) {
         modal.style.display = "none";
+        document.body.style.overflow = "";
     }
 
     document.body.classList.remove("modal-open");

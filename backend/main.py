@@ -29,6 +29,12 @@ def app_icon():
         "app_icon_v1.png",
         media_type="image/png"
     )
+@app.get("/favicon.ico")
+def favicon():
+    return FileResponse(
+        "app_icon_v1.png",
+        media_type="image/png"
+    )
 
 app.mount("/static", StaticFiles(directory="."), name="static")
 
@@ -53,6 +59,9 @@ areas_cache = {}
 lawd_cache = {}
 
 MAX_ANALYSIS_CACHE = 1000
+MAX_APT_CACHE = 300
+MAX_DONG_CACHE = 300
+MAX_AREAS_CACHE = 300
 
 SERVICE_KEY = "59c26233a7edcacf04e5d2a957e2e4e4c4a7d9d76b5925d23460aab1557e542e"
 
@@ -457,6 +466,9 @@ def get_dongs(region: str, type: str = "apt"):
             dongs.add(dong)
 
     result = {"동목록": sorted(list(dongs))}
+
+    if len(dong_cache) >= MAX_DONG_CACHE:
+        dong_cache.pop(next(iter(dong_cache)))
     dong_cache[cache_key] = result
     return result
 
@@ -584,6 +596,9 @@ def search_apts(
                 "dong": umd_name,
                 "name_norm": normalize(apt_name)
             })
+
+        if len(apt_cache) >= MAX_APT_CACHE:
+            apt_cache.pop(next(iter(apt_cache)))
 
         apt_cache[base_cache_key] = apt_list
 
@@ -1379,6 +1394,9 @@ def get_sizes(region: str, apt_name: str, type: str = "apt"):
             "평형목록": sorted(list(sizes))
         }
 
+        if len(areas_cache) >= MAX_AREAS_CACHE:
+            areas_cache.pop(next(iter(areas_cache)))
+
         areas_cache[cache_key] = result
         return result
     
@@ -1417,6 +1435,9 @@ def get_sizes(region: str, apt_name: str, type: str = "apt"):
         "아파트": apt_name,
         "평형목록": sorted(list(sizes))
     }
+
+    if len(areas_cache) >= MAX_AREAS_CACHE:
+        areas_cache.pop(next(iter(areas_cache)))
 
     areas_cache[cache_key] = result
 
