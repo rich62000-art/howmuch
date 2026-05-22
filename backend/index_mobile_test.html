@@ -6237,87 +6237,7 @@ body {
     box-shadow:
         0 10px 22px rgba(37,99,235,0.28);
 }
-#shareModal .privacy-close {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
 
-    position: absolute !important;
-    top: 14px !important;
-    right: 14px !important;
-
-    width: 38px !important;
-    height: 38px !important;
-
-    border-radius: 50% !important;
-    border: none !important;
-
-    background: #e2e8f0 !important;
-    color: #0f172a !important;
-
-    font-size: 24px !important;
-    font-weight: 900 !important;
-
-    z-index: 10 !important;
-    padding: 0 !important;
-}
-
-.share-box {
-    position: relative !important;
-}
-
-.share-close-btn {
-    position: absolute !important;
-    top: 14px !important;
-    right: 14px !important;
-
-    width: 38px !important;
-    height: 38px !important;
-
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    border: none !important;
-    border-radius: 50% !important;
-
-    background: #e2e8f0 !important;
-    color: #0f172a !important;
-
-    font-size: 24px !important;
-    font-weight: 900 !important;
-
-    z-index: 999 !important;
-    padding: 0 !important;
-    cursor: pointer !important;
-}
-
-.share-floating-close {
-    position: fixed !important;
-    top: 24px !important;
-    right: 24px !important;
-
-    width: 46px !important;
-    height: 46px !important;
-
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    z-index: 999999 !important;
-
-    border: none !important;
-    border-radius: 50% !important;
-
-    background: #ef4444 !important;
-    color: white !important;
-
-    font-size: 28px !important;
-    font-weight: 900 !important;
-
-    padding: 0 !important;
-    cursor: pointer !important;
-}
 </style>
 </head>
 
@@ -9322,7 +9242,9 @@ async function shareAppFromMenu() {
     closeSideMenu();
 
     // 모바일 공유 지원
-    if (navigator.share) {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobile && navigator.share) {
 
         try {
 
@@ -9478,10 +9400,11 @@ async function copyShareLink() {
 </div>
 
 <div id="shareModal" class="privacy-modal">
-    <button type="button" class="share-floating-close" onclick="closeShareModal()">
+    
+    <div class="privacy-box">
+        <button class="privacy-close" onclick="closeShareModal()">
             ×
         </button>
-    <div class="privacy-box share-box">
 
         <div class="privacy-badge">
             Share App
