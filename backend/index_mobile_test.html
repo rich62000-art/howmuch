@@ -304,7 +304,7 @@ button:hover {
     }
 
     .top-conclusion-text {
-        font-size: 22px;
+        font-size: 26px;
     }
 
     .result-badge {
@@ -362,7 +362,7 @@ button:hover {
 }
 
 .top-conclusion-text {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: bold;
     line-height: 1.5;
 }
@@ -564,10 +564,10 @@ body {
 /* ===== 카드형 입력 UI ===== */
 .card {
     width: 100%;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-    border: 1px solid #dbeafe;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7f7 100%);
+    border: 2px solid #fecaca;
     border-radius: 24px;
-    padding: 20px 18px;
+    padding: 12px 18px;
     box-shadow: 0 18px 40px rgba(37, 99, 235, 0.12);
     margin-bottom: 16px;
 }
@@ -1027,10 +1027,10 @@ textarea:focus {
 
 input,
 select {
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    border: 1.5px solid #dbe3ee;
+    background: linear-gradient(180deg, #ffffff 0%, #fff8f8 100%);
+    border: 1.5px solid #fecaca;
     border-radius: 14px;
-    min-height: 52px;
+    min-height: 38px;
     padding: 14px 16px;
     color: #0f172a;
     font-size: 16px;
@@ -1043,8 +1043,8 @@ select {
 }
 
 input::placeholder {
-    color: #94a3b8;
-    font-weight: 400;
+    color: #6b7280 !important;
+    font-weight: 500;
 }
 
 select {
@@ -1059,6 +1059,28 @@ select {
     background-size: 6px 6px, 6px 6px;
     background-repeat: no-repeat;
     padding-right: 40px;
+}
+
+/* 초기 안내 문구 */
+#sidoSelect,
+#sigunguSelect {
+    color: #94a3b8 !important;
+}
+
+/* 선택 후 진한 검정 */
+#sidoSelect.valid,
+#sigunguSelect.valid {
+    color: #0f172a !important;
+}
+
+#sidoSelect,
+#sigunguSelect {
+    color: #94a3b8 !important;
+}
+
+select option {
+    color: #0f172a !important;
+    background: #ffffff !important;
 }
 
 .row.three-cols {
@@ -1344,11 +1366,29 @@ body {
 }
 
 .dong-loading-box {
-    margin-top: 6px;
+    position: absolute;
+
+    left: 0;
+    right: 0;
+
+    top: calc(100% + 6px);
+
+    z-index: 200;
+
+    margin-top: 0;
+
     padding: 8px 10px;
-    border-radius: 12px;
-    background: #fff7ed;
+
+    border-radius: 14px;
+
+    background: rgba(255,255,255,0.96);
+
     border: 1px solid #fed7aa;
+
+    box-shadow:
+        0 14px 30px rgba(15,23,42,0.12);
+
+    backdrop-filter: blur(12px);
 }
 
 .dong-loading-title {
@@ -1393,8 +1433,11 @@ body {
 }
 
 .apt-input-wrap {
+    display: flex;
+    align-items: center;
     position: relative;
     width: 100%;
+    overflow: visible;
 }
 
 .apt-input-wrap input {
@@ -1455,7 +1498,7 @@ body {
 
 /* 서브 설명 */
 .step-sub {
-    font-size: 13px;
+    font-size: 10px;
     color: #64748b;
     margin-top: 2px;
 }
@@ -1470,15 +1513,16 @@ body {
 }
 
 .card input {
-    font-size: 14px !important;
-    height: 50px !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    height: 40px !important;
     padding: 12px !important;
 }
 .card select {
     font-size: 14px !important;
-    height: 50px !important;
+    height: 40px !important;
 
-    padding-left: 12px !important;
+    padding-left: 8px 12px !important;
     padding-right: 36px !important;  /* 🔥 화살표 공간 */
 
     background-position:
@@ -1487,7 +1531,7 @@ body {
 }
 
 .card input::placeholder {
-    color: #94a3b8;
+    color: #6b7280 !important;
     font-weight: 500;
 }
 
@@ -1601,7 +1645,7 @@ body {
 .hero-header {
     position: relative;
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 14px;
     padding: 24px 16px 10px;
     overflow: hidden;
 }
@@ -1664,6 +1708,9 @@ body {
 }
 
 .top-tab {
+    appearance: none;
+    -webkit-appearance: none;
+
     height: 38px;
     padding: 0 18px;
 
@@ -1677,10 +1724,32 @@ body {
     font-size: 14px;
     font-weight: 800;
 
-    box-shadow:
-        0 4px 10px rgba(15,23,42,0.05);
-
     transition: all 0.18s ease;
+}
+
+.top-tab.active {
+
+    background: #2563eb !important;
+
+    color: #fff !important;
+
+    border: 1px solid #2563eb !important;
+
+    box-shadow:
+        0 8px 18px rgba(37,99,235,0.25) !important;
+}
+
+/* 선택된 아파트/분양권 버튼 */
+.top-tab.active {
+    background: #2563eb !important;
+    color: white !important;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
+}
+
+/* 선택 안 된 버튼 */
+.top-tab:not(.active) {
+    background: rgba(255,255,255,0.88);
+    color: #475569;
 }
 
 .top-tabs {
@@ -1697,7 +1766,7 @@ body {
 
     margin-bottom: 8px;
 
-    font-size: 13px;
+    font-size: 10px;
     font-weight: 800;
 
     color: #334155;
@@ -1752,7 +1821,7 @@ body {
     flex-direction: column;
     justify-content: flex-end;
 
-    min-height: 42px;
+    min-height: auto;
 }
 
 /* 희망 매매가 아래 간격 축소 */
@@ -1942,7 +2011,7 @@ body {
 
     /* label 축소 */
     .card label {
-        font-size: 12px !important;
+        font-size: 10px !important;
     }
 
     /* 자동완성 리스트 */
@@ -2181,7 +2250,7 @@ body {
 
 /* 상단 탭 위치 정리 */
 .top-tabs {
-    margin-top: 24px !important;
+    margin-top: 12px !important;
 }
 
 /* 탭 버튼 조금 더 고급스럽게 */
@@ -2276,7 +2345,7 @@ body {
 
     border-radius: 999px !important;
 
-    font-size: 14px !important;
+    font-size: 15px !important;
     font-weight: 800 !important;
 
     background: rgba(255, 255, 255, 0.78) !important;
@@ -3078,7 +3147,7 @@ body {
 
     padding: 14px 15px !important;
 
-    font-size: 14px !important;
+    font-size: 15px !important;
     font-weight: 800 !important;
 
     line-height: 1.55 !important;
@@ -3669,7 +3738,7 @@ body {
 
     margin-top: 14px !important;
 
-    font-size: 14px !important;
+    font-size: 15px !important;
     font-weight: 800 !important;
 
     color: #475569 !important;
@@ -5675,6 +5744,11 @@ body {
 /* 모바일 */
 @media (max-width: 768px) {
 
+    .step-hero-img {
+
+        width: 84px;
+    }
+
     .dong-row {
         flex-wrap: nowrap !important;
     }
@@ -5718,14 +5792,37 @@ body {
 }
 
 .overlay-list {
-    position: absolute !important;
-    top: 58px;
+    position: fixed !important;
+
+    z-index: 99998 !important;
+
+    margin-top: 0 !important;
+
+    border-radius: 18px !important;
+
+    background: rgba(255,255,255,0.98) !important;
+
+    border: 1px solid #dbeafe !important;
+
+    box-shadow:
+        0 18px 40px rgba(15,23,42,0.16) !important;
+
+    backdrop-filter: blur(14px) !important;
+
+    overflow-y: auto !important;
+
+    max-height: 260px !important;
+    min-height: 180px !important;
+
+    overflow-y: auto !important;
+
+    padding: 8px !important;
+    position: absolute;
+    top: calc(100% + 4px);
     left: 0;
     right: 0;
-    z-index: 9999;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin-top: 0 !important;
+
+    z-index: 3000;
 }
 
 /* 시/군/구 ↔ 동/리 간격 축소 */
@@ -5931,6 +6028,10 @@ body {
         0 12px 28px rgba(37,99,235,0.16);
 
     overflow: hidden;
+
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .intro-box::before {
@@ -6244,6 +6345,990 @@ body {
         0 10px 22px rgba(37,99,235,0.28);
 }
 
+.share-btn {
+    position: relative !important;
+    z-index: 20 !important;
+    pointer-events: auto !important;
+}
+
+.share-row {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+}
+
+.kakao-btn,
+.link-btn,
+.naver-btn {
+    min-width: 0 !important;
+}
+
+.share-row-fixed {
+     display: grid !important;
+
+    grid-template-columns: repeat(3, 1fr) !important;
+
+    gap: 8px !important;
+
+    width: 100% !important;
+
+    margin-top: -4px !important;   /* 🔥 윗줄 전체 위로 */
+    margin-bottom: 2px !important;
+}
+
+.share-action-btn {
+    width: 100% !important;
+
+    height: 30px !important;   /* 🔥 높이 감소 */
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    border-radius: 14px !important;
+
+    background: #ffffff !important;
+
+    border: 1.4px solid transparent !important;
+
+    font-size: 14px !important;   /* 🔥 글자 살짝 축소 */
+    font-weight: 800 !important;
+
+    letter-spacing: -0.2px !important;
+
+    cursor: pointer !important;
+
+    box-shadow:
+        0 3px 8px rgba(15,23,42,0.04) !important;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease !important;
+}
+
+.share-action-btn:active {
+    transform: scale(0.97);
+}
+
+.kakao-action {
+    color: #d97706 !important;
+
+    border-color: #facc15 !important;
+
+    background: #ffffff !important;
+}
+
+.link-action {
+    color: #7c3aed !important;
+
+    border-color: #a855f7 !important;
+
+    background: #ffffff !important;
+}
+
+.naver-action {
+    color: #16a34a !important;
+
+    border-color: #22c55e !important;
+
+    background: #ffffff !important;
+}
+
+.top-tab.active {
+
+    background: #2563eb !important;
+
+    color: #ffffff !important;
+
+    border: 1px solid #2563eb !important;
+
+    box-shadow:
+        0 8px 18px rgba(37,99,235,0.25) !important;
+}
+
+.step-title {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-top: 8px;
+    margin-bottom: 6px;
+}
+
+/* 좌측 묶음 */
+.step-left {
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 우측 이미지 */
+.step-hero-img {
+
+    width: 120px;
+
+    opacity: 0.95;
+
+    object-fit: contain;
+
+    pointer-events: none;
+}
+
+/* ===== 미래형 지역 선택 입력창 ===== */
+
+.region-select-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.dong-region-list {
+    grid-template-columns: 1fr;
+}
+
+.region-select-item label {
+    min-height: auto !important;
+    margin-bottom: 8px !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    color: #334155 !important;
+}
+
+.region-select-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    min-height: 50px;
+
+    border-radius: 20px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1.5px solid #dbeafe;
+
+    box-shadow:
+        0 10px 24px rgba(37,99,235,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.9);
+
+    overflow: visible;
+}
+
+.region-select-box select,
+.region-select-box input {
+    width: 100%;
+    height: 50px !important;
+
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+
+    padding: 0 46px 0 16px !important;
+
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+}
+
+.region-select-box select:focus,
+.region-select-box input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.region-check {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #2563eb;
+    color: white;
+
+    font-size: 14px;
+    font-weight: 900;
+
+    box-shadow: 0 6px 14px rgba(37,99,235,0.25);
+
+    pointer-events: none;
+}
+
+.region-select-box .apt-input-wrap {
+    width: 100%;
+}
+
+.region-select-box .apt-arrow {
+    right: 46px;
+    color: #64748b;
+}
+
+/* 모바일 */
+@media (max-width: 768px) {
+    .region-select-list {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .dong-region-list {
+        grid-template-columns: 1fr;
+    }
+
+    .region-select-box {
+        min-height: 48px;
+        border-radius: 18px;
+    }
+
+    .region-select-box select,
+    .region-select-box input {
+        height: 48px !important;
+        font-size: 14px !important;
+        padding-left: 12px !important;
+    }
+}
+
+/* ===== 선택 완료 표시 ===== */
+
+.region-check {
+    background: #e2e8f0 !important;
+    color: transparent !important;
+    box-shadow: none !important;
+}
+
+.region-select-item.selected .region-check {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 6px 14px rgba(37,99,235,0.25) !important;
+}
+
+.region-select-item.selected .region-select-box {
+    border-color: #60a5fa !important;
+    box-shadow:
+        0 12px 28px rgba(37,99,235,0.12),
+        0 0 0 4px rgba(96,165,250,0.14) !important;
+}
+
+/* ===== 선택 지역 요약 ===== */
+
+.region-summary {
+    display: block;
+
+    width: 100%;
+    min-height: 44px;
+    line-height: 20px;
+    transform: none !important;
+
+    margin-top: 14px;
+
+    padding: 12px 14px;
+
+    border-radius: 16px;
+
+    background: linear-gradient(135deg, #eff6ff, #ffffff);
+
+    border: 1px solid #bfdbfe;
+
+    color: #1e3a8a;
+
+    font-size: 14px;
+    font-weight: 800;
+
+    text-align: center;
+
+    box-shadow:
+        0 8px 18px rgba(37,99,235,0.08);
+    text-align: center;
+    justify-content: center;
+}
+
+/* ===== 지역 선택창 높이 최종 강제 축소 ===== */
+
+.card .region-select-box {
+    min-height: 44px !important;
+    height: 44px !important;
+    border-radius: 15px !important;
+}
+
+.card .region-select-box select,
+.card .region-select-box input,
+.card .region-select-box .apt-input-wrap,
+.card .region-select-box .apt-input-wrap input {
+    height: 44px !important;
+    min-height: 44px !important;
+   
+    display: flex !important;
+    align-items: center !important;
+
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.card .region-select-item label {
+    margin-bottom: 5px !important;
+    font-size: 12px !important;
+}
+
+.card .region-check {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 11px !important;
+}
+/* ===== 동/리 입력창 세로 중앙 정렬 최종 보정 ===== */
+
+.card .region-select-box #dongInput {
+    height: 44px !important;
+    min-height: 44px !important;
+
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-left: 14px !important;
+    padding-right: 46px !important;
+
+    line-height: normal !important;
+
+    display: block !important;
+    box-sizing: border-box !important;
+
+    font-size: 13px !important;
+    font-weight: 800 !important;
+}
+
+.card .region-select-box .apt-input-wrap {
+    height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.card .region-select-box .apt-arrow {
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+}
+
+.card .region-select-box #dongInput {
+    transform: translateY(-1px) !important;
+}
+
+/* ===== 동/리 입력창 세로 중앙 정렬 최종 해결 ===== */
+
+.card .region-select-box .apt-input-wrap {
+    height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.card .region-select-box #dongInput {
+    height: auto !important;
+    min-height: 0 !important;
+
+    padding: 0 46px 0 14px !important;
+    margin: 0 !important;
+
+    line-height: 1.2 !important;
+
+    display: block !important;
+
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+
+    transform: translateY(0) !important;
+}
+
+/* ===== 라벨 + 입력창 한줄 배치 ===== */
+
+.inline-region-item {
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.inline-region-item label {
+
+    width: 110px;
+    min-width: 110px;
+
+    margin-bottom: 0 !important;
+
+    font-size: 13px !important;
+    font-weight: 900 !important;
+
+    color: #334155;
+}
+
+.inline-region-item .region-select-box {
+
+    flex: 1;
+}
+
+@media (max-width: 768px) {
+
+    .inline-region-item {
+        gap: 10px;
+    }
+
+    .inline-region-item label {
+
+        width: 92px;
+        min-width: 92px;
+
+        font-size: 12px !important;
+    }
+}
+
+.region-select-item {
+    position: relative;
+}
+
+/* ===== 동/리 로딩바 화면 상단 고정 ===== */
+
+#dongLoadingBox {
+    position: fixed !important;
+
+    top: 80px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+
+    width: calc(100% - 32px) !important;
+    max-width: 420px !important;
+
+    z-index: 99999 !important;
+
+    margin: 0 !important;
+    padding: 10px 12px !important;
+
+    border-radius: 16px !important;
+
+    background: rgba(255,255,255,0.96) !important;
+    border: 1px solid #fed7aa !important;
+
+    box-shadow:
+        0 16px 36px rgba(15,23,42,0.18) !important;
+
+    backdrop-filter: blur(12px) !important;
+}
+
+/* ===== 동/리 로딩바 선택창 바로 위 ===== */
+
+.dong-region-list {
+    position: relative !important;
+}
+
+#dongLoading {
+
+    position: fixed !important;
+
+    left: 16px !important;
+    right: 16px !important;
+
+    top: 120px;
+
+    z-index: 99999 !important;
+
+    margin: 0 !important;
+
+    padding: 10px 12px !important;
+
+    border-radius: 16px !important;
+
+    background: rgba(255,255,255,0.96) !important;
+
+    border: 1px solid #fed7aa !important;
+
+    box-shadow:
+        0 16px 36px rgba(15,23,42,0.18) !important;
+
+    backdrop-filter: blur(12px) !important;
+}
+
+/* ===== 동 리스트 높이 최종 강제 ===== */
+
+#dongList {
+    position: fixed !important;
+    width: 210px !important;
+    max-height: 260px !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: auto !important;
+    max-width: 240px !important;
+
+    /* 동/리 항목이 5개 정도 보이도록 높이 확장 */
+    min-height: 320px !important;
+    max-height: 320px !important;
+
+    overflow-y: auto !important;
+    z-index: 99999 !important;
+
+    padding: 8px !important;
+    border-radius: 16px !important;
+    border: 1.5px solid #dbeafe !important;
+    background: rgba(255,255,255,0.98) !important;
+    box-shadow: 0 16px 34px rgba(15,23,42,0.14) !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+#dongList .item {
+    min-height: 56px !important;
+    height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 14px 16px !important;
+    margin: 0 0 4px 0 !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+}
+
+#dongList .item:last-child {
+    margin-bottom: 0 !important;
+}
+
+.apt-input-wrap {
+    position: relative;
+    overflow: visible;
+}
+
+
+/* ===== 동/리 선택창 삼각형: 시/도, 시/군/구와 동일한 CSS 화살표 ===== */
+.card .region-select-box .apt-input-wrap .dong-arrow {
+    position: absolute !important;
+    right: 44px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+
+    width: 14px !important;
+    height: 14px !important;
+
+    display: block !important;
+    z-index: 50 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+
+    color: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+
+    background-image:
+        linear-gradient(45deg, transparent 50%, #475569 50%),
+        linear-gradient(135deg, #475569 50%, transparent 50%) !important;
+    background-position:
+        1px 5px,
+        7px 5px !important;
+    background-size: 6px 6px, 6px 6px !important;
+    background-repeat: no-repeat !important;
+}
+
+.card .region-select-box #dongInput {
+    padding-right: 74px !important; /* 삼각형 + 체크 아이콘 공간 확보 */
+}
+
+
+/* ===== 시/도, 시/군/구 선택창 아래 삼각형 복원 ===== */
+.card .region-select-box #sidoSelect,
+.card .region-select-box #sigunguSelect {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+
+    background-color: transparent !important;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #475569 50%),
+        linear-gradient(135deg, #475569 50%, transparent 50%) !important;
+
+    background-position:
+        calc(100% - 50px) calc(50% - 2px),
+        calc(100% - 44px) calc(50% - 2px) !important;
+
+    background-size: 6px 6px, 6px 6px !important;
+    background-repeat: no-repeat !important;
+
+    padding-right: 74px !important; /* 삼각형 + 체크 아이콘 공간 */
+}
+
+
+
+/* ===== 동/리 리스트 5개 항목 표시 최종 강제 ===== */
+#dongList.list.overlay-list {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: auto !important;
+    right: auto !important;
+    width: auto !important;
+    height: 320px !important;
+    min-height: 320px !important;
+    max-height: 320px !important;
+    max-width: 240px !important;
+    overflow-y: auto !important;
+    padding: 8px !important;
+    border-radius: 16px !important;
+    box-sizing: border-box !important;
+}
+#dongList.list.overlay-list .item {
+    height: 56px !important;
+    min-height: 56px !important;
+    padding: 14px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 15px !important;
+    box-sizing: border-box !important;
+}
+
+
+/* ===== 동/리 리스트: 선택창 바로 아래에 자연스럽게 표시 ===== */
+#dongList.dong-floating-layer {
+    position: fixed !important;
+
+    /* top / left / width 값은 JS에서 동 입력창 위치 기준으로 계산 */
+    right: auto !important;
+    transform: none !important;
+
+    height: 292px !important;       /* 5개 항목 + 여백 */
+    min-height: 292px !important;
+    max-height: 292px !important;
+
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+
+    z-index: 2147483647 !important;
+
+    padding: 6px !important;
+    border-radius: 14px !important;
+    border: 1.5px solid #8ab4ff !important;
+    background: rgba(255,255,255,0.99) !important;
+    box-shadow: 0 14px 30px rgba(15,23,42,0.16) !important;
+    backdrop-filter: blur(14px) !important;
+    box-sizing: border-box !important;
+}
+
+#dongList.dong-floating-layer .item {
+    height: 56px !important;
+    min-height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 14px 16px !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid #eef2f7 !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    box-sizing: border-box !important;
+}
+
+#dongList.dong-floating-layer .item:hover {
+    background: #eff6ff !important;
+    transform: none !important;
+}
+.card input,
+.card select {
+    border: 1.5px solid #fecaca !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fff8f8 100%) !important;
+}
+
+#dongInput {
+    border: 1.5px solid #fecaca !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fff8f8 100%) !important;
+}
+
+.region-select-item:has(#dongInput) {
+    border-color: #fecaca !important;
+}
+.dong-input-wrap,
+.dong-select-wrap {
+    border-color: #fecaca !important;
+}
+/* (3) 동/리 선택 입력창 테두리 강제 통일 */
+.dong-region-list .region-select-box {
+    border: 1.5px solid #fecaca !important;
+    background: linear-gradient(180deg, #ffffff 0%, #fff8f8 100%) !important;
+}
+
+.dong-region-list .apt-input-wrap {
+    border: none !important;
+    background: transparent !important;
+}
+
+.dong-region-list #dongInput {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.step-card {
+    background: linear-gradient(180deg, #ffffff 0%, #fff7f7 100%);
+    border: 2px solid #fecaca;
+    border-radius: 24px;
+    padding: 20px 18px;
+    box-shadow: 0 18px 40px rgba(37, 99, 235, 0.12);
+    margin-bottom: 16px;
+}
+.step-title-with-image {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.step-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.step-side-image {
+    width: 120px;
+    height: auto;
+    object-fit: contain;
+}
+
+/* 모바일 */
+@media (max-width: 768px) {
+
+    .step-side-image {
+        width: 95px;
+    }
+
+    .step-main {
+        font-size: 16px;
+    }
+
+    .step-sub {
+        font-size: 8px;
+    }
+}
+
+/* 02번 단지명/전용면적 제목 글자 작게 */
+.step-card-02 label {
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+}
+
+/* 괄호 설명 글자 */
+.step-card-02 .label-sub {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+}
+
+/* ===== 02번 카드 높이 압축 ===== */
+
+.step-card-02 {
+    padding-top: 10px !important;
+    padding-bottom: 8px !important;
+}
+
+.step-card-02 .step-title {
+    margin-top: 0 !important;
+    margin-bottom: 6px !important;
+}
+
+.step-card-02 .step-main {
+    font-size: 15px !important;
+    line-height: 1.15 !important;
+}
+
+.step-card-02 .step-sub {
+    font-size: 10px !important;
+    margin-top: 0 !important;
+    line-height: 1.1 !important;
+}
+
+.step-card-02 label {
+    margin-top: 2px !important;
+    margin-bottom: 3px !important;
+    min-height: auto !important;
+
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+}
+
+.step-card-02 .row {
+    margin-bottom: 4px !important;
+}
+
+.step-card-02 input,
+.step-card-02 select {
+    height: 44px !important;
+    margin-top: 2px !important;
+}
+
+/* 자동완성 리스트 간격 */
+.step-card-02 .list {
+    margin-top: 4px !important;
+}
+
+/* 02번 입력창 placeholder 글자 크기 */
+.step-card-02 input::placeholder {
+    font-size: 12px !important;
+}
+.apt-col {
+  
+    position: relative;
+    overflow: visible;
+}
+
+.size-col {
+    flex: 0.9;
+}
+.step02-input-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: nowrap;
+}
+
+.step02-input-row .apt-col {
+    flex: 1.6;
+    min-width: 0;
+}
+
+.step02-input-row .size-col {
+    flex: 1;
+    min-width: 0;
+}
+#aptList.list.overlay-list {
+    position: absolute !important;
+    top: calc(100% - 14px) !important;
+    left: 0 !important;
+    right: 0 !important;
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    margin-top: 4px !important;
+    z-index: 99999 !important;
+}
+#sizeList.list.overlay-list {
+    position: absolute !important;
+
+    top: calc(100% - 8px) !important;
+
+    left: 0 !important;
+    right: 0 !important;
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    margin-top: 0 !important;
+
+    z-index: 99999 !important;
+}
+/* ===== 03번 카드 높이 압축 ===== */
+
+.step-card-03 {
+    padding-top: 8px !important;
+    padding-bottom: 6px !important;
+}
+
+.step-card-03 .step-title {
+    margin-top: 0 !important;
+    margin-bottom: 4px !important;
+}
+
+.step-card-03 label {
+    margin-top: 2px !important;
+    margin-bottom: 3px !important;
+
+    min-height: auto !important;
+
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+}
+
+.step-card-03 input,
+.step-card-03 select {
+    height: 38px !important;
+
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+.step-card-03 .highlight-card {
+    margin-top: 4px !important;
+    margin-bottom: 4px !important;
+
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+}
+
+.step-card-03 .row {
+    margin-bottom: 4px !important;
+}
+
+.step-card-03 .step-title {
+    justify-content: flex-start !important;
+    gap: 12px;
+}
+
+.step-card-03 .step-side-image {
+    margin-left: auto;
+}
+
+.app-info-close {
+
+    position: sticky;
+    top: 12px;
+
+    margin-left: auto;
+
+    width: 38px;
+    height: 38px;
+
+    border-radius: 50%;
+
+    background: rgba(255,255,255,0.92);
+
+    border: 1px solid #dbeafe;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 22px;
+    font-weight: 700;
+
+    color: #334155;
+
+    cursor: pointer;
+
+    z-index: 9999;
+
+    box-shadow:
+        0 8px 20px rgba(15,23,42,0.08);
+}
+/* ===== PC 중앙 정렬 ===== */
+@media (min-width: 1025px) {
+
+    body {
+        display: flex;
+        justify-content: center;
+    }
+
+    .app-shell {
+        width: 100%;
+        max-width: 1400px;
+
+        margin: 0 auto;
+        justify-content: center;
+    }
+
+    .layout-shell {
+        width: 100%;
+        justify-content: center;
+    }
+}
 </style>
 </head>
 
@@ -6323,14 +7408,9 @@ body {
 
                     <div class="top-tabs">
 
-                        <button class="top-tab active">
-                            아파트
-                        </button>
-
-                        <button class="top-tab">
-                            분양권
-                        </button>
-
+                        <button type="button" class="top-tab active" data-type="apt">🏢 아파트 분석</button>
+                        <button type="button" class="top-tab" data-type="presale">🏗️ 분양권 분석</button>
+            
                     </div>
 
                     <div class="hero-info-grid">
@@ -6367,50 +7447,105 @@ body {
         <!-- 지역, 동 입력 -->
         
         <div class="step-title">
-            <div class="step-num">01</div>
-            <div class="step-text">
-                <div class="step-main">지역 선택</div>
-                <div class="step-sub">시/구 또는 동/리를 선택하세요</div>
-            </div>
-        </div>
 
-        <div class="row">
-            <div class="col half">
-                <label for="sidoSelect">(1) 시/도 선택</label>
-                <select id="sidoSelect">
-                    <option value="">🏙️ 시/도 선택</option>
-                </select>
-            </div>
+            <div class="step-left">
 
-            <div class="col half">
-                <label for="sigunguSelect">(2) 시/군/구 선택</label>
-                <select id="sigunguSelect">
-                    <option value="">🏙️ 시/군/구 선택</option>
-                </select>
-            </div>
-        </div>
+                <div class="step-num">01</div>
 
-        <div class="row dong-row">
-            <div class="col dong-input-col">
-                <label for="dongSelect">(3) 동/리 선택</label>
-
-                <div class="apt-input-wrap">
-                    <input 
-                        type="text" 
-                        id="dongInput" 
-                        placeholder="🏙️ 동/리 선택" 
-                        readonly 
-                        onclick="toggleDongList()"
-                    >
-                    <span class="apt-arrow" onclick="toggleDongList()">▾</span>
+                <div class="step-text">
+                    <div class="step-main">지역 선택</div>
+                    <div class="step-sub">
+                        시/구 또는 동/리를 선택하세요
+                    </div>
                 </div>
 
-                <select id="dongSelect" style="display:none;">
-                    <option value="">동 선택</option>
-                </select>
-
-                <div id="dongList" class="list overlay-list" style="display:none;"></div>
             </div>
+
+            <img
+                src="/static/location_hero.png"
+                class="step-hero-img"
+                alt="지역선택"
+            >
+
+        </div>
+
+
+
+        <div class="region-select-list">
+
+            <div class="region-select-item inline-region-item">
+                <label for="sidoSelect">(1) 시/도 선택</label>
+
+                <div class="region-select-box">
+                    <select id="sidoSelect">
+                        <option value="" disabled selected hidden>
+                            🏙️ 시/도를 선택 하세요
+                        </option>
+                    </select>
+
+                    <span class="region-check">✓</span>
+                </div>
+            </div>
+
+            <div class="region-select-item inline-region-item">
+                <label for="sigunguSelect">(2) 시/군/구 선택</label>
+
+                <div class="region-select-box">
+                    <select id="sigunguSelect">
+                        <option value="" disabled selected hidden>
+                            🏙️ 시/군/구를 선택 하세요
+                        </option>
+                    </select>
+
+                    <span class="region-check">✓</span>
+                </div>
+            </div>
+
+        </div>
+
+
+
+
+            <div class="region-select-list dong-region-list">
+
+                <div class="region-select-item inline-region-item">
+
+                    <label for="dongInput">(3) 동/리 선택</label>
+
+                    <div class="region-select-box">
+
+                        <div class="apt-input-wrap">
+
+                            <input 
+                                type="text" 
+                                id="dongInput" 
+                                placeholder="🏠 동/리를 선택하세요"
+                                readonly 
+                                onclick="toggleDongList()"
+                            >
+
+                            <span class="apt-arrow dong-arrow" onclick="toggleDongList()"></span>
+
+                            <div id="dongList" class="list overlay-list" style="display:none;"></div>
+
+                        </div>
+
+                        <span class="region-check">✓</span>
+                        
+                    </div>
+
+                </div>
+
+            </div>
+
+            <select id="dongSelect" style="display:none;">
+                <option value="">동 선택</option>
+            </select>
+
+            <div class="region-summary" id="regionSummary">
+                📍 지역을 선택해 주세요
+            </div>
+            
 
             <div class="dong-loading-col">
                 <div id="dongLoading" class="dong-loading-box" style="display:none;">
@@ -6433,25 +7568,39 @@ body {
 
 
         <!-- 아파트 , 평형 -->
-        <div class="step-title">
-            <div class="step-num">02</div>
+        <div class="step-card step-card-02">
 
-            <div class="step-text">
-                <div class="step-main">
-                    아파트/분양권 , 면적 선택
+            <div class="step-title step-title-with-image">
+
+                <div class="step-left">
+
+                    <div class="step-num">02</div>
+
+                    <div class="step-text">
+                        <div class="step-main">
+                            단지명과 전용면적 선택
+                        </div>
+
+                        <div class="step-sub">
+                            단지와 전용면적을 선택하세요
+                        </div>
+                    </div>
+
                 </div>
 
-                <div class="step-sub">
-                    단지와 전용면적을 선택하세요
-                </div>
+                <img
+                    src="/static/step02_apartment.png"
+                    class="step-side-image"
+                    alt="단지 선택"
+                >
+
             </div>
-        </div>
 
-        <div class="row">
-            <div class="col half">
-                             
+        <div class="row step02-input-row">
+            <div class="col apt-col">
+            <!-- <div class="col half">  -->          
                 <label for="aptInput">
-                    단지명을 선택하세요
+                    (1) 단지명을 선택하세요 <br>  
                     <span class="label-sub">(실거래가 없는 단지는 제외)</span>
                 </label>
                 <div class="apt-input-wrap">
@@ -6465,23 +7614,22 @@ body {
                         onclick="openAptList()"
                     >
                     <span class="apt-arrow" onclick="openAptList()">▾</span>
-
                     <div id="aptList" class="list overlay-list"></div>
                 </div>
             </div>
 
-            <div class="col half">
+            <div class="col size-col">
                 <label for="sizeSelect">
-                    전용면적<br>
+                    (2) 전용면적<br>
                     <span class="label-sub">
-                        (최근 1년간 거래가 없는 평형 제외)
+                        (1년간 거래 없는 평형 제외)
                     </span>
                 </label>
                 <div class="apt-input-wrap">
                     <input 
                         type="text" 
                         id="sizeInput" 
-                        placeholder="📐전용면적 선택" 
+                        placeholder="📐전용 면적" 
                         readonly 
                         onclick="toggleSizeList()"
                     >
@@ -6495,75 +7643,82 @@ body {
                 </select>
             </div>
         </div>
+    </div>
+        <div class="step-card step-card-03">
+            <div class="step-title">
+                <div class="step-num">03</div>
 
-        <div class="step-title">
-            <div class="step-num">03</div>
+                <div class="step-text">
+                    <div class="step-main">
+                        매수 조건 입력
+                    </div>
 
-            <div class="step-text">
-                <div class="step-main">
-                    매수 조건 입력
+                    <div class="step-sub">
+                        희망 가격과 조건을 입력하세요
+                    </div>
                 </div>
 
-                <div class="step-sub">
-                    희망 가격과 조건을 입력하세요
-                </div>
-            </div>
-        </div>
-
-        <div class="highlight-card">
-            <div class="highlight-title" id="priceInputTitle">💰 희망 매매가 (선택)</div>
-            <div class="highlight-desc" id="priceInputDesc">생각하는 매매가를 입력하면 적정성을 판단합니다</div>
-            <input
-                type="text"
-                id="userPriceInput"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                placeholder="예: 93000 (단위: 만원)"
-            >
-        </div>
-
-         
-        <div class="condition-section">
-
-            <div class="form-section-title">
-                매수 조건 입력
+                <img
+                    src="/static/step03_price.png"
+                    class="step-side-image"
+                    alt="가격 분석"
+                >
             </div>
 
-            <div class="row three-cols">
-                <div class="col third">
-                    <label for="directionSelect">📌 방 향 선 택</label>
-                    <select id="directionSelect">
-                        <option value="">방향</option>
-                        <option value="남향">남향</option>
-                        <option value="동향">동향</option>
-                        <option value="서향">서향</option>
-                        <option value="북향">북향</option>
-                    </select>
-                </div>
-
-                <div class="col third">
-                    <label for="floorSelect">📌 층 별 선 택</label>
-                    <select id="floorSelect">
-                        <option value="">고중저</option>
-                        <option value="저층">저층</option>
-                        <option value="중층">중층</option>
-                        <option value="고층">고층</option>
-                    </select>
-                </div>
-
-                <div class="col third">
-                    <label for="interiorSelect">📌 실 내 상 태</label>
-                    <select id="interiorSelect">
-                        <option value="">상중하</option>
-                        <option value="좋음">좋음</option>
-                        <option value="보통">보통</option>
-                        <option value="나쁨">나쁨</option>
-                    </select>
-                </div>
+            <div class="highlight-card">
+                <div class="highlight-title" id="priceInputTitle">💰 희망 매매가 (선택)</div>
+                <div class="highlight-desc" id="priceInputDesc">희망 매매가를 입력하면 적정성을 판단합니다</div>
+                <input
+                    type="text"
+                    id="userPriceInput"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="예: 93000 (단위: 만원)"
+                >
             </div>
 
+            
+            <div class="condition-section">
+
+                <div class="form-section-title">
+                    [아파트 상태 입력]
+                </div>
+
+                <div class="row three-cols">
+                    <div class="col third">
+                        <label for="directionSelect">📌 방 향 선 택</label>
+                        <select id="directionSelect">
+                            <option value="">방향</option>
+                            <option value="남향">남향</option>
+                            <option value="동향">동향</option>
+                            <option value="서향">서향</option>
+                            <option value="북향">북향</option>
+                        </select>
+                    </div>
+
+                    <div class="col third">
+                        <label for="floorSelect">📌 층 별 선 택</label>
+                        <select id="floorSelect">
+                            <option value="">고중저</option>
+                            <option value="저층">저층</option>
+                            <option value="중층">중층</option>
+                            <option value="고층">고층</option>
+                        </select>
+                    </div>
+
+                    <div class="col third">
+                        <label for="interiorSelect">📌 실 내 상 태</label>
+                        <select id="interiorSelect">
+                            <option value="">상중하</option>
+                            <option value="좋음">좋음</option>
+                            <option value="보통">보통</option>
+                            <option value="나쁨">나쁨</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
         </div>
-        
         <div id="analysisLoadingBox" class="analysis-loading-box">
             <div class="analysis-loading-title">AI 분석중...</div>
             <div class="analysis-progress-bar">
@@ -6578,83 +7733,6 @@ body {
     <div id="resultBox"></div>
     
     </div>
-
-
-    <!-- 우측 패널 -->
-<div class="right-panel">
-
-    <!-- 리포트 안내 -->
-    <div class="report-card">
-
-        <div class="report-title">
-            ✨ AI 리포트 제공 항목
-        </div>
-
-        <div class="report-item">
-            <div class="report-icon">📊</div>
-            <div class="report-text">
-                <div class="report-main">적정 매수가 분석</div>
-                <div class="report-sub">AI 기반 적정 가격 산정</div>
-            </div>
-        </div>
-
-        <div class="report-item">
-            <div class="report-icon">📈</div>
-            <div class="report-text">
-                <div class="report-main">최근 거래 흐름 분석</div>
-                <div class="report-sub">실거래 추이 및 변화 파악</div>
-            </div>
-        </div>
-
-        <div class="report-item">
-            <div class="report-icon">🏢</div>
-            <div class="report-text">
-                <div class="report-main">시장 추세 판단</div>
-                <div class="report-sub">지역·단지 시장 상황 분석</div>
-            </div>
-        </div>
-
-        <div class="report-item">
-            <div class="report-icon">🤖</div>
-            <div class="report-text">
-                <div class="report-main">AI 투자 의견 제공</div>
-                <div class="report-sub">매수·보유·매도 의견 제시</div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- 입력 팁 -->
-    <div class="side-card">
-        <div class="side-title">💡 입력 팁</div>
-        <div class="side-desc">
-            방향 / 층 / 실내 상태까지 입력하면<br>
-            더욱 정확한 분석이 가능합니다.
-        </div>
-    </div>
-
-    <!-- 데이터 -->
-    <div class="side-card">
-        <div class="side-title">🛡 데이터 신뢰도</div>
-        <div class="side-desc">
-            국토교통부 실거래 공개시스템의<br>
-            최신 거래 데이터를 사용합니다.
-        </div>
-    </div>
-
-    <!-- 유의사항 -->
-    <div class="side-card warning-card">
-        <div class="side-title">⚠ 유의사항</div>
-        <div class="side-desc">
-            AI 분석 결과는 참고용이며,<br>
-            실제 매수 판단은 입지·학군·내부 상태 등을 함께 고려하세요.
-        </div>
-    </div>
-
-</div>
-
-
-
 
     <div id="reportModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -6689,10 +7767,18 @@ body {
 
             <!-- 🔹 하단 고정 버튼 -->
             <div class="modal-footer">
-                <div class="share-row">
-                    <button class="share-btn kakao" onclick="shareKakao()">카카오  공유</button>
-                    <button class="share-btn link" onclick="console.log('링크복사클릭'); copyLink()">링크 복사</button>
-                    <button class="share-btn naver" onclick="openNaverRealEstate()">네이버 검색</button>
+                <div class="share-row-fixed">
+                    <button type="button" class="share-action-btn kakao-action" onclick="shareKakao(event)">
+                        카카오 공유
+                    </button>
+
+                    <button type="button" class="share-action-btn link-action" onclick="copyLink(event)">
+                        링크 복사
+                    </button>
+
+                    <button type="button" class="share-action-btn naver-action" onclick="openNaverRealEstate(event)">
+                        네이버
+                    </button>
                 </div>
                 
                 <div class="bottom-action-row">
@@ -6743,18 +7829,41 @@ function showToast(message) {
 }
 
 document.querySelectorAll(".top-tab").forEach(tab => {
-    tab.addEventListener("click", function () {
-        document.querySelectorAll(".top-tab")
-            .forEach(t => t.classList.remove("active"));
 
+    const sidoSelect = document.getElementById("sidoSelect");
+    const sigunguSelect = document.getElementById("sigunguSelect");
+    const dongSelect = document.getElementById("dongSelect");
+
+
+    tab.addEventListener("click", function () {
+        document.querySelectorAll(".top-tab").forEach(t => t.classList.remove("active"));
         this.classList.add("active");
 
         selectedPropertyType = this.innerText.includes("분양권")
             ? "presale"
             : "apt";
+        sidoSelect.value = "";
+        sigunguSelect.innerHTML = '<option value="">🏙️ 시/군/구를 선택 하세요</option>';
+        sigunguSelect.value = "";
 
+        dongSelect.innerHTML = '<option value="">동 선택</option>';
+        dongSelect.value = "";
+
+        document.getElementById("dongInput").value = "";
         document.getElementById("aptInput").value = "";
         document.getElementById("aptList").innerHTML = "";
+        document.getElementById("dongList").innerHTML = "";
+
+        sidoSelect.classList.remove("valid");
+        sigunguSelect.classList.remove("valid");
+
+        sidoSelect.style.color = "#94a3b8";
+        sigunguSelect.style.color = "#94a3b8";
+
+        updateRegionSelectedState();
+
+        // document.getElementById("aptInput").value = "";
+        // document.getElementById("aptList").innerHTML = "";
 
         const regionInput = document.getElementById("regionInput");
         if (regionInput) {
@@ -6766,14 +7875,14 @@ document.querySelectorAll(".top-tab").forEach(tab => {
             regionList.innerHTML = "";
         }
 
-        const sidoSelect = document.getElementById("sidoSelect");
+        // const sidoSelect = document.getElementById("sidoSelect");
         if (sidoSelect) {
             sidoSelect.value = "";
         }
 
-        const sigunguSelect = document.getElementById("sigunguSelect");
+        // const sigunguSelect = document.getElementById("sigunguSelect");
         if (sigunguSelect) {
-            sigunguSelect.innerHTML = "<option value=''>시/군/구 선택</option>";
+            sigunguSelect.innerHTML = "<option value=''>🏙️ 시/군/구를 선택 하세요</option>";
         }
 
         const dongInput = document.getElementById("dongInput");
@@ -6787,12 +7896,13 @@ document.querySelectorAll(".top-tab").forEach(tab => {
             dongList.style.display = "none";
         }
 
-        const dongSelect = document.getElementById("dongSelect");
+        // const dongSelect = document.getElementById("dongSelect");
         if (dongSelect) {
             dongSelect.innerHTML = "<option value=''>동 선택</option>";
             dongSelect.value = "";
         }
-        const dongLoadingBox = document.getElementById("dongLoadingBox");
+
+        const dongLoadingBox = document.getElementById("dongLoading")
         if (dongLoadingBox) {
             dongLoadingBox.style.display = "none";
         }
@@ -6869,49 +7979,47 @@ function buildShareUrl() {
     );
 }
 
-function shareKakao() {
+function shareKakao(event) {
+
+    if (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+    }
 
     if (!lastResult) {
         showToast("먼저 분석을 실행해주세요.");
         return;
     }
 
-    if (!window.Kakao) {
-        showToast("카카오 SDK가 로드되지 않았습니다.");
-        return;
-    }
-
-    if (!Kakao.isInitialized()) {
-        showToast("카카오 SDK 초기화 실패");
+    if (!window.Kakao || !Kakao.isInitialized()) {
+        showToast("카카오 공유 기능을 불러오지 못했습니다.");
         return;
     }
 
     const shareUrl = buildShareUrl();
 
-    const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
-    const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
-
     const kakaoText = `📊 아파트 AI 분석 결과
+🏢 ${lastResult.아파트 || ""}
+📐 ${lastResult.평형 || ""}㎡
+💰 추천가: ${Number(lastResult.보정추천가 || 0).toLocaleString()}만원
 
-🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
+👉 자세히 보기`;
 
-💰 내가 생각한 가격: ${userPrice}만원
-🎯 AI 추천 매수가: ${recommendPrice}만원
-
-📈 ${lastResult?.한줄결론 || ""}
-
-👉 자세히 보기
-${shareUrl}`;
-
-    Kakao.Share.sendDefault({
-        objectType: "text",
+    try {
+        Kakao.Share.sendDefault({
+            objectType: "text",
             text: kakaoText,
             link: {
                 mobileWebUrl: shareUrl,
                 webUrl: shareUrl
             },
             buttonTitle: "본문 링크를 눌러 주세요."
-    });
+        });
+    } catch (e) {
+        console.log("카카오 공유 오류:", e);
+        showToast("카카오 공유 중 오류가 발생했습니다.");
+    }
 }
 
 function openNaverRealEstate() {
@@ -7022,15 +8130,23 @@ if (sidoSelect && sigunguSelect) {
 
     // 시군구 변경
     sidoSelect.addEventListener("change", function () {
-
-    const selectedSido = sidoSelect.value;
+        sidoSelect.classList.toggle(
+            "valid",
+            sidoSelect.value !== ""
+        );
+    
+        const selectedSido = sidoSelect.value;
 
         sigunguSelect.innerHTML =
             '<option value="">시/군/구 불러오는 중...</option>';
 
+        sidoSelect.style.color = "#6b7280";
+        sigunguSelect.style.color = "#6b7280";
+
         if (!selectedSido) {
             sigunguSelect.innerHTML =
-                '<option value="">시/군/구 선택</option>';
+                '<option value="">🏙️ 시/군/구 선택</option>';
+            sigunguSelect.style.color = "#6b7280";
             return;
         }
 
@@ -7052,7 +8168,7 @@ if (sidoSelect && sigunguSelect) {
             .then(data => {
 
                 sigunguSelect.innerHTML =
-                    '<option value="">시/군/구 선택</option>';
+                    '<option value="">🏙️ 시/군/구 선택</option>';
 
                 (data.검색결과 || []).forEach(sigungu => {
 
@@ -7076,6 +8192,10 @@ if (sidoSelect && sigunguSelect) {
 
 
 sigunguSelect.addEventListener("change", function () {
+    sigunguSelect.classList.toggle(
+        "valid",
+        sigunguSelect.value !== ""
+    );
 
 
     const sido = sidoSelect.value;
@@ -7107,6 +8227,7 @@ sigunguSelect.addEventListener("change", function () {
 
     // 핵심: 기존 동 로딩 함수 호출
     loadDongs(fullRegion);
+
 });
 
 
@@ -7284,7 +8405,7 @@ async function loadDongs(region) {
             renderDongList();
 
             if (dongList) {
-                dongList.style.display = "block";
+                openDongList();
             }
         }, 150);
 
@@ -7366,7 +8487,7 @@ async function loadDongs(region) {
         renderDongList();
 
         if (dongList) {
-            dongList.style.display = "block";
+            openDongList();
         }
 
     } catch (e) {
@@ -7427,7 +8548,7 @@ function renderDongs(dongs) {
             dongList.innerHTML =
                 '<div class="item">실거래 단지 없음</div>';
 
-            dongList.style.display = "block";
+            showDongListAfterPosition();
         }
 
         return;
@@ -7439,10 +8560,58 @@ function renderDongs(dongs) {
         option.textContent = dong;
         dongSelect.appendChild(option);
     });
+
     setTimeout(() => {
-        dongSelect.value = "";
-        dongSelect.selectedIndex = 0;
-    }, 100);
+    dongSelect.value = "";
+    dongSelect.selectedIndex = 0;
+
+    const dongList = document.getElementById("dongList");
+
+    if (dongList) {
+        dongList.innerHTML = "";
+
+        dongs.forEach(dong => {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerText = dong;
+
+            div.onclick = () => {
+                const dongInput = document.getElementById("dongInput");
+                const dongItem = dongInput.closest(".region-select-item");
+
+                dongInput.value = dong;
+                dongSelect.value = dong;
+
+                dongList.style.display = "none";
+
+                if (dongItem) {
+                    dongItem.classList.add("selected");
+                }
+
+                updateRegionSelectedState();
+                setTimeout(updateRegionSelectedState, 0);
+
+                dongSelect.dispatchEvent(new Event("change"));
+                document.getElementById("aptInput").focus();
+            };
+
+            dongList.appendChild(div);
+        });
+
+        dongList.style.visibility = "hidden";
+        dongList.style.display = "block";
+
+        requestAnimationFrame(() => {
+            positionDongList();
+            dongList.style.visibility = "visible";
+        });
+    }
+}, 150);
+    setTimeout(() => {
+        renderDongList();
+
+        
+    }, 150);
 }
 
 function searchApts() {
@@ -7571,7 +8740,8 @@ function fetchApts(region, keyword = "") {
     aptFetchController = new AbortController();
 
     const listEl = document.getElementById("aptList");
-    const cacheKey = selectedPropertyType + "_" + region + "_all";
+    const selectedDong = document.getElementById("dongSelect").value;
+    const cacheKey = selectedPropertyType + "_" + region + "_" + (selectedDong || "all");
 
     if (!region) {
         listEl.innerHTML = "";
@@ -7588,10 +8758,12 @@ function fetchApts(region, keyword = "") {
 
     fetch(
         "/apts?region=" +
-        encodeURIComponent(region) +
-        "&type=" +
-        encodeURIComponent(selectedPropertyType) +
-        "&keyword=",
+        encodeURIComponent(region)
+        + "&type=" +
+        encodeURIComponent(selectedPropertyType)
+        + "&keyword="
+        + "&dong=" +
+        encodeURIComponent(selectedDong || ""),
         {
             signal: aptFetchController.signal
         }
@@ -8883,7 +10055,12 @@ window.onclick = function (event) {
 };
 
 
-function copyLink() {
+function copyLink(event) {
+
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
 
     if (!lastResult) {
         showToast("먼저 분석을 실행해주세요.");
@@ -9029,9 +10206,61 @@ function toggleDongList() {
     if (list.style.display === "none" || list.style.display === "") {
         list.style.display = "block";
         renderDongList();
+        requestAnimationFrame(() => positionDongList());
     } else {
         list.style.display = "none";
     }
+}
+
+function showDongListAfterPosition() {
+    const dongList = document.getElementById("dongList");
+    if (!dongList) return;
+
+    dongList.style.setProperty("visibility", "hidden", "important");
+    dongList.style.setProperty("display", "block", "important");
+
+    positionDongList();
+
+    dongList.style.setProperty("visibility", "visible", "important");
+}
+
+function openDongList() {
+    const list = document.getElementById("dongList");
+    const select = document.getElementById("dongSelect");
+
+    if (!list || !select) return;
+
+    renderDongList();
+
+    if (list.children.length === 0) {
+        list.innerHTML = '<div class="item">동 목록이 없습니다</div>';
+    }
+
+    list.style.display = "block";
+
+    requestAnimationFrame(() => {
+        const input = document.getElementById("dongInput");
+        const list = document.getElementById("dongList");
+        const rect = input.getBoundingClientRect();
+
+        list.style.position = "fixed";
+
+        list.style.top =
+            (rect.top + window.scrollY + input.offsetHeight + 4) + "px";
+
+        list.style.left =
+            (rect.left + window.scrollX + 8) + "px";
+
+        list.style.width =
+            (rect.width - 16) + "px";
+
+        list.style.display = "block";
+    });
+}
+
+function closeDongList() {
+    const list = document.getElementById("dongList");
+    if (list) list.style.display = "none";
 }
 
 // 🔥 동 리스트 렌더링
@@ -9049,12 +10278,26 @@ function renderDongList() {
         div.innerText = opt.value;
 
         div.onclick = () => {
-            document.getElementById("dongInput").value = opt.value;
-            select.value = opt.value;
-            list.style.display = "none";
+            const dongInput = document.getElementById("dongInput");
+            const dongItem = dongInput.closest(".region-select-item");
 
-            // 🔥 기존 로직 유지 (중요)
+            dongInput.value = opt.value;
+            select.value = opt.value;
+
+            if (dongItem) {
+                dongItem.classList.add("selected");
+            }
+
+            updateRegionSelectedState();
+
+            closeDongList();
+
             select.dispatchEvent(new Event("change"));
+
+            setTimeout(() => {
+                updateRegionSelectedState();
+            }, 0);
+
             document.getElementById("aptInput").focus();
         };
 
@@ -9067,7 +10310,7 @@ document.addEventListener("click", function (e) {
     const wrap = document.querySelector(".apt-input-wrap");
     const list = document.getElementById("dongList");
 
-    if (!wrap.contains(e.target) && !list.contains(e.target)) {
+    if (list && wrap && !wrap.contains(e.target) && !list.contains(e.target)) {
         list.style.display = "none";
     }
 });
@@ -9312,6 +10555,142 @@ async function copyShareLink() {
     }
 }
 
+function copyShareUrl() {
+    const shareUrl = buildShareUrl();
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareUrl)
+            .then(() => showToast("분석 결과 링크가 복사되었습니다."))
+            .catch(() => fallbackCopy(shareUrl));
+    } else {
+        fallbackCopy(shareUrl);
+    }
+}
+
+function updateRegionSelectedState() {
+    document.querySelectorAll(".region-select-item").forEach(item => {
+        const input = item.querySelector("input, select");
+
+        if (!input) return;
+
+        if (input.value && input.value.trim() !== "") {
+            item.classList.add("selected");
+        } else {
+            item.classList.remove("selected");
+        }
+    });
+    const sido = document.getElementById("sidoSelect")?.value || "";
+    const sigungu = document.getElementById("sigunguSelect")?.value || "";
+    const dong = document.getElementById("dongInput")?.value || "";
+
+    const summary = document.getElementById("regionSummary");
+
+    if (summary) {
+        const parts = [sido, sigungu, dong].filter(Boolean);
+
+        summary.innerText = parts.length
+            ? "📍 " + parts.join(" > ")
+            : "📍 지역을 선택해 주세요";
+    }
+    const dongInput = document.getElementById("dongInput");
+    const dongItem = dongInput?.closest(".region-select-item");
+
+    if (dongItem) {
+        if (dongInput.value.trim() !== "") {
+            dongItem.classList.add("selected");
+        } else {
+            dongItem.classList.remove("selected");
+        }
+    }
+}
+
+document.addEventListener("change", function (e) {
+    if (
+        e.target.matches("#sidoSelect") ||
+        e.target.matches("#sigunguSelect") ||
+        e.target.matches("#dongSelect")
+    ) {
+        updateRegionSelectedState();
+    }
+});
+
+document.addEventListener("input", function (e) {
+    if (e.target.matches("#dongInput")) {
+        updateRegionSelectedState();
+    }
+});
+
+
+function positionDongList() {
+
+    const list = document.getElementById("dongList");
+    const input = document.getElementById("dongInput");
+
+    if (!list || !input) return;
+
+    // 카드 overflow 제한을 피하기 위해 body로 이동하되, 위치는 동 입력창 기준으로 잡음
+    if (list.parentElement !== document.body) {
+        document.body.appendChild(list);
+    }
+
+    list.classList.remove("dong-fixed-layer");
+    list.classList.add("dong-floating-layer");
+
+    const rect = input.getBoundingClientRect();
+    const gap = 4;
+    const sidePadding = 12;
+    const maxHeight = 292;
+
+    // 동 입력창 바로 아래에 붙이고, 폭은 입력창보다 작게 제한
+    let width = Math.min(rect.width * 0.82, 240);
+    width = Math.max(width, 170);
+
+    let left = rect.left + (rect.width - width) / 2;
+    let top = rect.bottom + gap;
+
+    // 화면 좌우를 넘지 않도록 보정
+    if (left < sidePadding) left = sidePadding;
+    if (left + width > window.innerWidth - sidePadding) {
+        left = window.innerWidth - sidePadding - width;
+    }
+
+    // 아래 공간이 부족하면 높이만 줄이고, 위로 튀어 올라가지 않게 함
+    const bottomSpace = window.innerHeight - top - sidePadding;
+    const visibleHeight = Math.max(180, Math.min(maxHeight, bottomSpace));
+
+    list.style.setProperty("position", "fixed", "important");
+    list.style.setProperty("top", (rect.bottom - 1) + "px", "important");
+
+    const listWidth = 220;
+
+    list.style.setProperty("width", listWidth + "px", "important");
+    list.style.setProperty("left", "62%", "important");
+    list.style.setProperty("right", "auto", "important");
+    list.style.setProperty("transform", "translateX(-50%)", "important");
+    list.style.height = visibleHeight + "px";
+    list.style.minHeight = visibleHeight + "px";
+    list.style.maxHeight = visibleHeight + "px";
+    list.style.overflowY = "auto";
+    list.style.zIndex = "2147483647";
+}
+
+window.addEventListener("resize", () => {
+    const list = document.getElementById("dongList");
+    if (list && list.style.display !== "none") {
+        positionDongList();
+    }
+});
+
+window.addEventListener("scroll", () => {
+    const list = document.getElementById("dongList");
+    if (list && list.style.display !== "none") {
+        positionDongList();
+    }
+}, true);
+
+function closeAppInfo() {
+    document.getElementById("appInfoModal").style.display = "none";
+}
 </script>
 
 <div id="toastMessage" class="toast-message"></div>
@@ -9355,6 +10734,83 @@ async function copyShareLink() {
                 <span>전국 단지 빠른 검색</span>
             </div>
         </div>
+
+
+
+        <!-- 우측 패널 -->
+        <div class="intro-report-panel">
+
+            <!-- 리포트 안내 -->
+            <div class="report-card">
+
+                <div class="report-title">
+                    ✨ AI 리포트 제공 항목
+                </div>
+
+                <div class="report-item">
+                    <div class="report-icon">📊</div>
+                    <div class="report-text">
+                        <div class="report-main">적정 매수가 분석</div>
+                        <div class="report-sub">AI 기반 적정 가격 산정</div>
+                    </div>
+                </div>
+
+                <div class="report-item">
+                    <div class="report-icon">📈</div>
+                    <div class="report-text">
+                        <div class="report-main">최근 거래 흐름 분석</div>
+                        <div class="report-sub">실거래 추이 및 변화 파악</div>
+                    </div>
+                </div>
+
+                <div class="report-item">
+                    <div class="report-icon">🏢</div>
+                    <div class="report-text">
+                        <div class="report-main">시장 추세 판단</div>
+                        <div class="report-sub">지역·단지 시장 상황 분석</div>
+                    </div>
+                </div>
+
+                <div class="report-item">
+                    <div class="report-icon">🤖</div>
+                    <div class="report-text">
+                        <div class="report-main">AI 투자 의견 제공</div>
+                        <div class="report-sub">매수·보유·매도 의견 제시</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="side-card">
+                <div class="side-title">💡 입력 팁</div>
+                <div class="side-desc">
+                    방향 / 층 / 실내 상태까지 입력하면<br>
+                    더욱 정확한 분석이 가능합니다.
+                </div>
+            </div>
+
+            <div class="side-card">
+                <div class="side-title">🛡 데이터 신뢰도</div>
+                <div class="side-desc">
+                    국토교통부 실거래 공개시스템의<br>
+                    최신 거래 데이터를 사용합니다.
+                </div>
+            </div>
+
+            <div class="side-card warning-card">
+                <div class="side-title">⚠ 유의사항</div>
+                <div class="side-desc">
+                    AI 분석 결과는 참고용이며,<br>
+                    실제 매수 판단은 입지·학군·내부 상태 등을 함께 고려하세요.
+                </div>
+            </div>
+
+        </div>
+
+
+
+
+
     </div>
 </div>
 

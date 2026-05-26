@@ -124,6 +124,9 @@ def warmup_region(region: str):
 def normalize(text: str) -> str:
     return re.sub(r"[^\w]", "", text.lower())
 
+def normalize_dong_name(text: str) -> str:
+    return re.sub(r"\s+", "", (text or "").strip())
+
 def normalize_apt_name(name: str) -> str:
     name = name.lower()
     name = re.sub(r"\s+", "", name)
@@ -606,15 +609,21 @@ def search_apts(
     result = []
 
     for apt in apt_cache[base_cache_key]:
-        if dong and apt.get("dong") != dong:
-            continue
+
+        # 🔥 동 이름 공백/표기 차이 보정
+        if dong:
+            selected_dong = normalize_dong_name(dong)
+            apt_dong = normalize_dong_name(apt.get("dong", ""))
+
+            if selected_dong != apt_dong:
+                continue
 
         if keyword_norm and keyword_norm not in apt.get("name_norm", ""):
             continue
 
         result.append(apt)
 
-    return {"검색결과": result[:100]}
+    return {"검색결과": result[:300]}
 
 @app.get("/price")
 def get_price(region: str, apt_name: str):
@@ -1476,6 +1485,7 @@ def privacy():
         <p>서비스 관련 문의: yjs1000@hanmail.net</p>
 
         <p>시행일: 2026년 4월 27일</p>
+        
     </body>
     </html>
     """
