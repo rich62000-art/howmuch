@@ -1122,12 +1122,30 @@ def analyze_price(
 
     # 🔥 거래 부족
     else:
+        # ✅ 아파트: 최근 거래는 충분한데 과거 비교 데이터가 없는 경우
+        if type == "apt" and len(recent_prices) >= 6 and len(past_prices) == 0:
+            trend = "거래 회복"
+            change_rate = 0
+            change_rate_text = "회복 초기"
+            trend_confidence = "보통"
+
+            trend_comment = (
+                "최근 3개월 거래가 집중적으로 발생했습니다. "
+                "이전 기간 거래가 부족해 상승률 계산은 제한적이지만, "
+                "거래 분위기는 회복된 상태로 볼 수 있습니다."
+            )
+
+            ai_comment = (
+                "최근 3개월 거래량이 크게 늘어난 단지입니다. "
+                "가격 상승률은 과거 비교 거래가 부족해 계산이 어렵지만, "
+                "시장 관심도와 거래 회복 흐름은 확인됩니다."
+            )
 
          # ✅ 분양권: 최근 거래는 충분한데 과거 비교 데이터가 없는 경우
-        if type == "presale" and len(recent_prices) >= 6 and len(past_prices) == 0:
-            trend = "거래 활발"
+        elif type == "presale" and len(recent_prices) >= 6 and len(past_prices) == 0:
+            trend = "거래 회복"
             change_rate = 0
-            change_rate_text = "비교 기준 부족"
+            change_rate_text = "회복 초기"
             trend_confidence = "보통"
 
             trend_comment = (
@@ -1332,6 +1350,16 @@ def analyze_price(
     if "trend_comment" not in locals():
         trend_comment = "최근 거래 데이터를 기준으로 시장 흐름을 산출했습니다."
 
+    # 🔥 거래 활성도 점수 계산
+    annual_count = sum(int(v.get("count", 0)) for v in monthly_volume)
+    recent_count = recent_3m_count
+
+    if annual_count > 0:
+        activity_score = round((recent_count / annual_count) * 100)
+    else:
+        activity_score = 0
+
+    activity_score = min(activity_score, 100)
     result = {
         "아파트": apt_name,
         "평형": size,
@@ -1343,6 +1371,7 @@ def analyze_price(
         "추세": trend,
         "상승률(%)": change_rate,
         "상승률텍스트": change_rate_text,
+        "활성도": activity_score,
         "추세신뢰도": trend_confidence,
         "추세해석": trend_comment,
         "AI설명": ai_comment,

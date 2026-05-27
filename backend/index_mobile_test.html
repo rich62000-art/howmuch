@@ -9893,10 +9893,14 @@ function analyzePrice() {
                                                         : 'neutral'
                                             }">
                                                 ${
-                                                    Number(data["상승률(%)"] || 0) > 0
-                                                        ? '+' + Number(data["상승률(%)"] || 0)
-                                                        : Number(data["상승률(%)"] || 0)
-                                                }%
+                                                    data["상승률텍스트"]
+                                                        ? data["상승률텍스트"]
+                                                        : (
+                                                            Number(data["상승률(%)"] || 0) > 0
+                                                                ? '+' + Number(data["상승률(%)"] || 0) + '%'
+                                                                : Number(data["상승률(%)"] || 0) + '%'
+                                                        )
+                                                }
                                             </div>
                                         `
                                 }
