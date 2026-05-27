@@ -8076,13 +8076,40 @@ function shareKakao(event) {
 
     try {
         Kakao.Share.sendDefault({
-            objectType: "text",
-            text: kakaoText,
-            link: {
-                mobileWebUrl: shareUrl,
-                webUrl: shareUrl
+
+            objectType: "feed",
+
+            content: {
+                title: "얼마일까 AI 부동산 분석",
+
+                description:
+                    "전국 아파트·분양권 실거래 기반 AI 시세 분석",
+
+                imageUrl:
+                    "https://howmuch-xt70.onrender.com/static/og_image.png",
+
+                link: {
+                    mobileWebUrl:
+                        "https://howmuch-xt70.onrender.com",
+
+                    webUrl:
+                        "https://howmuch-xt70.onrender.com"
+                }
             },
-            buttonTitle: "본문 링크를 눌러 주세요."
+
+            buttons: [
+                {
+                    title: "AI 분석 보기",
+
+                    link: {
+                        mobileWebUrl:
+                            "https://howmuch-xt70.onrender.com",
+
+                        webUrl:
+                            "https://howmuch-xt70.onrender.com"
+                    }
+                }
+            ]
         });
     } catch (e) {
         console.log("카카오 공유 오류:", e);
