@@ -7395,6 +7395,19 @@ body {
     font-size: 12px !important;
     line-height: 1.25 !important;
 }
+.result-hero-card {
+    border: 2px solid #fecdd3 !important;
+}
+.result-hero-card {
+    border: 2px solid #fecdd3 !important;
+
+    background:
+        linear-gradient(
+            180deg,
+            #ffffff 0%,
+            #fff7f7 100%
+        ) !important;
+}
 </style>
 </head>
 
@@ -8031,18 +8044,7 @@ if (window.Kakao && !Kakao.isInitialized()) {
 console.log("카카오 초기화:", window.Kakao ? Kakao.isInitialized() : "SDK 없음");
 
 function buildShareUrl() {
-    const shareRegion = document.getElementById("regionInput")?.value || "";
-    const shareApt = document.getElementById("aptInput")?.value || "";
-    const shareSize = document.getElementById("sizeSelect")?.value || "";
-    const sharePrice = document.getElementById("userPriceInput")?.value || "";
-
-    return (
-        window.location.origin +
-        "/?region=" + encodeURIComponent(shareRegion) +
-        "&apt=" + encodeURIComponent(shareApt) +
-        "&size=" + encodeURIComponent(shareSize) +
-        "&price=" + encodeURIComponent(sharePrice)
-    );
+    return "https://howmuch-xt70.onrender.com";
 }
 
 function shareKakao(event) {
@@ -9243,7 +9245,7 @@ function analyzePrice() {
     const modal = document.getElementById("reportModal");
     const modalResult = document.getElementById("modalResult");
   
-    const shareUrl = `${window.location.origin}/?apt=${apt}&size=${size}&price=${userPrice}`;
+    const shareUrl = "https://howmuch-xt70.onrender.com";
     console.log("modal:", modal);
     console.log("modalResult:", modalResult);
 
@@ -9385,12 +9387,7 @@ function analyzePrice() {
                 const sharePrice = document.getElementById("userPriceInput").value;
                 const shareRegion = document.getElementById("regionInput").value;
 
-                const shareUrl =
-                    window.location.origin +
-                    "/?region=" + encodeURIComponent(shareRegion || "") +
-                    "&apt=" + encodeURIComponent(shareApt || "") +
-                    "&size=" + encodeURIComponent(shareSize || "") +
-                    "&price=" + encodeURIComponent(sharePrice || "");
+                const shareUrl = "https://howmuch-xt70.onrender.com";
 
                 console.log("최종 shareUrl:", shareUrl);
                 //console.log("shareApt:", shareApt);
