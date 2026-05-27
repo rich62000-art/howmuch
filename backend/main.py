@@ -923,8 +923,8 @@ def analyze_price(
 
 
 
-    # 🔥 최근 6개월 거래만 표시
-    six_months_ago = datetime.today() - timedelta(days=180)
+    # 🔥 최근 1년 거래만 표시
+    one_year_ago = datetime.today() - timedelta(days=365)
 
     recent_trades = []
 
@@ -933,15 +933,14 @@ def analyze_price(
         try:
             d = datetime.strptime(t["date"], "%Y-%m-%d")
 
-            if d >= six_months_ago:
+            if d >= one_year_ago:
                 recent_trades.append(t)
 
         except:
             continue
 
-
-    # 최근 거래 5건
-    recent_trades = trades[:5]
+    # 최근 1년 거래 중 최신 5건만 표시
+    recent_trades = recent_trades[:5]
 
     recent_price = user_price or 0
 
