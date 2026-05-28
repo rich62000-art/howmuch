@@ -8106,27 +8106,30 @@ function shareKakao(event) {
 
     const shareUrl = buildShareUrl();
 
-    const kakaoText = `📊 아파트 AI 분석 결과
-    🏢 ${lastResult.아파트 || ""}
-    📐 ${lastResult.평형 || ""}㎡
-    💰 추천가: ${Number(lastResult.보정추천가 || 0).toLocaleString()}만원
+        const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
+        const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
 
-    👉 자세히 보기`;
+        const kakaoText = `📊 아파트 AI 분석 결과
 
-        try {
-            Kakao.Share.sendDefault({
-                objectType: "text",
+    🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
+
+    💰 내가 생각한 가격: ${userPrice}만원
+    🎯 AI 추천 매수가: ${recommendPrice}만원
+
+    📈 ${lastResult?.한줄결론 || ""}
+
+    👉 자세히 보기
+    ${shareUrl}`;
+
+        Kakao.Share.sendDefault({
+            objectType: "text",
                 text: kakaoText,
                 link: {
                     mobileWebUrl: shareUrl,
                     webUrl: shareUrl
                 },
                 buttonTitle: "본문 링크를 눌러 주세요."
-            });
-        } catch (e) {
-            console.log("카카오 공유 오류:", e);
-            showToast("카카오 공유 중 오류가 발생했습니다.");
-        }
+        });
 }
 
 
