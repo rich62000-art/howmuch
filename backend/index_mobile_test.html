@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="실거래가 AI분석">
 <link rel="apple-touch-icon" href="/app_icon_v1.png">
 
-<meta property="og:title" content="얼마일까 AI 부동산 분석">
+<meta property="og:title" content="얼마일까? AI 부동산 분석">
 <meta property="og:description" content="전국 아파트·분양권 실거래 기반 AI 시세 분석">
 <meta property="og:image" content="https://howmuch-xt70.onrender.com/static/og_image_v1.png">
 <meta property="og:type" content="website">
@@ -7424,6 +7424,27 @@ body {
     box-shadow:
         0 6px 16px rgba(56,189,248,0.08) !important;
 }
+/* 앱소개 리포트 제공 항목 폰트 축소 */
+#introModal .intro-report-panel,
+#introModal .intro-report-panel * {
+    font-size: 15px !important;
+    line-height: 1.45 !important;
+}
+
+/* 앱소개 리포트 카드 테두리 */
+#introModal .intro-report-panel > div {
+
+    border: 1.5px solid #7dd3fc !important;
+
+    border-radius: 16px !important;
+
+    padding: 12px !important;
+
+    margin-bottom: 10px !important;
+
+    box-shadow:
+        0 6px 14px rgba(56,189,248,0.08) !important;
+}
 </style>
 </head>
 
@@ -8084,31 +8105,47 @@ function shareKakao(event) {
     const shareUrl = buildShareUrl();
 
     const kakaoText = `📊 아파트 AI 분석 결과
-🏢 ${lastResult.아파트 || ""}
-📐 ${lastResult.평형 || ""}㎡
-💰 추천가: ${Number(lastResult.보정추천가 || 0).toLocaleString()}만원
+    🏢 ${lastResult.아파트 || ""}
+    📐 ${lastResult.평형 || ""}㎡
+    💰 추천가: ${Number(lastResult.보정추천가 || 0).toLocaleString()}만원
 
-👉 자세히 보기`;
+    👉 자세히 보기`;
 
     try {
-        const appUrl = "https://howmuch-xt70.onrender.com/";
+        const appUrl =
+            "https://howmuch-xt70.onrender.com/";
 
         Kakao.Share.sendDefault({
+
             objectType: "feed",
 
             content: {
-                title: "얼마일까 AI 부동산 분석",
-                description: "전국 아파트·분양권 실거래 기반 AI 시세 분석",
-                imageUrl: "https://howmuch-xt70.onrender.com/static/og_image_v1.png",
+
+                title:
+                    `📊 ${lastResult.아파트 || ""} ${lastResult.평형 || ""}㎡`,
+
+                description:
+                    `💰 추천가 ${Number(
+                        lastResult.보정추천가 || 0
+                    ).toLocaleString()}만원`,
+
+                imageUrl:
+                    "https://howmuch-xt70.onrender.com/static/og_image_v1.png",
+
                 link: {
                     mobileWebUrl: appUrl,
                     webUrl: appUrl
                 }
             },
 
+            social: {
+                likeCount: 0
+            },
+
             buttons: [
                 {
                     title: "AI 분석 보기",
+
                     link: {
                         mobileWebUrl: appUrl,
                         webUrl: appUrl
@@ -8116,6 +8153,7 @@ function shareKakao(event) {
                 }
             ]
         });
+
     } catch (e) {
         console.log("카카오 공유 오류:", e);
         showToast("카카오 공유 중 오류가 발생했습니다.");
@@ -10597,7 +10635,7 @@ async function shareAppFromMenu() {
         try {
 
             await navigator.share({
-                title: "얼마일까 AI 부동산 분석",
+                title: "얼마일까? AI 부동산 분석",
                 text: "전국 아파트 실거래 기반 AI 시세 분석 앱",
                 url: window.location.origin
             });
@@ -10800,7 +10838,7 @@ function closeAppInfo() {
 
         <div class="intro-badge">AI Real Estate Report</div>
 
-        <h3>얼마일까 AI 부동산 분석</h3>
+        <h3>얼마일까? ,  AI 부동산 분석</h3>
 
         <div class="intro-highlight">
             실거래 데이터를 기반으로<br>
