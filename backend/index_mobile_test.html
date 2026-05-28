@@ -7408,6 +7408,22 @@ body {
             #fff7f7 100%
         ) !important;
 }
+
+/* 앱소개 카드 간격 */
+#introModal .intro-feature-grid + .intro-report-panel {
+    margin-top: 31px !important;
+}
+/* 앱소개 개별 카드 하늘색 테두리 */
+#introModal .intro-feature-card,
+#introModal .intro-report-card {
+
+    border: 1.5px solid #7dd3fc !important;
+
+    border-radius: 18px !important;
+
+    box-shadow:
+        0 6px 16px rgba(56,189,248,0.08) !important;
+}
 </style>
 </head>
 
@@ -8075,38 +8091,27 @@ function shareKakao(event) {
 👉 자세히 보기`;
 
     try {
-        Kakao.Share.sendDefault({
+        const appUrl = "https://howmuch-xt70.onrender.com/";
 
+        Kakao.Share.sendDefault({
             objectType: "feed",
 
             content: {
                 title: "얼마일까 AI 부동산 분석",
-
-                description:
-                    "전국 아파트·분양권 실거래 기반 AI 시세 분석",
-
-                imageUrl:
-                    "https://howmuch-xt70.onrender.com/static/og_image_v1.png",
-
+                description: "전국 아파트·분양권 실거래 기반 AI 시세 분석",
+                imageUrl: "https://howmuch-xt70.onrender.com/static/og_image_v1.png",
                 link: {
-                    mobileWebUrl: "https://howmuch-xt70.onrender.com",
-                    webUrl: "https://howmuch-xt70.onrender.com"
-
-                    // androidExecutionParams: "url=https://howmuch-xt70.onrender.com",
-                    // iosExecutionParams: "url=https://howmuch-xt70.onrender.com"
+                    mobileWebUrl: appUrl,
+                    webUrl: appUrl
                 }
             },
 
             buttons: [
                 {
                     title: "AI 분석 보기",
-
                     link: {
-                        mobileWebUrl: "https://howmuch-xt70.onrender.com",
-                        webUrl: "https://howmuch-xt70.onrender.com"
-
-                        // androidExecutionParams: "url=https://howmuch-xt70.onrender.com",
-                        // iosExecutionParams: "url=https://howmuch-xt70.onrender.com"
+                        mobileWebUrl: appUrl,
+                        webUrl: appUrl
                     }
                 }
             ]
