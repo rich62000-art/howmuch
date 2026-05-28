@@ -8114,7 +8114,7 @@ function shareKakao(event) {
     👉 자세히 보기`;
 
     try {
-        const appUrl = "https://howmuch-xt70.onrender.com";
+        const appUrl = "https://howmuch-xt70.onrender.com?apt=${encodeURIComponent(lastResult.아파트 || "")}&size=${encodeURIComponent(lastResult.평형 || "")}`;
 
         Kakao.Share.sendDefault({
             objectType: "feed",
