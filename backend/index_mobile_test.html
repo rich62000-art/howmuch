@@ -8115,46 +8115,17 @@ function shareKakao(event) {
 
     try {
         const appUrl =
-            "https://howmuch-xt70.onrender.com";
+        "https://howmuch-xt70.onrender.com";
 
-        Kakao.Share.sendDefault({
+    Kakao.Share.sendScrap({
 
-            objectType: "feed",
+        requestUrl: appUrl,
 
-            content: {
+        templateArgs: {
+            title: "얼마일까? , AI 부동산 분석"
+        }
 
-                title:
-                    `📊 ${lastResult.아파트 || ""} ${lastResult.평형 || ""}㎡`,
-
-                description:
-                    `💰 추천가 ${Number(
-                        lastResult.보정추천가 || 0
-                    ).toLocaleString()}만원`,
-
-                imageUrl:
-                    "https://howmuch-xt70.onrender.com/static/og_image_v1.png",
-
-                link: {
-                    mobileWebUrl: appUrl,
-                    webUrl: appUrl
-                }
-            },
-
-            social: {
-                likeCount: 0
-            },
-
-            buttons: [
-                {
-                    title: "AI 분석 보기",
-
-                    link: {
-                        mobileWebUrl: appUrl,
-                        webUrl: appUrl
-                    }
-                }
-            ]
-        });
+    });
 
     } catch (e) {
         console.log("카카오 공유 오류:", e);
