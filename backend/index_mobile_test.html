@@ -8114,18 +8114,31 @@ function shareKakao(event) {
     👉 자세히 보기`;
 
     try {
-        const appUrl =
-        "https://howmuch-xt70.onrender.com";
+        const appUrl = "https://howmuch-xt70.onrender.com";
 
-    Kakao.Share.sendScrap({
+        Kakao.Share.sendDefault({
+            objectType: "feed",
 
-        requestUrl: appUrl,
+            content: {
+                title: "얼마일까? , AI 부동산 분석",
+                description: "전국 아파트·분양권 실거래 기반 AI 시세 분석",
+                imageUrl: "https://howmuch-xt70.onrender.com/static/og_image_v1.png",
+                link: {
+                    mobileWebUrl: appUrl,
+                    webUrl: appUrl
+                }
+            },
 
-        templateArgs: {
-            title: "얼마일까? , AI 부동산 분석"
-        }
-
-    });
+            buttons: [
+                {
+                    title: "AI 분석 보기",
+                    link: {
+                        mobileWebUrl: appUrl,
+                        webUrl: appUrl
+                    }
+                }
+            ]
+        });
 
     } catch (e) {
         console.log("카카오 공유 오류:", e);
