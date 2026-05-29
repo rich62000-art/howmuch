@@ -8122,7 +8122,7 @@ function shareKakao(event) {
     ${shareUrl}`;
 
         Kakao.Share.sendDefault({
-            objectType: "feed",
+            objectType: "text",
 
             content: {
                 title: `📊 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡`,
