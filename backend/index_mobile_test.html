@@ -8123,33 +8123,12 @@ function shareKakao(event) {
 
         Kakao.Share.sendDefault({
             objectType: "text",
-
-            content: {
-                title: `📊 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡`,
-
-                description:
-                    `💰 내가 생각한 가격: ${userPrice}만원\n` +
-                    `🎯 AI 추천 매수가: ${recommendPrice}만원\n\n` +
-                    `📈 ${lastResult?.한줄결론 || ""}`,
-
-                imageUrl:
-                    "https://howmuch-xt70.onrender.com/static/og_image_v2.png",
-
+                text: kakaoText,
                 link: {
                     mobileWebUrl: shareUrl,
                     webUrl: shareUrl
-                }
-            },
-
-            buttons: [
-                {
-                    title: "본문 링크를 눌러 주세요.",
-                    link: {
-                        mobileWebUrl: shareUrl,
-                        webUrl: shareUrl
-                    }
-                }
-            ]
+                },
+                buttonTitle: "본문 링크를 눌러 주세요."
         });
 }
 
