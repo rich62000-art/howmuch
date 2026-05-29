@@ -8106,10 +8106,10 @@ function shareKakao(event) {
 
     const shareUrl = buildShareUrl();
 
-        const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
-        const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
+    const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
+    const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
 
-        const kakaoText = `📊 아파트 AI 분석 결과
+    const kakaoText = `📊 아파트 AI 분석 결과
 
     🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
 
@@ -8122,13 +8122,34 @@ function shareKakao(event) {
     ${shareUrl}`;
 
         Kakao.Share.sendDefault({
-            objectType: "text",
-                text: kakaoText,
+            objectType: "feed",
+
+            content: {
+                title: `📊 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡`,
+
+                description:
+                    `💰 내가 생각한 가격: ${userPrice}만원\n` +
+                    `🎯 AI 추천 매수가: ${recommendPrice}만원\n\n` +
+                    `📈 ${lastResult?.한줄결론 || ""}`,
+
+                imageUrl:
+                    "https://howmuch-xt70.onrender.com/static/og_image_v1.png",
+
                 link: {
                     mobileWebUrl: shareUrl,
                     webUrl: shareUrl
-                },
-                buttonTitle: "본문 링크를 눌러 주세요."
+                }
+            },
+
+            buttons: [
+                {
+                    title: "본문 링크를 눌러 주세요.",
+                    link: {
+                        mobileWebUrl: shareUrl,
+                        webUrl: shareUrl
+                    }
+                }
+            ]
         });
 }
 
@@ -10184,25 +10205,25 @@ function copyLink(event) {
 
     const text = `📊 아파트 AI 분석 결과
 
-🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
+    🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
 
-💰 내가 생각한 가격: ${userPrice}만원
-🎯 AI 추천 매수가: ${recommendPrice}만원
+    💰 내가 생각한 가격: ${userPrice}만원
+    🎯 AI 추천 매수가: ${recommendPrice}만원
 
-📈 ${lastResult?.한줄결론 || ""}
+    📈 ${lastResult?.한줄결론 || ""}
 
-👉 자세히 보기
-${shareUrl}`;
+    👉 자세히 보기
+    ${shareUrl}`;
 
-    // 🔥 최신 브라우저 (HTTPS)
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text)
-            .then(() => showToast("링크가 복사되었습니다!"))
-            .catch(() => fallbackCopy(text));
-    } else {
-        // 🔥 fallback (모바일/HTTP)
-        fallbackCopy(text);
-    }
+        // 🔥 최신 브라우저 (HTTPS)
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(() => showToast("링크가 복사되었습니다!"))
+                .catch(() => fallbackCopy(text));
+        } else {
+            // 🔥 fallback (모바일/HTTP)
+            fallbackCopy(text);
+        }
 }
 
 
