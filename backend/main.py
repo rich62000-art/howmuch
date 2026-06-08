@@ -10,7 +10,18 @@ import re
 from datetime import datetime, timedelta
 import time
 import threading
+from db import (
+    get_apt_sale_trades, get_dongs_from_db, 
+    get_apts_from_db, get_sizes_from_db, 
+    insert_search_log, insert_analysis_log, 
+    get_today_search_count, get_today_analysis_count, 
+    get_popular_apts, get_popular_regions, get_recent_analysis,
+    get_presale_trades, get_presale_dongs_from_db, get_presale_apts_from_db,
+    get_presale_sizes_from_db,
 
+    get_rent_dongs_from_db, get_rent_apts_from_db,
+    get_rent_sizes_from_db, get_rent_trades
+)
 from fastapi.staticfiles import StaticFiles
 from difflib import SequenceMatcher
 
@@ -53,6 +64,7 @@ with open("lawd_codes.json", "r", encoding="utf-8") as f:
 
 trade_cache = {}
 analysis_cache = {}
+MAX_ANALYSIS_CACHE = 1000
 dong_cache = {}
 apt_cache = {}
 areas_cache = {}
@@ -66,6 +78,8 @@ MAX_AREAS_CACHE = 300
 SERVICE_KEY = "59c26233a7edcacf04e5d2a957e2e4e4c4a7d9d76b5925d23460aab1557e542e"
 
 DEBUG = False
+
+ADMIN_PASSWORD = "리치1234"
 
 def normalize_region(text: str) -> str:
     text = text.replace(" ", "")
@@ -91,6 +105,18 @@ def normalize_region(text: str) -> str:
 
     return text
 
+# ✅ 아파트 매매 분석 엔진
+def analyze_apt_sale_engine(
+    region,
+    apt_name,
+    size,
+    user_price=None,
+    direction=None,
+    floor_level=None,
+    interior=None
+):
+    pass
+
 def find_lawd_cd(region: str):
     if "세종" in region:
         return "36110"
@@ -109,15 +135,7 @@ def find_lawd_cd(region: str):
     return None
 
 def warmup_region(region: str):
-    if DEBUG:
-        print(f"🔥 백그라운드 워밍업 시작: {region}")
-    try:
-        fetch_trade_items(region, 12)
-        if DEBUG:
-            print(f"✅ 백그라운드 워밍업 완료: {region}")
-    except Exception as e:
-        if DEBUG:
-            print("워밍업 실패:", e)
+    return
 
 
 # 문자열 정규화
@@ -160,6 +178,229 @@ def is_same_apartment_name(user_name: str, data_name: str) -> bool:
 
 def is_same_size(user_size, data_size) -> bool:
     return int(float(user_size)) == int(float(data_size))
+
+def db_rows_to_items(rows):
+    items = []
+
+    for row in rows:
+        items.append({
+            "apt_name": row[3],
+            "dong": row[2],
+            "apt_dong": "",
+            "size": int(float(row[4])),
+            "price": int(row[6]),
+            "date": row[5],
+            "floor": row[7]
+        })
+
+    return items
+
+# ✅ 전월세 DB row를 분석용 dict로 변환
+# apt_rent_trades 테이블 구조:
+# id, region, sigungu, dong, apt_name, size, contract_date,
+# deposit, monthly_rent, floor, source_month, created_at
+def rent_rows_to_items(rows):
+    items = []
+
+    for row in rows:
+        items.append({
+            "apt_name": row[4],
+            "dong": row[3],
+            "size": int(float(row[5])),
+            "date": row[6],
+            "deposit": int(row[7] or 0),
+            "monthly_rent": int(row[8] or 0),
+            "floor": row[9]
+        })
+
+    return items
+
+# ✅ 전월세 분석 엔진
+# 보증금과 월세 데이터를 분리해서
+# 전세 / 월세 여부를 판단하고 평균 보증금, 평균 월세를 계산한다.
+def analyze_rent_engine(region, apt_name, size):
+    rows = get_rent_trades(apt_name, size)
+    items = rent_rows_to_items(rows)
+
+    if not items:
+        return {
+            "결과": "데이터 없음",
+            "한줄결론": "최근 전월세 실거래 데이터가 부족합니다."
+        }
+
+    # ✅ 전세: 월세가 0원인 거래
+    jeonse_items = [
+        item for item in items
+        if item["monthly_rent"] == 0
+    ]
+
+    # ✅ 월세: 월세가 0원보다 큰 거래
+    monthly_items = [
+        item for item in items
+        if item["monthly_rent"] > 0
+    ]
+
+    # ✅ 전세 평균 보증금
+    # 월세 거래의 낮은 보증금과 섞지 않고,
+    # 월세 0원인 전세 거래만 따로 평균 계산한다.
+    avg_jeonse_deposit = round(
+        sum(item["deposit"] for item in jeonse_items) / len(jeonse_items)
+    ) if jeonse_items else 0
+
+    # ✅ 최근 전세 5건
+    recent_jeonse_trades = sorted(
+        [x for x in items if x["monthly_rent"] == 0],
+        key=lambda x: x["date"],
+        reverse=True
+    )[:5]
+
+    # ✅ 전세 상승률 계산
+    # 최근 전세 3건 평균 VS 이전 전세 3건 평균 기준
+    all_jeonse_trades = sorted(
+        [x for x in items if x["monthly_rent"] == 0],
+        key=lambda x: x["date"],
+        reverse=True
+    )
+
+    recent_3_jeonse = all_jeonse_trades[:3]
+    previous_3_jeonse = all_jeonse_trades[3:6]
+
+    if len(all_jeonse_trades) >= 6 and len(previous_3_jeonse) == 3:
+        recent_avg_jeonse = round(
+            sum(x["deposit"] for x in recent_3_jeonse) / 3
+        )
+
+        previous_avg_jeonse = round(
+            sum(x["deposit"] for x in previous_3_jeonse) / 3
+        )
+
+        jeonse_change_rate = round(
+            ((recent_avg_jeonse - previous_avg_jeonse) / previous_avg_jeonse) * 100,
+            1
+        ) if previous_avg_jeonse else 0
+
+        jeonse_trend_reliability = "높음"
+
+    elif len(all_jeonse_trades) >= 4:
+        jeonse_change_rate = None
+        jeonse_trend_reliability = "보통"
+
+    elif len(all_jeonse_trades) >= 2:
+        jeonse_change_rate = None
+        jeonse_trend_reliability = "낮음"
+
+    else:
+        jeonse_change_rate = None
+        jeonse_trend_reliability = "산정 불가"
+
+    # ✅ 월세 평균 보증금
+    # 월세 거래는 보증금 + 월세 구조이므로,
+    # 월세 거래의 보증금만 따로 평균 계산한다.
+    avg_monthly_deposit = round(
+        sum(item["deposit"] for item in monthly_items) / len(monthly_items)
+    ) if monthly_items else 0
+
+
+    # ✅ 평균 월세
+    # 월세가 0보다 큰 거래만 대상으로 월세 평균을 계산한다.
+    avg_monthly_rent = round(
+        sum(item["monthly_rent"] for item in monthly_items) / len(monthly_items)
+    ) if monthly_items else 0
+
+    # ✅ 시장 수준 판단
+    if len(jeonse_items) >= 3:
+
+        deposits = [x["deposit"] for x in jeonse_items]
+
+        high = max(deposits)
+        low = min(deposits)
+
+        gap_ratio = ((high - low) / low) * 100 if low else 0
+
+        if gap_ratio >= 30:
+            rent_level = "높음 🔴"
+        elif gap_ratio >= 15:
+            rent_level = "보통 🟡"
+        else:
+            rent_level = "안정 🟢"
+
+    else:
+        rent_level = "데이터 부족 ⚪"
+
+    # ✅ 전월세 거래 구성에 따른 한줄 결론
+    if len(jeonse_items) > 0 and len(monthly_items) == 0:
+        rent_conclusion = "최근 거래는 전세 중심으로 형성되어 있습니다."
+        rent_ai_comment = "해당 평형은 최근 월세 거래보다 전세 거래가 중심입니다. 평균 전세보증금을 기준으로 임대 수준을 참고하는 것이 좋습니다."
+
+    elif len(monthly_items) > 0 and len(jeonse_items) == 0:
+        rent_conclusion = "최근 거래는 월세 중심으로 형성되어 있습니다."
+        rent_ai_comment = "해당 평형은 최근 전세 거래보다 월세 거래가 중심입니다. 보증금과 월세를 함께 비교해 부담 수준을 판단하는 것이 좋습니다."
+
+    else:
+        rent_conclusion = "최근 거래는 전세와 월세가 함께 형성되어 있습니다."
+        rent_ai_comment = "전세 보증금과 월세 거래가 모두 확인됩니다. 전세는 보증금 수준을, 월세는 매월 부담액을 함께 비교하는 것이 좋습니다."
+
+    # ✅ 시장 유형 판단
+    if len(jeonse_items) > 0 and len(monthly_items) == 0:
+        rent_market_type = "전세 중심"
+
+    elif len(monthly_items) > 0 and len(jeonse_items) == 0:
+        rent_market_type = "월세 중심"
+
+    else:
+        rent_market_type = "혼합 시장"
+
+    # ✅ 최근 12개월 전월세 거래량 집계
+    # contract_date 앞 7자리(YYYY-MM)를 기준으로 월별 거래건수를 계산한다.
+    rent_monthly_volume_map = {}
+
+    for item in items:
+        month = str(item["date"])[:7]
+
+        if not month:
+            continue
+
+        if month not in rent_monthly_volume_map:
+            rent_monthly_volume_map[month] = {
+                "month": month,
+                "jeonse": 0,
+                "monthly": 0,
+                "count": 0
+            }
+
+        if item["monthly_rent"] > 0:
+            rent_monthly_volume_map[month]["monthly"] += 1
+        else:
+            rent_monthly_volume_map[month]["jeonse"] += 1
+
+        rent_monthly_volume_map[month]["count"] += 1
+
+    rent_monthly_volume = list(rent_monthly_volume_map.values())
+    rent_monthly_volume = sorted(rent_monthly_volume, key=lambda x: x["month"])[-12:]
+
+    result = {
+        "유형": "전월세",
+        "아파트": apt_name,
+        "평형": size,
+        "거래건수": len(items),
+        "전세거래건수": len(jeonse_items),
+        "월세거래건수": len(monthly_items),
+        "평균전세보증금": avg_jeonse_deposit,
+        "평균월세보증금": avg_monthly_deposit,
+        "평균월세": avg_monthly_rent,
+        "최근거래5건": items[:5],
+        "시장유형": rent_market_type,
+        "시장수준": rent_level,
+        "최근전세5건": recent_jeonse_trades,
+        "전월세월별거래량": rent_monthly_volume,
+        "전세상승률": jeonse_change_rate,
+        "전세신뢰도": jeonse_trend_reliability,
+        "전세분석거래건수": len(all_jeonse_trades),
+        "한줄결론": "최근 전월세 거래를 기준으로 임대 수준을 분석했습니다.",
+        "AI설명": "전세 보증금과 월세 부담 수준을 최근 거래 기준으로 참고 판단합니다."
+    }
+
+    return result
 
 # 최근 n개월
 def get_recent_months(n=6):
@@ -449,31 +690,43 @@ def fetch_presale_items(region: str, months_count: int = 6):
 
 @app.get("/dongs")
 def get_dongs(region: str, type: str = "apt"):
-    cache_key = f"{type}_{normalize_region(region)}"
 
-    if cache_key in dong_cache:
-        if DEBUG:
-            print("⚡ 동 캐시 사용")
-        return dong_cache[cache_key]
+    parts = region.split()
 
-    if type == "presale":
-        items = fetch_presale_items(region, 10)
-    else:
-        items = fetch_trade_items(region, 6)
+    if len(parts) >= 2:
+        db_region = parts[0]
+        db_sigungu = " ".join(parts[1:])
 
-    dongs = set()
+        # ✅ 거래 유형별 동 목록 DB 조회
+        # apt      : 아파트 매매
+        # presale  : 분양권
+        # rent     : 전월세
+        if type == "presale":
+            db_dongs = get_presale_dongs_from_db(db_region, db_sigungu)
 
-    for item in items:
-        dong = item.get("dong", "")
-        if dong:
-            dongs.add(dong)
+        elif type == "rent":
+            db_dongs = get_rent_dongs_from_db(db_region, db_sigungu)
 
-    result = {"동목록": sorted(list(dongs))}
+        else:
+            db_dongs = get_dongs_from_db(db_region, db_sigungu)
 
-    if len(dong_cache) >= MAX_DONG_CACHE:
-        dong_cache.pop(next(iter(dong_cache)))
-    dong_cache[cache_key] = result
-    return result
+        insert_search_log(
+            search_type="dong",
+            region=db_region,
+            sigungu=db_sigungu
+        )
+
+        return {
+            "동목록": db_dongs,
+            "dongs": db_dongs,
+            "동리목록": db_dongs
+        }
+
+    return {
+        "동목록": [],
+        "dongs": [],
+        "동리목록": []
+    }
 
     
 # 🔥 지역 검색
@@ -564,66 +817,63 @@ def search_apts(
     dong: str = "",
     type: str = "apt"
 ):
-    region_norm = normalize_region(region)
 
-    if not find_lawd_cd(region):
-        return {"검색결과": []}
+    if dong:
+        parts = region.split()
 
-    list_months = 10 if type == "presale" else 12
+        if len(parts) >= 2:
+            db_region = parts[0]
+            db_sigungu = " ".join(parts[1:])
 
-    # ✅ 동별 캐시가 아니라 지역 전체 단지 캐시 1개만 생성
-    base_cache_key = f"{type}_{region_norm}_{list_months}m_all"
+            # ✅ 거래 유형별 단지 목록 DB 조회
+            # apt      : 아파트 매매
+            # presale  : 분양권
+            # rent     : 전월세
+            if type == "presale":
+                db_apts = get_presale_apts_from_db(
+                    db_region,
+                    db_sigungu,
+                    dong
+                )
 
-    if base_cache_key not in apt_cache:
-        items = fetch_presale_items(region, list_months) if type == "presale" else fetch_trade_items(region, list_months)
+            elif type == "rent":
+                db_apts = get_rent_apts_from_db(
+                    db_region,
+                    db_sigungu,
+                    dong
+                )
 
-        apt_list = []
-        seen = set()
+            else:
+                db_apts = get_apts_from_db(
+                    db_region,
+                    db_sigungu,
+                    dong
+                )
 
-        for item in items:
-            apt_name = item.get("apt_name", "")
-            umd_name = item.get("dong", "")
+            insert_search_log(
+                search_type="apt",
+                region=db_region,
+                sigungu=db_sigungu,
+                dong=dong
+            )
 
-            if not apt_name:
-                continue
+            result = []
 
-            key = (apt_name, umd_name)
-            if key in seen:
-                continue
+            for apt_name in db_apts:
+                if keyword:
+                    if normalize(keyword) not in normalize(apt_name):
+                        continue
 
-            seen.add(key)
+                result.append({
+                    "name": apt_name,
+                    "real_name": apt_name,
+                    "dong": dong,
+                    "name_norm": normalize(apt_name)
+                })
 
-            apt_list.append({
-                "name": apt_name,
-                "real_name": apt_name,
-                "dong": umd_name,
-                "name_norm": normalize(apt_name)
-            })
+            return {"검색결과": result[:300]}
 
-        if len(apt_cache) >= MAX_APT_CACHE:
-            apt_cache.pop(next(iter(apt_cache)))
-
-        apt_cache[base_cache_key] = apt_list
-
-    keyword_norm = normalize(keyword)
-    result = []
-
-    for apt in apt_cache[base_cache_key]:
-
-        # 🔥 동 이름 공백/표기 차이 보정
-        if dong:
-            selected_dong = normalize_dong_name(dong)
-            apt_dong = normalize_dong_name(apt.get("dong", ""))
-
-            if selected_dong != apt_dong:
-                continue
-
-        if keyword_norm and keyword_norm not in apt.get("name_norm", ""):
-            continue
-
-        result.append(apt)
-
-    return {"검색결과": result[:300]}
+    return {"검색결과": []}
 
 @app.get("/price")
 def get_price(region: str, apt_name: str):
@@ -756,6 +1006,11 @@ def analyze_price(
     interior: str | None = None,
     type: str = "apt"
 ):
+    # ✅ 전월세 분석 분기
+    # type=rent 인 경우 매매/분양권 분석 로직을 타지 않고
+    # 전월세 전용 분석 엔진으로 바로 보낸다.
+    if type == "rent":
+        return analyze_rent_engine(region, apt_name, size)
     
     def presale_fallback():
         fallback_price = user_price or 0
@@ -810,9 +1065,14 @@ def analyze_price(
 
     trades = []
     if type == "presale":
-        items = fetch_presale_items(region, 12)
+        db_rows = get_presale_trades(apt_name, size)
+        items = db_rows_to_items(db_rows)
     else:
-        items = fetch_trade_items(region, 12)
+        db_rows = get_apt_sale_trades(apt_name, size)
+        items = db_rows_to_items(db_rows)
+
+        if not items:
+            items = []
 
     for item in items:
         name = item["apt_name"]
@@ -828,11 +1088,11 @@ def analyze_price(
             })
         
 
-    if len(trades) < 5:
-        if type == "presale":
-            items = fetch_presale_items(region, 18)
-        else:
-            items = fetch_trade_items(region, 18)
+    # if len(trades) < 5:
+    #    if type == "presale":
+    #        items = []
+    #    else:
+    #        items = fetch_trade_items(region, 18)
 
 
         trades = []
@@ -1387,6 +1647,15 @@ def analyze_price(
         "실거래가기준안내": "이 앱의 분석은 국토교통부 실거래가 공개시스템에 등록된 실거래 신고 자료를 기준으로 합니다.",
         "참고": "동·층·향·내부상태·급매 여부는 반영되지 않은 참고용 분석입니다."
     }
+
+    insert_analysis_log(
+            apt_name=apt_name,
+            size=str(size),
+            user_price=user_price,
+            ai_price=adjusted_buy_price,
+            result=judgment
+        )
+
     if type == "presale" or result.get("거래건수", 0) >= 3:
         if len(analysis_cache) >= MAX_ANALYSIS_CACHE:
             analysis_cache.pop(next(iter(analysis_cache)))
@@ -1398,87 +1667,53 @@ def analyze_price(
 @app.get("/sizes")
 def get_sizes(region: str, apt_name: str, type: str = "apt"):
 
-    LAWD_CD = find_lawd_cd(region)
+    parts = region.split()
 
+    if len(parts) >= 2:
+        db_region = parts[0]
+        db_sigungu = " ".join(parts[1:])
 
+        # ✅ 거래 유형별 평형 목록 DB 조회
+        # apt      : 아파트 매매
+        # presale  : 분양권
+        # rent     : 전월세
+        if type == "presale":
+            db_sizes = get_presale_sizes_from_db(
+                db_region,
+                db_sigungu,
+                apt_name
+            )
 
-    if type == "presale":
-        cache_key = f"presale_size_{normalize_region(region)}_{normalize(apt_name)}"
+        elif type == "rent":
+            db_sizes = get_rent_sizes_from_db(
+                db_region,
+                db_sigungu,
+                apt_name
+            )
 
-        if cache_key in areas_cache:
-            if DEBUG:
-                print("⚡ 분양권 평형 캐시 사용")
-            return areas_cache[cache_key]
+        else:
+            db_sizes = get_sizes_from_db(
+                db_region,
+                db_sigungu,
+                apt_name
+            )
 
-        sizes = set()
+        insert_search_log(
+            search_type="size",
+            region=db_region,
+            sigungu=db_sigungu,
+            apt_name=apt_name
+        )
 
-        for months_count in [10]:
-            items = fetch_presale_items(region, months_count)
-
-            for item in items:
-                name = item.get("apt_name", "")
-
-                if is_same_apartment_name(apt_name, name):
-                    size = item.get("size", 0)
-                    if size:
-                        sizes.add(size)
-
-            if sizes:
-                break
-
-        result = {
+        return {
             "아파트": apt_name,
-            "평형목록": sorted(list(sizes))
+            "평형목록": db_sizes
         }
 
-        if len(areas_cache) >= MAX_AREAS_CACHE:
-            areas_cache.pop(next(iter(areas_cache)))
-
-        areas_cache[cache_key] = result
-        return result
-    
-
-
-    if not LAWD_CD:
-        return {"평형목록": []}
-
-    cache_key = f"{type}_{normalize_region(region)}_{normalize(apt_name)}"
-
-    if cache_key in areas_cache:
-        if DEBUG:
-            print("⚡ 캐시 사용")
-        return areas_cache[cache_key]
-
-
-    apt_name_norm = normalize(apt_name)
-    sizes = set()
-
-    for months_count in [12]:
-        items = fetch_trade_items(region, months_count)
-        sizes = set()
-
-        for item in items:
-            name = item["apt_name"]
-
-            if is_same_apartment_name(apt_name, name):
-                size = item["size"]
-                if size:
-                   sizes.add(size)
-
-        if sizes:
-            break
-
-    result = {
+    return {
         "아파트": apt_name,
-        "평형목록": sorted(list(sizes))
+        "평형목록": []
     }
-
-    if len(areas_cache) >= MAX_AREAS_CACHE:
-        areas_cache.pop(next(iter(areas_cache)))
-
-    areas_cache[cache_key] = result
-
-    return result
 
 @app.get("/")
 def serve_index():
@@ -1522,3 +1757,165 @@ def privacy():
 @app.head("/health")
 def health():
     return {"status": "ok"}
+
+# 📊 관리자 - 오늘 조회수
+@app.get("/admin/today")
+def admin_today(pw: str = ""):
+
+    if pw != ADMIN_PASSWORD:
+        return {"error": "관리자 비밀번호가 필요합니다."}
+
+    return {
+        "오늘조회수": get_today_search_count()
+    }
+
+# 📊 관리자 - 오늘 분석수
+@app.get("/admin/today-analysis")
+def admin_today_analysis(pw: str = ""):
+
+    if pw != ADMIN_PASSWORD:
+        return {"error": "관리자 비밀번호가 필요합니다."}
+
+    return {
+        "오늘분석수": get_today_analysis_count()
+    }
+
+# 📊 관리자 - 대시보드 요약
+@app.get("/admin/dashboard")
+def admin_dashboard(pw: str = ""):
+
+    if pw != ADMIN_PASSWORD:
+        return {"error": "관리자 비밀번호가 필요합니다."}
+
+    return {
+        "오늘조회수": get_today_search_count(),
+        "오늘분석수": get_today_analysis_count(),
+        "인기단지": get_popular_apts()
+    }
+
+# 🏢 인기 단지 TOP 5
+@app.get("/admin/popular-apts")
+def admin_popular_apts(pw: str = ""):
+
+    if pw != ADMIN_PASSWORD:
+        return {"error": "관리자 비밀번호가 필요합니다."}
+
+    return {
+        "인기단지": get_popular_apts()
+    }
+
+# 🌎 인기 지역 TOP 5
+@app.get("/admin/popular-regions")
+def admin_popular_regions(pw: str = ""):
+
+    if pw != ADMIN_PASSWORD:
+        return {"error": "관리자 비밀번호가 필요합니다."}
+
+    return {
+        "인기지역": get_popular_regions()
+    }
+
+# 📋 최근 분석 TOP 10
+@app.get("/admin/recent-analysis")
+def admin_recent_analysis(pw: str = ""):
+
+    if pw != ADMIN_PASSWORD:
+        return {"error": "관리자 비밀번호가 필요합니다."}
+
+    return {
+        "최근분석": get_recent_analysis()
+    }
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_page(pw: str = ""):
+
+    if pw != ADMIN_PASSWORD:
+        return """
+        <html>
+        <body>
+            <h2>관리자 비밀번호가 필요합니다.</h2>
+        </body>
+        </html>
+        """
+    today_search = get_today_search_count()
+    today_analysis = get_today_analysis_count()
+    popular_apts = get_popular_apts()
+    recent_analysis = get_recent_analysis()
+    popular_regions = get_popular_regions()
+
+    return f"""
+    <html>
+    <head>
+        <title>관리자 페이지</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                background: #f5f7fb;
+                padding: 24px;
+                color: #222;
+            }}
+
+            h1 {{
+                background: #1f6feb;
+                color: white;
+                padding: 18px;
+                border-radius: 12px;
+                font-size: 24px;
+            }}
+
+            h2 {{
+                margin-top: 28px;
+                color: #1f6feb;
+                font-size: 18px;
+            }}
+            
+            .card {{
+                background: white;
+                padding: 16px;
+                border-radius: 12px;
+                margin-bottom: 16px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            }}
+
+            li {{
+                margin: 8px 0;
+            }}
+        </style>
+        
+    </head>
+    <body>
+        <h1>📊 얼마일까 관리자</h1>
+
+        <div class="card">
+            <h2>오늘 현황</h2>
+            <p>오늘 조회수 : {today_search}</p>
+            <p>오늘 분석수 : {today_analysis}</p>
+        </div>
+
+        <div class="card">
+            <h2>인기 단지 TOP 5</h2>
+            <ul>
+                {"".join([f"<li>{apt['아파트']} ({apt['조회수']})</li>" for apt in popular_apts])}
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>인기 지역 TOP 5</h2>
+            <ul>
+                {"".join([f"<li>{region['지역']} ({region['조회수']})</li>" for region in popular_regions])}
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>최근 분석 TOP 10</h2>
+            <ul>
+                {"".join([
+                    f"<li>{item['아파트']} {item['평형']}㎡ / 입력가: {item['입력가'] if item['입력가'] is not None else '미입력'} / AI추천가: {item['AI추천가']} / {item['판단']}</li>"
+                    for item in recent_analysis
+                ])}
+            </ul>
+        </div>
+
+    </body>
+    </html>
+    """

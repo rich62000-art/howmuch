@@ -1,0 +1,969 @@
+import sqlite3
+import time
+
+DB_NAME = "real_deals.db"
+
+
+def get_connection():
+    conn = sqlite3.connect(
+        DB_NAME,
+        timeout=30,
+        check_same_thread=False
+    )
+
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA temp_store=MEMORY")
+
+    return conn
+
+
+def create_tables():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS apt_sale_trades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            region TEXT,
+            sigungu TEXT,
+            dong TEXT,
+            apt_name TEXT,
+            size REAL,
+            contract_date TEXT,
+            price INTEGER,
+            floor INTEGER,
+            source_month TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+            UNIQUE (
+                region,
+                sigungu,
+                dong,
+                apt_name,
+                size,
+                contract_date,
+                price,
+                floor
+            )
+        )
+    """)
+
+    # ✅ 아파트 전월세 거래 테이블
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS apt_rent_trades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        region TEXT,
+        sigungu TEXT,
+        dong TEXT,
+        apt_name TEXT,
+        size REAL,
+        contract_date TEXT,
+        deposit INTEGER,
+        monthly_rent INTEGER,
+        floor INTEGER,
+        source_month TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+        UNIQUE (
+            region,
+            sigungu,
+            dong,
+            apt_name,
+            size,
+            contract_date,
+            deposit,
+            monthly_rent,
+            floor
+        )
+    )
+    """)
+
+    # ✅ 분양권 거래 테이블
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS presale_trades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        region TEXT,
+        sigungu TEXT,
+        dong TEXT,
+        apt_name TEXT,
+        size REAL,
+        contract_date TEXT,
+        price INTEGER,
+        floor INTEGER,
+        source_month TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+        UNIQUE (
+            region,
+            sigungu,
+            dong,
+            apt_name,
+            size,
+            contract_date,
+            price,
+            floor
+        )
+    )
+    """)
+
+    # 전월세 조회
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rent_region_sigungu_dong
+        ON apt_rent_trades(region, sigungu, dong)
+    """)
+
+    # 🔍 조회 로그 테이블
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS search_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            search_type TEXT,
+            region TEXT,
+            sigungu TEXT,
+            dong TEXT,
+            apt_name TEXT,
+            size TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # ✅ 전월세 단지 조회 속도 개선 인덱스
+    # 지역 + 시군구 + 동 + 단지명 기준으로 빠르게 조회한다.
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rent_region_sigungu_dong_apt
+        ON apt_rent_trades(region, sigungu, dong, apt_name)
+    """)
+
+    # ✅ 전월세 평형 조회 속도 개선 인덱스
+    # 지역 + 시군구 + 단지명 + 전용면적 기준으로 빠르게 조회한다.
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rent_region_sigungu_apt_size
+        ON apt_rent_trades(region, sigungu, apt_name, size)
+    """)
+    
+    # ✅ 전월세 분석 조회 속도 개선 인덱스
+    # 단지명 + 전용면적 + 계약일 기준으로 빠르게 최근 거래를 찾는다.
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rent_apt_size_date
+        ON apt_rent_trades(apt_name, size, contract_date)
+    """)
+
+    # 📊 분석 로그 테이블
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS analysis_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            region TEXT,
+            sigungu TEXT,
+            dong TEXT,
+            apt_name TEXT,
+            size TEXT,
+            user_price INTEGER,
+            ai_price INTEGER,
+            result TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # ✅ 전국 시군구 코드 테이블
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS region_codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sido TEXT NOT NULL,
+            sigungu TEXT NOT NULL,
+            lawd_cd TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # ✅ 검색 속도 향상 인덱스
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_trades_region_sigungu
+        ON apt_sale_trades(region, sigungu)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_trades_region_sigungu_dong
+        ON apt_sale_trades(region, sigungu, dong)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_trades_apt_size
+        ON apt_sale_trades(apt_name, size)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_trades_region_sigungu_apt
+        ON apt_sale_trades(
+            region,
+            sigungu,
+            apt_name
+        )
+    """)
+
+    # ✅ 분양권 검색 속도 향상 인덱스
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_presale_region_sigungu
+        ON presale_trades(region, sigungu)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_presale_region_sigungu_apt
+        ON presale_trades(region, sigungu, apt_name)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_presale_apt_size
+        ON presale_trades(apt_name, size)
+    """)
+
+    # ✅ 전월세 검색 속도 향상 인덱스
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_presale_region_sigungu_dong
+        ON presale_trades(region, sigungu, dong)
+    """)
+    
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rent_region_sigungu
+        ON apt_rent_trades(region, sigungu)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rent_region_sigungu_apt
+        ON apt_rent_trades(region, sigungu, apt_name)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_rent_apt_size
+        ON apt_rent_trades(apt_name, size)
+    """)
+
+    # ✅ 관리자 페이지 속도 향상 인덱스
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_search_logs_created_at
+        ON search_logs(created_at)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_search_logs_apt_name
+        ON search_logs(apt_name)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_search_logs_region_sigungu
+        ON search_logs(region, sigungu)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_analysis_logs_created_at
+        ON analysis_logs(created_at)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_presale_region_sigungu_dong
+        ON presale_trades(region, sigungu, dong)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_presale_region_sigungu_apt
+        ON presale_trades(region, sigungu, apt_name)
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def insert_apt_sale_trade(trade):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+        INSERT INTO apt_sale_trades (
+            region, sigungu, dong, apt_name, size,
+            contract_date, price, floor, source_month
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            trade["region"],
+            trade["sigungu"],
+            trade["dong"],
+            trade["apt_name"],
+            trade["size"],
+            trade["contract_date"],
+            trade["price"],
+            trade["floor"],
+            trade["source_month"]
+        ))
+
+        conn.commit()
+        print("저장 성공")
+
+    except sqlite3.IntegrityError:
+        print("중복 데이터라 저장 안함")
+
+    finally:
+        conn.close()
+
+# ✅ 아파트 전월세 거래 저장
+def insert_apt_rent_trade(trade):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+        INSERT INTO apt_rent_trades (
+            region, sigungu, dong, apt_name, size,
+            contract_date, deposit, monthly_rent, floor, source_month
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            trade["region"],
+            trade["sigungu"],
+            trade["dong"],
+            trade["apt_name"],
+            trade["size"],
+            trade["contract_date"],
+            trade["deposit"],
+            trade["monthly_rent"],
+            trade["floor"],
+            trade["source_month"]
+        ))
+
+        conn.commit()
+        print("전월세 저장 성공")
+
+    except sqlite3.IntegrityError:
+        print("전월세 중복 데이터라 저장 안함")
+
+    finally:
+        conn.close()
+
+# ✅ 분양권 거래 저장
+def insert_presale_trade(trade):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+        INSERT INTO presale_trades (
+            region, sigungu, dong, apt_name, size,
+            contract_date, price, floor, source_month
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            trade["region"],
+            trade["sigungu"],
+            trade["dong"],
+            trade["apt_name"],
+            trade["size"],
+            trade["contract_date"],
+            trade["price"],
+            trade["floor"],
+            trade["source_month"]
+        ))
+
+        conn.commit()
+        print("분양권 저장 성공")
+
+    except sqlite3.IntegrityError:
+        print("분양권 중복 데이터라 저장 안함")
+
+    finally:
+        conn.close()
+
+
+def get_apt_sale_trades(apt_name, size):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT
+        region,
+        sigungu,
+        dong,
+        apt_name,
+        size,
+        contract_date,
+        price,
+        floor,
+        source_month
+    FROM apt_sale_trades
+    WHERE apt_name = ?
+    AND CAST(size AS INTEGER) = ?
+    ORDER BY contract_date DESC
+    """, (
+        apt_name,
+        int(size)
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+
+# ✅ 분양권 거래 조회
+def get_presale_trades(apt_name, size):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT
+        region,
+        sigungu,
+        dong,
+        apt_name,
+        size,
+        contract_date,
+        price,
+        floor,
+        source_month
+    FROM presale_trades
+    WHERE apt_name = ?
+    AND CAST(size AS INTEGER) = ?
+    ORDER BY contract_date DESC
+    """, (
+        apt_name,
+        int(size)
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+
+def get_dongs_from_db(region, sigungu):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT DISTINCT dong
+    FROM apt_sale_trades
+    WHERE region = ?
+    AND sigungu = ?
+    AND dong IS NOT NULL
+    AND dong != ''
+    ORDER BY dong
+    """, (
+        region,
+        sigungu
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+# ✅ 분양권 동 목록 조회
+def get_presale_dongs_from_db(region, sigungu):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT DISTINCT dong
+    FROM presale_trades
+    WHERE region = ?
+    AND sigungu = ?
+    AND dong IS NOT NULL
+    AND dong != ''
+    ORDER BY dong
+    """, (
+        region,
+        sigungu
+    ))
+
+    rows = cur.fetchall()
+
+    conn.close()
+
+    return [row[0] for row in rows]
+
+def get_apts_from_db(region, sigungu, dong):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT DISTINCT apt_name
+    FROM apt_sale_trades
+    WHERE region = ?
+    AND sigungu = ?
+    AND dong = ?
+    AND apt_name IS NOT NULL
+    AND apt_name != ''
+    ORDER BY apt_name
+    """, (
+        region,
+        sigungu,
+        dong
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+# ✅ 분양권 단지 목록 조회
+def get_presale_apts_from_db(region, sigungu, dong):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT DISTINCT apt_name
+    FROM presale_trades
+    WHERE region = ?
+    AND sigungu = ?
+    AND dong = ?
+    AND apt_name IS NOT NULL
+    AND apt_name != ''
+    ORDER BY apt_name
+    """, (
+        region,
+        sigungu,
+        dong
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+def get_sizes_from_db(region, sigungu, apt_name):
+    sizes = []
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT DISTINCT CAST(size AS INTEGER)
+    FROM apt_sale_trades
+    WHERE region = ?
+    AND sigungu = ?
+    AND apt_name = ?
+    AND size IS NOT NULL
+    ORDER BY CAST(size AS INTEGER)
+    """, (
+        region,
+        sigungu,
+        apt_name
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+# ✅ 분양권 평형 목록 조회
+def get_presale_sizes_from_db(region, sigungu, apt_name):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT DISTINCT CAST(size AS INTEGER)
+    FROM presale_trades
+    WHERE region = ?
+    AND sigungu = ?
+    AND apt_name = ?
+    ORDER BY size
+    """, (
+        region,
+        sigungu,
+        apt_name
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+# 전월세 동 조회 함수
+def get_rent_dongs_from_db(region, sigungu):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT DISTINCT dong
+        FROM apt_rent_trades
+        WHERE region = ?
+        AND sigungu = ?
+        AND dong IS NOT NULL
+        AND dong != ''
+        ORDER BY dong
+    """, (
+        region,
+        sigungu
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+# ✅ 전월세 단지 목록 조회
+# 선택한 지역(region, sigungu)과 동(dong)에 있는
+# 전월세 거래 단지명을 DB에서 중복 없이 가져온다.
+def get_rent_apts_from_db(region, sigungu, dong):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT DISTINCT apt_name
+        FROM apt_rent_trades
+        WHERE region = ?
+        AND sigungu = ?
+        AND dong = ?
+        AND apt_name IS NOT NULL
+        AND apt_name != ''
+        ORDER BY apt_name
+    """, (
+        region,
+        sigungu,
+        dong
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [row[0] for row in rows]
+
+# ✅ 전월세 거래 목록 조회
+# 선택한 단지명(apt_name)과 전용면적(size)의
+# 최근 전월세 거래 데이터를 DB에서 가져온다.
+def get_rent_trades(apt_name, size):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT *
+        FROM apt_rent_trades
+        WHERE apt_name = ?
+        AND CAST(size AS INTEGER) = ?
+        ORDER BY contract_date DESC
+    """, (
+        apt_name,
+        int(size)
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+
+# ✅ 전월세 평형 목록 조회
+# 선택한 지역(region, sigungu)과 단지명(apt_name)에 있는
+# 전월세 거래 전용면적을 DB에서 중복 없이 가져온다.
+def get_rent_sizes_from_db(region, sigungu, apt_name):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT DISTINCT size
+        FROM apt_rent_trades
+        WHERE region = ?
+        AND sigungu = ?
+        AND apt_name = ?
+        AND size IS NOT NULL
+        ORDER BY CAST(size AS REAL)
+    """, (
+        region,
+        sigungu,
+        apt_name
+    ))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [int(float(row[0])) for row in rows if row[0] is not None]
+
+
+# 🔍 조회 로그 저장
+def insert_search_log(search_type, region=None, sigungu=None, dong=None, apt_name=None, size=None):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO search_logs (
+            search_type, region, sigungu, dong, apt_name, size
+        ) VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        search_type, region, sigungu, dong, apt_name, size
+    ))
+
+    conn.commit()
+    conn.close()
+
+# 📊 분석 로그 저장
+def insert_analysis_log(region=None, sigungu=None, dong=None, apt_name=None, size=None, user_price=None, ai_price=None, result=None):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO analysis_logs (
+            region, sigungu, dong, apt_name, size, user_price, ai_price, result
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        region, sigungu, dong, apt_name, size, user_price, ai_price, result
+    ))
+
+    conn.commit()
+    conn.close()
+
+# 📌 오늘 조회수 가져오기
+def get_today_search_count():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM search_logs
+        WHERE created_at >= DATE('now', 'localtime')
+        AND created_at < DATE('now', 'localtime', '+1 day')
+    """)
+
+    count = cur.fetchone()[0]
+
+    conn.close()
+    return count
+
+# 📊 오늘 분석수
+def get_today_analysis_count():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM analysis_logs
+        WHERE created_at >= DATE('now', 'localtime')
+        AND created_at < DATE('now', 'localtime', '+1 day')
+    """)
+
+    count = cur.fetchone()[0]
+
+    conn.close()
+    return count
+
+# 🏢 인기 단지 TOP 5
+def get_popular_apts(limit=5):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT apt_name, COUNT(*) as cnt
+        FROM search_logs
+        WHERE apt_name IS NOT NULL
+        AND apt_name != ''
+        AND created_at >= DATE('now', 'localtime')
+        AND created_at < DATE('now', 'localtime', '+1 day')
+        GROUP BY apt_name
+        ORDER BY cnt DESC
+        LIMIT ?
+    """, (limit,))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [
+        {"아파트": row[0], "조회수": row[1]}
+        for row in rows
+    ]
+
+# 🌎 인기 지역 TOP 5
+def get_popular_regions(limit=5):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT
+            region,
+            sigungu,
+            COUNT(*) as cnt
+        FROM search_logs
+        WHERE region IS NOT NULL
+        AND region != ''
+        AND sigungu IS NOT NULL
+        AND sigungu != ''
+        AND created_at >= DATE('now', 'localtime')
+        AND created_at < DATE('now', 'localtime', '+1 day')
+        GROUP BY region, sigungu
+        ORDER BY cnt DESC
+        LIMIT ?
+    """, (limit,))
+
+    rows = cur.fetchall()
+
+    conn.close()
+
+    return [
+        {
+            "지역": f"{row[0]} {row[1]}",
+            "조회수": row[2]
+        }
+        for row in rows
+    ]
+
+# 📋 최근 분석 TOP 10
+def get_recent_analysis(limit=10):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT
+            apt_name,
+            size,
+            user_price,
+            ai_price,
+            result,
+            created_at
+        FROM analysis_logs
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (limit,))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [
+        {
+            "아파트": row[0],
+            "평형": row[1],
+            "입력가": row[2],
+            "AI추천가": row[3],
+            "판단": row[4],
+            "분석시간": row[5]
+        }
+        for row in rows
+    ]
+
+# ✅ 시군구 코드 저장
+def insert_region_code(sido, sigungu, lawd_cd):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT OR IGNORE INTO region_codes (
+            sido, sigungu, lawd_cd
+        ) VALUES (?, ?, ?)
+    """, (
+        sido, sigungu, lawd_cd
+    ))
+
+    conn.commit()
+    conn.close()
+
+# ✅ 전체 시군구 코드 가져오기
+def get_all_region_codes():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT sido, sigungu, lawd_cd
+        FROM region_codes
+        ORDER BY sido, sigungu
+    """)
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+
+# ✅ 시군구 코드 개수 확인
+def get_region_code_count():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM region_codes
+    """)
+
+    count = cur.fetchone()[0]
+    conn.close()
+
+    return count
+
+# ✅ 시군구 코드 전체 삭제
+def clear_region_codes():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        DELETE FROM region_codes
+    """)
+
+    conn.commit()
+
+    conn.close()
+
+# ✅ SQLite DB 최적화
+def optimize_database():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("ANALYZE")
+    cur.execute("VACUUM")
+
+    conn.close()
+
+    print("DB 최적화 완료")
+
+# ✅ DB 검색속도 테스트
+def test_db_speed():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    start = time.time()
+
+    cur.execute("""
+        SELECT DISTINCT apt_name
+        FROM apt_sale_trades
+        WHERE region = ?
+        AND sigungu = ?
+        ORDER BY apt_name
+        LIMIT 100
+    """, (
+        "경기도",
+        "의왕시"
+    ))
+
+    rows = cur.fetchall()
+
+    end = time.time()
+    conn.close()
+
+    print("검색 결과 수:", len(rows))
+    print("검색 소요 시간:", round(end - start, 4), "초")
+
+# ✅ DB 전체 상태 점검
+def check_db_status():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM apt_sale_trades")
+    trade_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM search_logs")
+    search_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM analysis_logs")
+    analysis_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM region_codes")
+    region_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM presale_trades")
+    presale_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM apt_rent_trades")
+    rent_count = cur.fetchone()[0]
+
+    conn.close()
+
+    print("아파트 매매 데이터 수:", trade_count)
+    print("분양권 데이터 수:", presale_count)
+    print("전월세 데이터 수:", rent_count)
+    print("조회 로그 수:", search_count)
+    print("분석 로그 수:", analysis_count)
+    print("시군구 코드 수:", region_count)
+
+if __name__ == "__main__":
+    create_tables()
+    check_db_status()
+    

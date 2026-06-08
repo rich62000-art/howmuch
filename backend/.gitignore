@@ -1,0 +1,12 @@
+# Database
+real_deals.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
