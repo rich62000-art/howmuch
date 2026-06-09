@@ -1,6 +1,7 @@
 import sqlite3
 import time
 import psycopg2
+from psycopg2.pool import SimpleConnectionPool
 
 DB_NAME = "real_deals.db"
 
@@ -11,10 +12,28 @@ PG_CONFIG = {
     "user": "postgres.oznagajgjqoojzvyacuu",
     "password": "pUbbDDe6ceZ_GUf"
 }
+DB_CACHE = {}
+CACHE_TTL = 3600
+pg_pool = None
 
 
 def get_pg_connection():
-    return psycopg2.connect(**PG_CONFIG)
+    global pg_pool
+
+    if pg_pool is None:
+        pg_pool = SimpleConnectionPool(
+            1,
+            20,
+            **PG_CONFIG
+        )
+
+    return pg_pool.getconn()
+
+def release_pg_connection(conn):
+    global pg_pool
+
+    if pg_pool:
+        pg_pool.putconn(conn)
 
 
 def get_connection():
@@ -386,7 +405,14 @@ def insert_presale_trade(trade):
 
 
 def get_apt_sale_trades(apt_name, size):
-    conn = get_connection()
+    cache_key = f"sale_trades:{apt_name}:{int(size)}"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
@@ -401,22 +427,29 @@ def get_apt_sale_trades(apt_name, size):
         floor,
         source_month
     FROM apt_sale_trades
-    WHERE apt_name = ?
-    AND CAST(size AS INTEGER) = ?
+    WHERE apt_name = %s
+    AND ROUND(size::numeric, 4) = ROUND(%s::numeric, 4)
     ORDER BY contract_date DESC
     """, (
         apt_name,
-        int(size)
+        float(size)
     ))
 
     rows = cur.fetchall()
-    conn.close()
+
+    cur.close()
+    release_pg_connection(conn)
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": rows
+    }
 
     return rows
 
 # ✅ 분양권 거래 조회
 def get_presale_trades(apt_name, size):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
@@ -431,8 +464,8 @@ def get_presale_trades(apt_name, size):
         floor,
         source_month
     FROM presale_trades
-    WHERE apt_name = ?
-    AND CAST(size AS INTEGER) = ?
+    WHERE apt_name = %s
+    AND ROUND(size::numeric, 4) = ROUND(%s::numeric, 4)
     ORDER BY contract_date DESC
     """, (
         apt_name,
@@ -440,21 +473,30 @@ def get_presale_trades(apt_name, size):
     ))
 
     rows = cur.fetchall()
-    conn.close()
+
+    cur.close()
+    release_pg_connection(conn)
 
     return rows
 
 def get_dongs_from_db(region, sigungu):
-    conn = get_connection()
+    cache_key = f"sale_dongs:{region}:{sigungu}"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
     SELECT DISTINCT dong
     FROM apt_sale_trades
-    WHERE region = ?
-    AND sigungu = ?
+    WHERE region = %s
+    AND sigungu = %s
     AND dong IS NOT NULL
-    AND dong != ''
+    AND dong <> ''
     ORDER BY dong
     """, (
         region,
@@ -462,9 +504,18 @@ def get_dongs_from_db(region, sigungu):
     ))
 
     rows = cur.fetchall()
-    conn.close()
 
-    return [row[0] for row in rows]
+    cur.close()
+    release_pg_connection(conn)
+
+    result = [row[0] for row in rows]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
 
 # ✅ 분양권 동 목록 조회
 def get_presale_dongs_from_db(region, sigungu):
@@ -491,18 +542,25 @@ def get_presale_dongs_from_db(region, sigungu):
     return [row[0] for row in rows]
 
 def get_apts_from_db(region, sigungu, dong):
-    conn = get_connection()
+    cache_key = f"sale_apts:{region}:{sigungu}:{dong}"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT DISTINCT apt_name
-    FROM apt_sale_trades
-    WHERE region = ?
-    AND sigungu = ?
-    AND dong = ?
-    AND apt_name IS NOT NULL
-    AND apt_name != ''
-    ORDER BY apt_name
+        SELECT DISTINCT apt_name
+        FROM apt_sale_trades
+        WHERE region = %s
+        AND sigungu = %s
+        AND dong = %s
+        AND apt_name IS NOT NULL
+        AND apt_name <> ''
+        ORDER BY apt_name
     """, (
         region,
         sigungu,
@@ -510,9 +568,18 @@ def get_apts_from_db(region, sigungu, dong):
     ))
 
     rows = cur.fetchall()
-    conn.close()
 
-    return [row[0] for row in rows]
+    cur.close()
+    release_pg_connection(conn)
+
+    result = [row[0] for row in rows]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
 
 # ✅ 분양권 단지 목록 조회
 def get_presale_apts_from_db(region, sigungu, dong):
@@ -540,19 +607,24 @@ def get_presale_apts_from_db(region, sigungu, dong):
     return [row[0] for row in rows]
 
 def get_sizes_from_db(region, sigungu, apt_name):
-    sizes = []
+    cache_key = f"sale_sizes:{region}:{sigungu}:{apt_name}"
 
-    conn = get_connection()
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT DISTINCT CAST(size AS INTEGER)
-    FROM apt_sale_trades
-    WHERE region = ?
-    AND sigungu = ?
-    AND apt_name = ?
-    AND size IS NOT NULL
-    ORDER BY CAST(size AS INTEGER)
+        SELECT DISTINCT ROUND(size::numeric, 4)
+        FROM apt_sale_trades
+        WHERE region = %s
+        AND sigungu = %s
+        AND apt_name = %s
+        AND size IS NOT NULL
+        ORDER BY ROUND(size::numeric, 4)
     """, (
         region,
         sigungu,
@@ -560,22 +632,39 @@ def get_sizes_from_db(region, sigungu, apt_name):
     ))
 
     rows = cur.fetchall()
-    conn.close()
 
-    return [row[0] for row in rows]
+    cur.close()
+    release_pg_connection(conn)
+
+    result = [float(row[0]) for row in rows if row[0] is not None]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
 
 # ✅ 분양권 평형 목록 조회
 def get_presale_sizes_from_db(region, sigungu, apt_name):
-    conn = get_connection()
+    cache_key = f"presale_sizes:{region}:{sigungu}:{apt_name}:real"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT DISTINCT CAST(size AS INTEGER)
-    FROM presale_trades
-    WHERE region = ?
-    AND sigungu = ?
-    AND apt_name = ?
-    ORDER BY size
+        SELECT DISTINCT ROUND(size::numeric, 4)
+        FROM presale_trades
+        WHERE region = %s
+        AND sigungu = %s
+        AND apt_name = %s
+        AND size IS NOT NULL
+        ORDER BY ROUND(size::numeric, 4)
     """, (
         region,
         sigungu,
@@ -583,12 +672,26 @@ def get_presale_sizes_from_db(region, sigungu, apt_name):
     ))
 
     rows = cur.fetchall()
-    conn.close()
 
-    return [row[0] for row in rows]
+    cur.close()
+    release_pg_connection(conn)
 
-# 전월세 동 조회 함수
+    result = [float(row[0]) for row in rows if row[0] is not None]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
+
 def get_rent_dongs_from_db(region, sigungu):
+    cache_key = f"rent_dongs:{region}:{sigungu}:real"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
 
     conn = get_pg_connection()
     cur = conn.cursor()
@@ -609,14 +712,28 @@ def get_rent_dongs_from_db(region, sigungu):
     rows = cur.fetchall()
 
     cur.close()
-    conn.close()
+    release_pg_connection(conn)
 
-    return [row[0] for row in rows]
+    result = [row[0] for row in rows]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
 
 # ✅ 전월세 단지 목록 조회
 # 선택한 지역(region, sigungu)과 동(dong)에 있는
 # 전월세 거래 단지명을 DB에서 중복 없이 가져온다.
 def get_rent_apts_from_db(region, sigungu, dong):
+    cache_key = f"rent_apts:{region}:{sigungu}:{dong}"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
     conn = get_pg_connection()
     cur = conn.cursor()
 
@@ -638,9 +755,16 @@ def get_rent_apts_from_db(region, sigungu, dong):
     rows = cur.fetchall()
 
     cur.close()
-    conn.close()
+    release_pg_connection(conn)
 
-    return [row[0] for row in rows]
+    result = [row[0] for row in rows]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
 
 # ✅ 전월세 거래 목록 조회
 # 선택한 단지명(apt_name)과 전용면적(size)의
@@ -653,17 +777,17 @@ def get_rent_trades(apt_name, size):
         SELECT *
         FROM apt_rent_trades
         WHERE apt_name = %s
-        AND CAST(size AS INTEGER) = %s
+        AND ROUND(size::numeric, 4) = ROUND(%s::numeric, 4)
         ORDER BY contract_date DESC
     """, (
         apt_name,
-        int(size)
+        float(size)
     ))
 
     rows = cur.fetchall()
 
     cur.close()
-    conn.close()
+    release_pg_connection(conn)
 
     return rows
 
@@ -671,17 +795,24 @@ def get_rent_trades(apt_name, size):
 # 선택한 지역(region, sigungu)과 단지명(apt_name)에 있는
 # 전월세 거래 전용면적을 DB에서 중복 없이 가져온다.
 def get_rent_sizes_from_db(region, sigungu, apt_name):
+    cache_key = f"rent_sizes:{region}:{sigungu}:{apt_name}:real"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
     conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT DISTINCT CAST(size AS INTEGER)
+        SELECT DISTINCT ROUND(size::numeric, 4)
         FROM apt_rent_trades
         WHERE region = %s
         AND sigungu = %s
         AND apt_name = %s
         AND size IS NOT NULL
-        ORDER BY CAST(size AS INTEGER)
+        ORDER BY ROUND(size::numeric, 4)
     """, (
         region,
         sigungu,
@@ -691,9 +822,16 @@ def get_rent_sizes_from_db(region, sigungu, apt_name):
     rows = cur.fetchall()
 
     cur.close()
-    conn.close()
+    release_pg_connection(conn)
 
-    return [row[0] for row in rows if row[0] is not None]
+    result = [float(row[0]) for row in rows if row[0] is not None]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
 
 
 # 🔍 조회 로그 저장

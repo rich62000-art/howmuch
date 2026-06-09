@@ -177,7 +177,7 @@ def is_same_apartment_name(user_name: str, data_name: str) -> bool:
     return user_norm == data_norm
 
 def is_same_size(user_size, data_size) -> bool:
-    return int(float(user_size)) == int(float(data_size))
+    return round(float(user_size), 4) == round(float(data_size), 4)
 
 def db_rows_to_items(rows):
     items = []
@@ -187,7 +187,7 @@ def db_rows_to_items(rows):
             "apt_name": row[3],
             "dong": row[2],
             "apt_dong": "",
-            "size": int(float(row[4])),
+            "size": round(float(row[4]), 4),
             "price": int(row[6]),
             "date": row[5],
             "floor": row[7]
@@ -206,7 +206,7 @@ def rent_rows_to_items(rows):
         items.append({
             "apt_name": row[4],
             "dong": row[3],
-            "size": int(float(row[5])),
+            "size": round(float(row[5]), 4),
             "date": row[6],
             "deposit": int(row[7] or 0),
             "monthly_rent": int(row[8] or 0),
@@ -423,8 +423,8 @@ def get_recent_months(n=6):
 def parse_price(text: str) -> int:
     return int(text.strip().replace(",", "")) if text and text.strip() else 0
 
-def parse_area(text: str) -> int:
-    return int(float(text)) if text and text.strip() else 0
+def parse_area(text: str) -> float:
+    return round(float(text), 4) if text and text.strip() else 0
 
 def item_to_dict(item) -> dict:
     apt_name = item.findtext("aptNm", "").strip()
@@ -923,7 +923,7 @@ def get_price(region: str, apt_name: str):
                     if size and price:
                         trades.append({
                             "아파트": name,
-                            "전용면적": int(float(size)),
+                            "전용면적": round(float(size), 4),
                             "거래금액": int(price),
                             "계약일": f"{year}-{int(month2):02d}-{int(day):02d}"
                         })
@@ -999,7 +999,7 @@ def get_avg_price(region: str, apt_name: str, size: int):
 def analyze_price(
     region: str, 
     apt_name: str, 
-    size: int, 
+    size: float, 
     user_price: int | None = None,
     direction: str | None = None,
     floor_level: str | None = None,
@@ -1087,14 +1087,6 @@ def analyze_price(
                 "size": item["size"]
             })
         
-
-    # if len(trades) < 5:
-    #    if type == "presale":
-    #        items = []
-    #    else:
-    #        items = fetch_trade_items(region, 18)
-
-
         trades = []
 
         for item in items:
