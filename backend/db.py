@@ -698,18 +698,20 @@ def get_rent_sizes_from_db(region, sigungu, apt_name):
 
 # 🔍 조회 로그 저장
 def insert_search_log(search_type, region=None, sigungu=None, dong=None, apt_name=None, size=None):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
         INSERT INTO search_logs (
             search_type, region, sigungu, dong, apt_name, size
-        ) VALUES (?, ?, ?, ?, ?, ?)
+        ) VALUES (%s, %s, %s, %s, %s, %s)
     """, (
         search_type, region, sigungu, dong, apt_name, size
     ))
 
     conn.commit()
+
+    cur.close()
     conn.close()
 
 # 📊 분석 로그 저장
