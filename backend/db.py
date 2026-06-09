@@ -854,19 +854,21 @@ def insert_search_log(search_type, region=None, sigungu=None, dong=None, apt_nam
 
 # 📊 분석 로그 저장
 def insert_analysis_log(region=None, sigungu=None, dong=None, apt_name=None, size=None, user_price=None, ai_price=None, result=None):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
         INSERT INTO analysis_logs (
             region, sigungu, dong, apt_name, size, user_price, ai_price, result
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """, (
         region, sigungu, dong, apt_name, size, user_price, ai_price, result
     ))
 
     conn.commit()
-    conn.close()
+
+    cur.close()
+    release_pg_connection(conn)
 
 # 📌 오늘 조회수 가져오기
 def get_today_search_count():
