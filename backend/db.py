@@ -1,7 +1,20 @@
 import sqlite3
 import time
+import psycopg2
 
 DB_NAME = "real_deals.db"
+
+PG_CONFIG = {
+    "host": "aws-1-ap-northeast-2.pooler.supabase.com",
+    "port": 5432,
+    "dbname": "postgres",
+    "user": "postgres.oznagajgjqoojzvyacuu",
+    "password": "pUbbDDe6ceZ_GUf"
+}
+
+
+def get_pg_connection():
+    return psycopg2.connect(**PG_CONFIG)
 
 
 def get_connection():
@@ -576,16 +589,17 @@ def get_presale_sizes_from_db(region, sigungu, apt_name):
 
 # 전월세 동 조회 함수
 def get_rent_dongs_from_db(region, sigungu):
-    conn = get_connection()
+
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT DISTINCT dong
         FROM apt_rent_trades
-        WHERE region = ?
-        AND sigungu = ?
+        WHERE region = %s
+        AND sigungu = %s
         AND dong IS NOT NULL
-        AND dong != ''
+        AND dong <> ''
         ORDER BY dong
     """, (
         region,
@@ -593,6 +607,8 @@ def get_rent_dongs_from_db(region, sigungu):
     ))
 
     rows = cur.fetchall()
+
+    cur.close()
     conn.close()
 
     return [row[0] for row in rows]
@@ -601,17 +617,17 @@ def get_rent_dongs_from_db(region, sigungu):
 # 선택한 지역(region, sigungu)과 동(dong)에 있는
 # 전월세 거래 단지명을 DB에서 중복 없이 가져온다.
 def get_rent_apts_from_db(region, sigungu, dong):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT DISTINCT apt_name
         FROM apt_rent_trades
-        WHERE region = ?
-        AND sigungu = ?
-        AND dong = ?
+        WHERE region = %s
+        AND sigungu = %s
+        AND dong = %s
         AND apt_name IS NOT NULL
-        AND apt_name != ''
+        AND apt_name <> ''
         ORDER BY apt_name
     """, (
         region,
@@ -620,6 +636,8 @@ def get_rent_apts_from_db(region, sigungu, dong):
     ))
 
     rows = cur.fetchall()
+
+    cur.close()
     conn.close()
 
     return [row[0] for row in rows]
@@ -628,14 +646,14 @@ def get_rent_apts_from_db(region, sigungu, dong):
 # 선택한 단지명(apt_name)과 전용면적(size)의
 # 최근 전월세 거래 데이터를 DB에서 가져온다.
 def get_rent_trades(apt_name, size):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT *
         FROM apt_rent_trades
-        WHERE apt_name = ?
-        AND CAST(size AS INTEGER) = ?
+        WHERE apt_name = %s
+        AND CAST(size AS INTEGER) = %s
         ORDER BY contract_date DESC
     """, (
         apt_name,
@@ -643,6 +661,8 @@ def get_rent_trades(apt_name, size):
     ))
 
     rows = cur.fetchall()
+
+    cur.close()
     conn.close()
 
     return rows
@@ -651,17 +671,17 @@ def get_rent_trades(apt_name, size):
 # 선택한 지역(region, sigungu)과 단지명(apt_name)에 있는
 # 전월세 거래 전용면적을 DB에서 중복 없이 가져온다.
 def get_rent_sizes_from_db(region, sigungu, apt_name):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT DISTINCT size
+        SELECT DISTINCT CAST(size AS INTEGER)
         FROM apt_rent_trades
-        WHERE region = ?
-        AND sigungu = ?
-        AND apt_name = ?
+        WHERE region = %s
+        AND sigungu = %s
+        AND apt_name = %s
         AND size IS NOT NULL
-        ORDER BY CAST(size AS REAL)
+        ORDER BY CAST(size AS INTEGER)
     """, (
         region,
         sigungu,
@@ -669,9 +689,11 @@ def get_rent_sizes_from_db(region, sigungu, apt_name):
     ))
 
     rows = cur.fetchall()
+
+    cur.close()
     conn.close()
 
-    return [int(float(row[0])) for row in rows if row[0] is not None]
+    return [row[0] for row in rows if row[0] is not None]
 
 
 # 🔍 조회 로그 저장
