@@ -8916,27 +8916,6 @@ async function loadDongs(region) {
         const cachedDongs = dongCache[dongCacheKey];
         renderDongs(cachedDongs);
         return;
-
-        setTimeout(() => {
-            const dongList = document.getElementById("dongList");
-
-            if (cachedDongs.length === 0) {
-                if (dongList) {
-                    dongList.innerHTML =
-                        '<div class="item">최근 실거래 단지가 없습니다</div>';
-                    dongList.style.display = "block";
-                }
-                return;
-            }
-
-            renderDongList();
-
-            if (dongList) {
-                openDongList();
-            }
-        }, 150);
-
-        return;
     }
 
     dongSelect.innerHTML = '<option value="" class="loading-text loading-dots">동 검색중</option>';
@@ -8972,8 +8951,7 @@ async function loadDongs(region) {
     
     try {
         const res = await fetch(
-            `/dongs?region=${encodeURIComponent(region)}&type=${selectedPropertyType}`
-            + `&type=${encodeURIComponent(selectedPropertyType)}`,
+            `/dongs?region=${encodeURIComponent(region)}&type=${encodeURIComponent(selectedPropertyType)}`,
             {
                 signal: dongFetchController.signal
             }
@@ -8993,8 +8971,6 @@ async function loadDongs(region) {
         renderDongs(dongs);
 
         return;
-
-        const dongList = document.getElementById("dongList");
 
         if (dongs.length === 0) {
             if (dongList) {

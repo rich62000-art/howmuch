@@ -429,7 +429,8 @@ def get_apt_sale_trades(apt_name, size):
     FROM apt_sale_trades
     WHERE apt_name = %s
     AND ROUND(size::numeric, 4) = ROUND(%s::numeric, 4)
-    ORDER BY contract_date DESC
+    AND source_month >= TO_CHAR(CURRENT_DATE - INTERVAL '24 months', 'YYYYMM')
+ORDER BY contract_date DESC
     """, (
         apt_name,
         float(size)
@@ -466,7 +467,9 @@ def get_presale_trades(apt_name, size):
     FROM presale_trades
     WHERE apt_name = %s
     AND ROUND(size::numeric, 4) = ROUND(%s::numeric, 4)
+    AND source_month >= TO_CHAR(CURRENT_DATE - INTERVAL '24 months', 'YYYYMM')
     ORDER BY contract_date DESC
+    
     """, (
         apt_name,
         int(size)
@@ -778,6 +781,7 @@ def get_rent_trades(apt_name, size):
         FROM apt_rent_trades
         WHERE apt_name = %s
         AND ROUND(size::numeric, 4) = ROUND(%s::numeric, 4)
+        AND source_month >= TO_CHAR(CURRENT_DATE - INTERVAL '24 months', 'YYYYMM')
         ORDER BY contract_date DESC
     """, (
         apt_name,

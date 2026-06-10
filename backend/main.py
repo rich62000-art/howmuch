@@ -1052,10 +1052,16 @@ def analyze_price(
 
 
            
-    cache_key = f"{type}_{normalize_region(region)}_{normalize(apt_name)}_{size}_{direction or 'none'}_{floor_level or 'none'}_{interior or 'none'}_{user_price or 'none'}"
+    cache_key = f"{type}_{normalize_region(region)}_{normalize(apt_name)}_{round(float(size), 4)}_{direction or 'none'}_{floor_level or 'none'}_{interior or 'none'}_{user_price or 'none'}"
 
     if cache_key in analysis_cache:
-        return analysis_cache[cache_key]
+        cached = analysis_cache[cache_key]
+
+        if isinstance(cached, dict) and "time" in cached and "data" in cached:
+            if time.time() - cached["time"] < 3600:
+                return cached["data"]
+            else:
+                del analysis_cache[cache_key]
         
     LAWD_CD = find_lawd_cd(region)
     if not LAWD_CD:
@@ -1206,7 +1212,10 @@ def analyze_price(
 
     if not prices:
         result = presale_fallback()
-        analysis_cache[cache_key] = result
+        analysis_cache[cache_key] = {
+            "time": time.time(),
+            "data": result
+        }
         return result
 
     recent_5_prices = [t["price"] for t in recent_trades if t.get("price")]
@@ -1651,7 +1660,10 @@ def analyze_price(
     if type == "presale" or result.get("거래건수", 0) >= 3:
         if len(analysis_cache) >= MAX_ANALYSIS_CACHE:
             analysis_cache.pop(next(iter(analysis_cache)))
-        analysis_cache[cache_key] = result
+        analysis_cache[cache_key] = {
+            "time": time.time(),
+            "data": result
+        }
 
     return result
 
