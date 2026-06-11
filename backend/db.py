@@ -910,10 +910,37 @@ def get_analysis_cache_from_db(cache_key):
     if not row:
         return None
 
-    return row[0]
+    cached_result = row[0]
+
+    # ✅ null 캐시는 사용하지 않음
+    if cached_result is None:
+        return None
+
+    # ✅ 문자열로 저장된 JSON이면 dict로 변환
+    if isinstance(cached_result, str):
+        if cached_result.strip().lower() in ("", "null"):
+            return None
+
+        try:
+            cached_result = json.loads(cached_result)
+        except:
+            return None
+
+    # ✅ 예전 메모리 캐시 형태가 DB에 저장된 경우 방어
+    # {"time": ..., "data": {...}} 형태면 data만 반환
+    if isinstance(cached_result, dict) and "data" in cached_result:
+        cached_result = cached_result.get("data")
+
+    # ✅ 최종적으로 정상 dict만 반환
+    if not isinstance(cached_result, dict) or not cached_result:
+        return None
+
+    return cached_result
 
 
 def save_analysis_cache_to_db(cache_key, result):
+    if not isinstance(result, dict) or not result:
+        return
     conn = get_pg_connection()
     cur = conn.cursor()
 

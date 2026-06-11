@@ -1061,16 +1061,22 @@ def analyze_price(
 
         if isinstance(cached, dict) and "time" in cached and "data" in cached:
             if time.time() - cached["time"] < 3600:
-                return cached["data"]
-            else:
-                del analysis_cache[cache_key]
+                cached_data = cached.get("data")
+
+                if isinstance(cached_data, dict) and cached_data:
+                    return cached_data
+
+            del analysis_cache[cache_key]
+
+        else:
+            del analysis_cache[cache_key]
 
     # ✅ Supabase 분석 결과 캐시 확인
     # 같은 단지/면적/입력가 조건으로 1시간 이내 분석한 결과가 있으면
     # 거래 데이터를 다시 계산하지 않고 즉시 반환한다.
     db_cached_result = get_analysis_cache_from_db(cache_key)
 
-    if db_cached_result:
+    if isinstance(db_cached_result, dict) and db_cached_result:
         return db_cached_result
         
     LAWD_CD = find_lawd_cd(region)
@@ -1126,6 +1132,7 @@ def analyze_price(
             if len(analysis_cache) >= MAX_ANALYSIS_CACHE:
                 analysis_cache.pop(next(iter(analysis_cache)))
             analysis_cache[cache_key] = result
+
             save_analysis_cache_to_db(cache_key, result)
             return result
         
