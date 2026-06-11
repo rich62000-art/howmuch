@@ -1,5 +1,6 @@
 import sqlite3
 import time
+import json
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
 
@@ -495,7 +496,7 @@ def get_dongs_from_db(region, sigungu):
 
     cur.execute("""
     SELECT DISTINCT dong
-    FROM apt_sale_trades
+    FROM apt_sale_list
     WHERE region = %s
     AND sigungu = %s
     AND dong IS NOT NULL
@@ -534,7 +535,7 @@ def get_presale_dongs_from_db(region, sigungu):
 
     cur.execute("""
         SELECT DISTINCT dong
-        FROM presale_trades
+        FROM presale_list
         WHERE region = %s
         AND sigungu = %s
         AND dong IS NOT NULL
@@ -572,7 +573,7 @@ def get_apts_from_db(region, sigungu, dong):
 
     cur.execute("""
         SELECT DISTINCT apt_name
-        FROM apt_sale_trades
+        FROM apt_sale_list
         WHERE region = %s
         AND sigungu = %s
         AND dong = %s
@@ -613,7 +614,7 @@ def get_presale_apts_from_db(region, sigungu, dong):
 
     cur.execute("""
         SELECT DISTINCT apt_name
-        FROM presale_trades
+        FROM presale_list
         WHERE region = %s
         AND sigungu = %s
         AND dong = %s
@@ -653,7 +654,7 @@ def get_sizes_from_db(region, sigungu, apt_name):
 
     cur.execute("""
         SELECT DISTINCT ROUND(size::numeric, 4)
-        FROM apt_sale_trades
+        FROM apt_sale_list
         WHERE region = %s
         AND sigungu = %s
         AND apt_name = %s
@@ -693,7 +694,7 @@ def get_presale_sizes_from_db(region, sigungu, apt_name):
 
     cur.execute("""
         SELECT DISTINCT ROUND(size::numeric, 4)
-        FROM presale_trades
+        FROM presale_list
         WHERE region = %s
         AND sigungu = %s
         AND apt_name = %s
@@ -732,7 +733,7 @@ def get_rent_dongs_from_db(region, sigungu):
 
     cur.execute("""
         SELECT DISTINCT dong
-        FROM apt_rent_trades
+        FROM rent_list
         WHERE region = %s
         AND sigungu = %s
         AND dong IS NOT NULL
@@ -773,7 +774,7 @@ def get_rent_apts_from_db(region, sigungu, dong):
 
     cur.execute("""
         SELECT DISTINCT apt_name
-        FROM apt_rent_trades
+        FROM rent_list
         WHERE region = %s
         AND sigungu = %s
         AND dong = %s
@@ -842,7 +843,7 @@ def get_rent_sizes_from_db(region, sigungu, apt_name):
 
     cur.execute("""
         SELECT DISTINCT ROUND(size::numeric, 4)
-        FROM apt_rent_trades
+        FROM rent_list
         WHERE region = %s
         AND sigungu = %s
         AND apt_name = %s
@@ -886,6 +887,56 @@ def insert_search_log(search_type, region=None, sigungu=None, dong=None, apt_nam
 
     cur.close()
     conn.close()
+
+def get_analysis_cache_from_db(cache_key):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT result_json
+        FROM analysis_result_cache
+        WHERE cache_key = %s
+        AND created_at >= NOW() - INTERVAL '1 hour'
+        LIMIT 1
+    """, (
+        cache_key,
+    ))
+
+    row = cur.fetchone()
+
+    cur.close()
+    release_pg_connection(conn)
+
+    if not row:
+        return None
+
+    return row[0]
+
+
+def save_analysis_cache_to_db(cache_key, result):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO analysis_result_cache (
+            cache_key,
+            result_json,
+            created_at
+        )
+        VALUES (%s, %s, NOW())
+        ON CONFLICT (cache_key)
+        DO UPDATE SET
+            result_json = EXCLUDED.result_json,
+            created_at = NOW()
+    """, (
+        cache_key,
+        json.dumps(result, ensure_ascii=False)
+    ))
+
+    conn.commit()
+
+    cur.close()
+    release_pg_connection(conn)    
 
 # 📊 분석 로그 저장
 def insert_analysis_log(region=None, sigungu=None, dong=None, apt_name=None, size=None, user_price=None, ai_price=None, result=None):

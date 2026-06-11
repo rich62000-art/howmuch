@@ -19,6 +19,8 @@ from db import (
     get_presale_trades, get_presale_dongs_from_db, get_presale_apts_from_db,
     get_presale_sizes_from_db,
 
+    get_analysis_cache_from_db, save_analysis_cache_to_db,
+
     get_rent_dongs_from_db, get_rent_apts_from_db,
     get_rent_sizes_from_db, get_rent_trades
 )
@@ -1062,6 +1064,14 @@ def analyze_price(
                 return cached["data"]
             else:
                 del analysis_cache[cache_key]
+
+    # ✅ Supabase 분석 결과 캐시 확인
+    # 같은 단지/면적/입력가 조건으로 1시간 이내 분석한 결과가 있으면
+    # 거래 데이터를 다시 계산하지 않고 즉시 반환한다.
+    db_cached_result = get_analysis_cache_from_db(cache_key)
+
+    if db_cached_result:
+        return db_cached_result
         
     LAWD_CD = find_lawd_cd(region)
     if not LAWD_CD:
@@ -1116,6 +1126,7 @@ def analyze_price(
             if len(analysis_cache) >= MAX_ANALYSIS_CACHE:
                 analysis_cache.pop(next(iter(analysis_cache)))
             analysis_cache[cache_key] = result
+            save_analysis_cache_to_db(cache_key, result)
             return result
         
 
@@ -1216,6 +1227,8 @@ def analyze_price(
             "time": time.time(),
             "data": result
         }
+        # ✅ Supabase 분석 결과 캐시 저장
+        save_analysis_cache_to_db(cache_key, result)
         return result
 
     recent_5_prices = [t["price"] for t in recent_trades if t.get("price")]
@@ -1664,8 +1677,10 @@ def analyze_price(
             "time": time.time(),
             "data": result
         }
+        # ✅ Supabase 분석 결과 캐시 저장
+        save_analysis_cache_to_db(cache_key, result)
 
-    return result
+        return result
 
 # 🔥 평형 조회
 @app.get("/sizes")
