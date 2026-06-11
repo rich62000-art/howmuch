@@ -601,18 +601,25 @@ def get_apts_from_db(region, sigungu, dong):
 
 # ✅ 분양권 단지 목록 조회
 def get_presale_apts_from_db(region, sigungu, dong):
-    conn = get_connection()
+    cache_key = f"presale_apts:{region}:{sigungu}:{dong}"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT DISTINCT apt_name
-    FROM presale_trades
-    WHERE region = ?
-    AND sigungu = ?
-    AND dong = ?
-    AND apt_name IS NOT NULL
-    AND apt_name != ''
-    ORDER BY apt_name
+        SELECT DISTINCT apt_name
+        FROM presale_trades
+        WHERE region = %s
+        AND sigungu = %s
+        AND dong = %s
+        AND apt_name IS NOT NULL
+        AND apt_name <> ''
+        ORDER BY apt_name
     """, (
         region,
         sigungu,
@@ -620,9 +627,18 @@ def get_presale_apts_from_db(region, sigungu, dong):
     ))
 
     rows = cur.fetchall()
-    conn.close()
 
-    return [row[0] for row in rows]
+    cur.close()
+    release_pg_connection(conn)
+
+    result = [row[0] for row in rows]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
 
 def get_sizes_from_db(region, sigungu, apt_name):
     cache_key = f"sale_sizes:{region}:{sigungu}:{apt_name}"
