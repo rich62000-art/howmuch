@@ -18,7 +18,7 @@ pg_pool = None
 
 
 def get_pg_connection():
-    global pg_pool
+    return psycopg2.connect(**PG_CONFIG)
 
     if pg_pool is None:
         pg_pool = SimpleConnectionPool(
@@ -30,7 +30,7 @@ def get_pg_connection():
     return pg_pool.getconn()
 
 def release_pg_connection(conn):
-    global pg_pool
+    conn.close()
 
     if pg_pool:
         pg_pool.putconn(conn)
