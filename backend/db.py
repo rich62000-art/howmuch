@@ -522,17 +522,24 @@ def get_dongs_from_db(region, sigungu):
 
 # ✅ 분양권 동 목록 조회
 def get_presale_dongs_from_db(region, sigungu):
-    conn = get_connection()
+    cache_key = f"presale_dongs:{region}:{sigungu}"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT DISTINCT dong
-    FROM presale_trades
-    WHERE region = ?
-    AND sigungu = ?
-    AND dong IS NOT NULL
-    AND dong != ''
-    ORDER BY dong
+        SELECT DISTINCT dong
+        FROM presale_trades
+        WHERE region = %s
+        AND sigungu = %s
+        AND dong IS NOT NULL
+        AND dong <> ''
+        ORDER BY dong
     """, (
         region,
         sigungu
@@ -540,9 +547,17 @@ def get_presale_dongs_from_db(region, sigungu):
 
     rows = cur.fetchall()
 
-    conn.close()
+    cur.close()
+    release_pg_connection(conn)
 
-    return [row[0] for row in rows]
+    result = [row[0] for row in rows]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
 
 def get_apts_from_db(region, sigungu, dong):
     cache_key = f"sale_apts:{region}:{sigungu}:{dong}"
