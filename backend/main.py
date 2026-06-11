@@ -1060,7 +1060,7 @@ def analyze_price(
         cached = analysis_cache[cache_key]
 
         if isinstance(cached, dict) and "time" in cached and "data" in cached:
-            if time.time() - cached["time"] < 3600:
+            if time.time() - cached["time"] < 21600:
                 cached_data = cached.get("data")
 
                 if isinstance(cached_data, dict) and cached_data:

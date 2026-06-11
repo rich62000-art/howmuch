@@ -896,7 +896,7 @@ def get_analysis_cache_from_db(cache_key):
         SELECT result_json
         FROM analysis_result_cache
         WHERE cache_key = %s
-        AND created_at >= NOW() - INTERVAL '1 hour'
+        AND created_at >= NOW() - INTERVAL '6 hours'
         LIMIT 1
     """, (
         cache_key,
