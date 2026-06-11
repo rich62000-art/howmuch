@@ -1687,7 +1687,7 @@ def analyze_price(
         # ✅ Supabase 분석 결과 캐시 저장
         save_analysis_cache_to_db(cache_key, result)
 
-        return result
+    return result
 
 # 🔥 평형 조회
 @app.get("/sizes")
