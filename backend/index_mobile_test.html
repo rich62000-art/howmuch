@@ -69,7 +69,7 @@ h2 {
     margin-bottom: 20px;
 
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 label {
@@ -7816,6 +7816,52 @@ body {
     background: #f1f5f9;
     color: #64748b;
 }
+
+.region-select-box {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+#sigunguList {
+    position: fixed !important;
+    z-index: 999999 !important;
+
+    height: 260px !important;
+    max-height: 260px !important;
+    min-height: 260px !important;
+
+    overflow-y: auto !important;
+
+    background: #ffffff !important;
+    border: 1px solid #dbeafe !important;
+    border-radius: 16px !important;
+
+    box-shadow: 0 18px 36px rgba(15,23,42,0.22) !important;
+}
+
+#sigunguList .item {
+    padding: 9px 14px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+}
+
+.card {
+    overflow: visible !important;
+}
+
+.step-card,
+.card {
+    position: relative !important;
+}
+
+.card:first-of-type {
+    z-index: 10000 !important;
+}
+
+#sigunguList {
+    z-index: 99999 !important;
+}
 </style>
 </head>
 
@@ -7984,6 +8030,7 @@ body {
                             🏙️ 시/군/구를 선택 하세요
                         </option>
                     </select>
+                    <div id="sigunguList" class="list overlay-list" style="display:none;"></div>
 
                     <span class="region-check">✓</span>
                 </div>
@@ -8214,7 +8261,7 @@ body {
             </div>
             <div id="analysisProgressText" class="analysis-progress-text">0%</div>
         </div>
-        <button id="analyzeBtn" type="button" onclick="analyzePrice();">✨ 아파트 분석하기</button>
+        <button id="analyzeBtn" type="button" onclick="analyzePrice();">✨ 아파트 AI 분석하기</button>
         
     </div>
 
@@ -8443,10 +8490,21 @@ document.querySelectorAll(".top-tab").forEach(tab => {
         }
 
         if (selectedPropertyType === "presale") {
-            document.getElementById("analyzeBtn").innerText = "✨ 분양권 분석하기";
+
+            document.getElementById("analyzeBtn").innerText =
+                "✨ 분양권 AI 분석하기";
+
+        } else if (selectedPropertyType === "rent") {
+
+            document.getElementById("analyzeBtn").innerText =
+                "✨ 전월세 AI 분석하기";
+
         } else {
-            document.getElementById("analyzeBtn").innerText = "✨ 아파트 분석하기";
+
+            document.getElementById("analyzeBtn").innerText =
+                "✨ 아파트 AI 분석하기";
         }
+        
         document.getElementById("presaleNotice").style.display =
             selectedPropertyType === "presale" ? "block" : "none";
 
@@ -8696,15 +8754,58 @@ if (sidoSelect && sigunguSelect) {
                 sigunguSelect.innerHTML =
                     '<option value="">🏙️ 시/군/구 선택</option>';
 
+                const sigunguList = document.getElementById("sigunguList");
+
+                if (!sigunguList) {
+                    console.log("❌ sigunguList 없음");
+                    return;
+                }
+
+                // ✅ 카드 안에 있는 리스트를 body로 이동시켜 02, 03번 카드 위에 뜨게 함
+                if (sigunguList.parentElement !== document.body) {
+                    document.body.appendChild(sigunguList);
+                }
+
+                sigunguList.innerHTML = "";
+
                 (data.검색결과 || []).forEach(sigungu => {
 
                     const option = document.createElement("option");
-
                     option.value = sigungu;
                     option.textContent = sigungu;
-
                     sigunguSelect.appendChild(option);
+
+                    const div = document.createElement("div");
+                    div.className = "item";
+                    div.innerText = sigungu;
+
+                    div.onclick = function () {
+                        sigunguSelect.value = sigungu;
+
+                        if (sigunguList) {
+                            sigunguList.innerHTML = "";
+                            sigunguList.style.display = "none";
+                        }
+
+                        sigunguSelect.dispatchEvent(new Event("change"));
+                    };
+
+                    if (sigunguList) {
+                        sigunguList.appendChild(div);
+                    }
                 });
+
+                if (sigunguList) {
+                    const rect = sigunguSelect.getBoundingClientRect();
+
+                    sigunguList.style.left = rect.left + "px";
+                    sigunguList.style.top = (rect.bottom + 4) + "px";
+                    sigunguList.style.width = rect.width + "px";
+
+                    sigunguList.style.display = "block";
+                    sigunguList.style.visibility = "visible";
+                    sigunguList.style.opacity = "1";
+                }
             })
             .catch(err => {
                 console.error("시군구 로딩 오류:", err);
@@ -8718,6 +8819,7 @@ if (sidoSelect && sigunguSelect) {
 
 
 sigunguSelect.addEventListener("change", function () {
+    
     sigunguSelect.classList.toggle(
         "valid",
         sigunguSelect.value !== ""
@@ -9108,23 +9210,33 @@ function renderDongs(dongs) {
 
 }
 
+// ===============================
+// 단지 검색
+// ===============================
 function searchApts() {
 
     const region = document.getElementById("regionInput").value;
     const keyword = document.getElementById("aptInput").value;
+    const dongValue = document.getElementById("dongSelect")?.value || "";
 
-    console.log("지역:", region, "검색어:", keyword);
+    console.log("🏢 단지 검색 시작");
+    console.log("지역:", region);
+    console.log("동:", dongValue);
+    console.log("검색어:", keyword);
+    console.log("타입:", selectedPropertyType);
 
     fetch("/apts?region="
         + encodeURIComponent(region)
         + "&keyword="
-        + encodeURIComponent(keyword)
+        + encodeURIComponent(keyword || "")
         + "&dong="
-        + encodeURIComponent(document.getElementById("dongSelect").value || "")
+        + encodeURIComponent(dongValue)
         + "&type="
         + encodeURIComponent(selectedPropertyType))
     .then(res => res.json())
     .then(data => {
+
+        console.log("✅ /apts 응답:", data);
 
         const listEl = document.getElementById("aptList");
 
@@ -9135,27 +9247,58 @@ function searchApts() {
 
         listEl.innerHTML = "";
 
-        if (!data || !data.검색결과) {
-            console.log("❌ 데이터 구조 이상");
+        let aptItems = [];
+
+        if (Array.isArray(data)) {
+            aptItems = data;
+        } else if (Array.isArray(data.검색결과)) {
+            aptItems = data.검색결과;
+        } else if (Array.isArray(data.results)) {
+            aptItems = data.results;
+        } else if (Array.isArray(data.apts)) {
+            aptItems = data.apts;
+        } else {
+            console.log("❌ 예상하지 못한 단지 응답 구조:", data);
             return;
         }
 
-        data.검색결과.forEach(item => {
+        console.log("📋 화면 표시 단지 수:", aptItems.length);
+
+        aptItems.forEach(item => {
+
+            const aptName = typeof item === "string"
+                ? item
+                : (item.name || item.real_name || item.apt_name || "");
+
+            if (!aptName) return;
 
             const div = document.createElement("div");
-            div.innerText = item;
+            div.className = "apt-item";
+            div.innerText = aptName;
 
-            // 🔥 일단 클릭 확인만
             div.onclick = function () {
-                console.log("클릭됨:", item);
+                console.log("✅ 단지 클릭:", item);
+
+                document.getElementById("aptInput").value = aptName;
+
+                if (listEl) {
+                    listEl.innerHTML = "";
+                    listEl.style.display = "none";
+                }
+
+                if (typeof loadSizes === "function") {
+                    loadSizes();
+                }
             };
 
             listEl.appendChild(div);
         });
 
+        listEl.style.display = aptItems.length > 0 ? "block" : "none";
+
     })
     .catch(err => {
-        console.log("❌ 에러:", err);
+        console.log("❌ 단지 검색 오류:", err);
     });
 }
 
@@ -9318,7 +9461,8 @@ function filterApts(list, keyword) {
         return;
     }
 
-    filtered.slice(0, 30).forEach(apt => {
+    // ✅ 자동 펼침 단지 리스트 표시 개수 확대
+    filtered.slice(0, 300).forEach(apt => {
         const aptName = apt.name || "";
         const realAptName = apt.real_name || apt.name || "";
         const aptDong = apt.dong || "";
@@ -9394,6 +9538,22 @@ function loadSizes() {
     const apt = document.getElementById("aptInput").value;
 
     if (!region || !apt) return;
+
+    const sizeList = document.getElementById("sizeList");
+    const sizeSelect = document.getElementById("sizeSelect");
+
+    if (sizeList) {
+        sizeList.innerHTML = `
+            <div class="item loading-text">
+                🔍 면적 검색중<span class="loading-dots"></span>
+            </div>
+        `;
+        sizeList.style.display = "block";
+    }
+
+    if (sizeSelect) {
+        sizeSelect.innerHTML = '<option value="">🔍 면적 검색중...</option>';
+    }
 
     fetch(
         "/sizes?region=" +
@@ -9719,8 +9879,10 @@ function analyzePrice() {
         analyzeBtn.disabled = false;
         analyzeBtn.innerText =
             selectedPropertyType === "presale"
-                ? "✨ 분양권 분석하기"
-                : "✨ 아파트 분석하기";
+                ? "✨ 분양권 AI 분석하기"
+                : selectedPropertyType === "rent"
+                    ? "✨ 전월세 AI 분석하기"
+                    : "✨ 아파트 AI 분석하기";
         
         return;
     }
@@ -9731,8 +9893,10 @@ function analyzePrice() {
         analyzeBtn.disabled = false;
         analyzeBtn.innerText =
             selectedPropertyType === "presale"
-                ? "✨ 분양권 분석하기"
-                : "✨ 아파트 분석하기";
+                ? "✨ 분양권 AI 분석하기"
+                : selectedPropertyType === "rent"
+                    ? "✨ 전월세 AI 분석하기"
+                    : "✨ 아파트 AI 분석하기";
 
         return;
     }
@@ -9790,7 +9954,12 @@ function analyzePrice() {
                 if (data.결과) {
                     resultBox.innerHTML = data.결과;
                     analyzeBtn.disabled = false;
-                    analyzeBtn.innerText = "분석하기";
+                    analyzeBtn.innerText =
+                        selectedPropertyType === "presale"
+                            ? "✨ 분양권 AI 분석하기"
+                            : selectedPropertyType === "rent"
+                                ? "✨ 전월세 AI 분석하기"
+                                : "✨ 아파트 AI 분석하기";
                     return;
                 }
 
@@ -10644,8 +10813,10 @@ function analyzePrice() {
 
                 analyzeBtn.innerText =
                     selectedPropertyType === "presale"
-                        ? "✨ 분양권 분석하기"
-                        : "✨ 아파트 분석하기";
+                        ? "✨ 분양권 AI 분석하기"
+                        : selectedPropertyType === "rent"
+                            ? "✨ 전월세 AI 분석하기"
+                            : "✨ 아파트 AI 분석하기";
             } catch (e) {
                 console.error("렌더링 에러:", e);
                 resultBox.innerHTML = "렌더링 오류: " + e.message;
@@ -10653,7 +10824,12 @@ function analyzePrice() {
                 document.getElementById("aptInput").disabled = false;
                 document.getElementById("sizeInput").disabled = false;
                 document.getElementById("dongInput").disabled = false;
-                analyzeBtn.innerText = "분석하기";
+                analyzeBtn.innerText =
+                    selectedPropertyType === "presale"
+                        ? "✨ 분양권 AI 분석하기"
+                        : selectedPropertyType === "rent"
+                            ? "✨ 전월세 AI 분석하기"
+                            : "✨ 아파트 AI 분석하기";
             }
 
             // 🔥 로딩 종료
@@ -10686,8 +10862,10 @@ function analyzePrice() {
 
             analyzeBtn.innerText =
                 selectedPropertyType === "presale"
-                    ? "✨ 분양권 분석하기"
-                    : "✨ 아파트 분석하기";
+                    ? "✨ 분양권 AI 분석하기"
+                    : selectedPropertyType === "rent"
+                        ? "✨ 전월세 AI 분석하기"
+                        : "✨ 아파트 AI 분석하기";
 
             document.getElementById("aptInput").disabled = false;
             document.getElementById("sizeInput").disabled = false;
