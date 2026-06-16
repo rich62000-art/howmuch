@@ -183,7 +183,7 @@ button:hover {
 }
 
 .summary-value {
-    font-size: 20px;
+    font-size: 15px;
     font-weight: bold;
 }
 
@@ -292,7 +292,7 @@ button:hover {
     }
 
     .summary-value {
-        font-size: 22px;
+        font-size: 16px;
     }
 
     .result-title {
@@ -2789,6 +2789,31 @@ body {
     margin-bottom: 12px !important;
 }
 
+/* 미래예측 버튼 만들기 */
+.future-btn {
+
+    height: 56px;
+
+    font-size: 18px;
+    font-weight: 800;
+
+    border-radius: 16px;
+
+    border: 1.5px solid #7c3aed;
+
+    background:
+        linear-gradient(135deg,#8b5cf6,#7c3aed);
+
+    color: white;
+
+    box-shadow:
+        0 8px 20px rgba(124,58,237,0.20);
+
+}
+
+.future-btn:active {
+    transform: scale(0.98);
+}
 
 /* ===== 하단 안내 카드 최종 정리 ===== */
 
@@ -7505,14 +7530,6 @@ body {
 }
 
 /* ✅ 전월세 리포트 상단 카드 */
-.rent-header-card {
-    margin-bottom: 12px;
-    padding: 18px 16px;
-    border-radius: 22px;
-    background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
-    color: white;
-    box-shadow: 0 14px 30px rgba(37,99,235,0.22);
-}
 
 .rent-header-top {
     display: flex;
@@ -7526,15 +7543,6 @@ body {
     font-weight: 900;
     line-height: 1.25;
     letter-spacing: -0.6px;
-}
-
-.rent-type-chip {
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.22);
-    font-size: 12px;
-    font-weight: 800;
-    white-space: nowrap;
 }
 
 .rent-location {
@@ -7587,12 +7595,25 @@ body {
 
 /* ✅ 전월세 AI 해설 카드 */
 .rent-ai-card {
-    margin: 12px 0 14px;
-    padding: 15px 16px;
-    border-radius: 18px;
-    background: #f8fbff;
-    border: 1px solid #dbeafe;
-    box-shadow: 0 8px 20px rgba(15,23,42,0.04);
+     margin-top: 16px;
+    padding: 22px 20px;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(#ffffff,#f8fbff) padding-box,
+        linear-gradient(
+            135deg,
+            #bfdbfe,
+            #93c5fd,
+            #99f6e4
+        ) border-box;
+
+    border: 2px solid transparent;
+
+    box-shadow:
+        0 18px 42px rgba(15,23,42,0.10),
+        0 8px 18px rgba(37,99,235,0.08);
 }
 
 .rent-ai-title {
@@ -7663,67 +7684,87 @@ body {
 }
 
 /* ✅ 전월세 12개월 거래량 그래프 */
-.rent-volume-card {
-    margin: 12px 0 14px;
-    padding: 16px;
-    border-radius: 20px;
-    background: #ffffff;
-    border: 1px solid #dbeafe;
-    box-shadow: 0 8px 20px rgba(15,23,42,0.05);
-}
-
-.rent-volume-title {
-    font-size: 14px;
-    font-weight: 900;
-    color: #0f172a;
-    margin-bottom: 12px;
-}
-
-.rent-volume-chart {
-    display: grid;
-    gap: 8px;
-}
-
-.rent-volume-row {
-    display: grid;
-    grid-template-columns: 42px 1fr 42px;
+.rent-volume-chart-title-row {
+    display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 10px;
 }
 
-.rent-volume-month {
-    font-size: 11px;
-    font-weight: 800;
-    color: #64748b;
+.rent-volume-legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.rent-volume-bar-wrap {
-    display: grid;
-    gap: 3px;
-    height: auto;
-    border-radius: 0;
-    background: transparent;
-    overflow: visible;
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    font-size: 12px;
+    font-weight: 900;
+    color: #334155;
 }
 
-.rent-volume-bar {
-     height: 7px;
+.legend-color {
+    display: inline-block;
+    width: 18px;
+    height: 10px;
     border-radius: 999px;
 }
 
-.rent-volume-bar.jeonse-bar {
-    background: linear-gradient(90deg, #2563eb, #60a5fa);
+.legend-blue {
+    background: linear-gradient(135deg, #60a5fa, #2563eb);
 }
 
-.rent-volume-bar.monthly-bar {
-    background: linear-gradient(90deg, #f97316, #fdba74);
+.legend-red {
+    background: linear-gradient(135deg, #f87171, #dc2626);
 }
 
-.rent-volume-count {
-    font-size: 11px;
-    font-weight: 800;
-    color: #0f172a;
-    text-align: right;
+.rent-volume-bar-area.dual {
+    flex: 1;
+    width: 100%;
+
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+}
+
+.rent-volume-bar-group {
+    height: 100%;
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.rent-volume-bar {
+    width: 80%;
+    min-height: 0;
+
+    border-radius: 999px 999px 4px 4px;
+}
+
+.rent-volume-bar.jeonse {
+    background: linear-gradient(180deg, #60a5fa, #2563eb);
+    box-shadow: 0 8px 16px rgba(37,99,235,0.18);
+}
+
+.rent-volume-bar.monthly {
+    background: linear-gradient(180deg, #f87171, #dc2626);
+    box-shadow: 0 8px 16px rgba(220,38,38,0.16);
+}
+
+.rent-volume-count.blue {
+    color: #2563eb;
+}
+
+.rent-volume-count.red {
+    color: #dc2626;
 }
 
 /* ✅ 전세 상승률 카드 */
@@ -7823,7 +7864,7 @@ body {
 }
 
 #sigunguList {
-    position: fixed !important;
+    position: absolute !important;
     z-index: 999999 !important;
 
     height: 260px !important;
@@ -7861,6 +7902,1220 @@ body {
 
 #sigunguList {
     z-index: 99999 !important;
+}
+
+/* ===== 전월세 리포트 상단 카드 고급 디자인 ===== */
+.rent-header-card {
+    position: relative;
+    overflow: hidden;
+
+    padding: 24px 22px 20px;
+    border-radius: 28px;
+
+    background:
+        radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 34%),
+        linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+
+    border: 2px solid transparent;
+
+    background:
+        linear-gradient(#ffffff,#f4f8ff) padding-box,
+        linear-gradient(
+            135deg,
+            #60a5fa,
+            #38bdf8,
+            #5eead4
+        ) border-box;
+
+    box-shadow:
+        0 24px 54px rgba(15,23,42,0.14),
+        0 10px 24px rgba(37,99,235,0.12);
+
+    color: #0f172a;
+}
+
+.rent-header-card::before {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+
+    width: 180px;
+    height: 180px;
+
+    border-radius: 50%;
+    background: rgba(37,99,235,0.08);
+}
+
+.rent-header-top {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rent-apt-name {
+    font-size: 18px;
+
+    font-weight: 900;
+
+    letter-spacing: -0.5px;
+
+    color: #0f172a;
+
+    line-height: 1.3;
+
+    word-break: keep-all;
+}
+
+.rent-type-chip {
+
+    position: relative;
+    overflow: hidden;
+
+    flex-shrink: 0;
+
+    padding: 10px 16px;
+
+    border-radius: 999px;
+
+    background: rgba(255,255,255,0.35);
+
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border: 1px solid rgba(255,255,255,0.6);
+
+    color: #1d4ed8;
+
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+
+    box-shadow:
+        0 8px 24px rgba(37,99,235,0.15);
+
+}
+
+.rent-type-chip::before {
+
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+    left: -120%;
+
+    width: 80%;
+    height: 100%;
+
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,0.65),
+        transparent
+    );
+
+    transform: skewX(-25deg);
+
+}
+
+.rent-location {
+    position: relative;
+    z-index: 1;
+
+    margin-top: 12px;
+
+    font-size: 14px;
+    font-weight: 700;
+    color: #475569;
+}
+
+.rent-summary-line {
+    position: relative;
+    z-index: 1;
+
+    margin-top: 18px;
+    padding: 16px 16px;
+
+    border-radius: 20px;
+
+    background: rgba(255,255,255,0.82);
+    border: 1px solid rgba(219,234,254,0.9);
+
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.55;
+    color: #334155;
+
+    box-shadow: 0 10px 24px rgba(15,23,42,0.06);
+}
+
+.rent-market-badge,
+.rent-level-badge {
+    position: relative;
+    z-index: 1;
+
+    display: inline-flex;
+    align-items: center;
+
+    margin-top: 16px;
+    margin-right: 8px;
+
+    padding: 9px 13px;
+    border-radius: 999px;
+
+    background: #eef6ff;
+    color: #1d4ed8;
+
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.rent-level-badge {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+/* ===== 전월세 상단 카드 3분할 정보 영역 ===== */
+.rent-info-grid {
+    position: relative;
+    z-index: 1;
+
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+
+    margin-top: 18px;
+}
+
+.rent-info-item {
+    padding: 14px 8px;
+
+    border-radius: 20px;
+
+    background: rgba(255,255,255,0.86);
+    border: 1px solid rgba(219,234,254,0.95);
+
+    text-align: center;
+
+    box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+}
+
+.rent-info-icon {
+    font-size: 22px;
+    margin-bottom: 6px;
+}
+
+.rent-info-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+
+.rent-info-value {
+    font-size: 14px;
+    font-weight: 950;
+    color: #0f172a;
+    line-height: 1.25;
+}
+
+/* ===== 전월세 시세 요약 카드 ===== */
+.rent-price-summary-card {
+    margin-top: 16px;
+    padding: 22px 20px;
+
+    border-radius: 28px;
+
+    background:
+        radial-gradient(circle at top left, rgba(94,234,212,0.14), transparent 32%),
+        linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+
+    border: 2px solid transparent;
+
+    background:
+        linear-gradient(#ffffff,#f8fbff) padding-box,
+        linear-gradient(
+            135deg,
+            #dbeafe,
+            #93c5fd,
+            #99f6e4
+        ) border-box;
+
+    box-shadow:
+        0 18px 42px rgba(15,23,42,0.10),
+        0 8px 18px rgba(37,99,235,0.08);
+}
+
+.rent-price-summary-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+
+    margin-bottom: 18px;
+}
+
+.rent-price-summary-title {
+    font-size: 20px;
+    font-weight: 950;
+    color: #0f172a;
+    letter-spacing: -0.6px;
+}
+
+.rent-price-summary-sub {
+    margin-top: 5px;
+
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.rent-price-status {
+    flex-shrink: 0;
+
+    padding: 8px 12px;
+    border-radius: 999px;
+
+    background: rgba(236,253,245,0.92);
+    color: #059669;
+
+    font-size: 12px;
+    font-weight: 900;
+
+    box-shadow: 0 8px 18px rgba(16,185,129,0.10);
+}
+
+.rent-price-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.rent-price-kpi {
+    padding: 16px 8px;
+
+    border-radius: 22px;
+
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(219,234,254,0.95);
+
+    text-align: center;
+
+    box-shadow:
+        0 10px 24px rgba(15,23,42,0.06);
+}
+
+.rent-price-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.rent-price-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
+
+    margin-bottom: 7px;
+}
+
+.rent-price-value {
+    font-size: 16px;
+    font-weight: 950;
+
+    color: #2563eb;
+
+    letter-spacing: -0.3px;
+    line-height: 1.25;
+
+    word-break: keep-all;
+}
+
+.rent-price-count {
+    margin-top: 7px;
+
+    font-size: 11px;
+    font-weight: 800;
+
+    color: #3b82f6;
+}
+
+.rent-size-badge {
+
+    display: inline-block;
+
+    margin-left: 6px;
+
+    padding: 3px 8px;
+
+    border-radius: 999px;
+
+    background: #eff6ff;
+
+    color: #2563eb;
+
+    font-size: 12px;
+
+    font-weight: 900;
+
+    vertical-align: middle;
+}
+
+/* ===== 전월세 최근 거래내역 카드 ===== */
+.rent-trade-card {
+    margin-top: 16px;
+    padding: 22px 20px;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(#ffffff,#f8fbff) padding-box,
+        linear-gradient(
+            135deg,
+            #bfdbfe,
+            #93c5fd,
+            #99f6e4
+        ) border-box;
+
+    border: 2px solid transparent;
+
+    box-shadow:
+        0 18px 42px rgba(15,23,42,0.10),
+        0 8px 18px rgba(37,99,235,0.08);
+}
+
+.rent-trade-title {
+    font-size: 20px;
+    font-weight: 950;
+    color: #0f172a;
+    letter-spacing: -0.6px;
+}
+
+.rent-trade-sub {
+    margin-top: 5px;
+    margin-bottom: 16px;
+
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.rent-trade-list {
+    display: grid;
+    gap: 10px;
+}
+
+.rent-trade-item {
+    padding: 14px 14px;
+
+    border-radius: 20px;
+
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(219,234,254,0.95);
+
+    box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+}
+
+.rent-trade-date {
+    font-size: 12px;
+    font-weight: 800;
+    color: #64748b;
+
+    margin-bottom: 6px;
+}
+
+.rent-trade-main {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+}
+
+.rent-trade-main span {
+    flex-shrink: 0;
+
+    padding: 6px 9px;
+    border-radius: 999px;
+
+    background: #eff6ff;
+    color: #2563eb;
+
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.rent-trade-main strong {
+    font-size: 14px;
+    font-weight: 900;
+    color: #0f172a;
+
+    text-align: right;
+    line-height: 1.35;
+}
+
+.rent-empty-trade {
+    padding: 18px;
+
+    border-radius: 18px;
+
+    background: #f8fafc;
+    color: #64748b;
+
+    font-size: 14px;
+    font-weight: 800;
+    text-align: center;
+}
+
+/* ===== 전월세 월별 거래량 그래프 카드 ===== */
+.rent-volume-chart-card {
+    margin-top: 16px;
+    padding: 22px 20px;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(#ffffff,#f8fbff) padding-box,
+        linear-gradient(
+            135deg,
+            #bfdbfe,
+            #93c5fd,
+            #99f6e4
+        ) border-box;
+
+    border: 2px solid transparent;
+
+    box-shadow:
+        0 18px 42px rgba(15,23,42,0.10),
+        0 8px 18px rgba(37,99,235,0.08);
+}
+
+.rent-volume-chart-title {
+    font-size: 20px;
+    font-weight: 950;
+    color: #0f172a;
+    letter-spacing: -0.6px;
+}
+
+.rent-volume-chart-sub {
+    margin-top: 5px;
+    margin-bottom: 16px;
+
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.rent-volume-chart-box {
+    height: 190px;
+
+    display: flex;
+    align-items: flex-end;
+    gap: 7px;
+
+    padding: 12px 8px 4px;
+
+    border-radius: 22px;
+
+    background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(219,234,254,0.95);
+
+    box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+}
+
+.rent-volume-bar-wrap {
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+
+    height: 100%;
+    min-width: 0;
+}
+
+.rent-volume-bar-area {
+    flex: 1;
+    width: 100%;
+
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.rent-volume-bar {
+    width: 70%;
+    min-height: 6px;
+
+    border-radius: 999px 999px 4px 4px;
+
+    background: linear-gradient(180deg, #60a5fa, #2563eb);
+
+    box-shadow: 0 8px 16px rgba(37,99,235,0.18);
+}
+
+.rent-volume-count {
+    margin-top: 6px;
+
+    font-size: 11px;
+    font-weight: 900;
+    color: #2563eb;
+}
+
+.rent-volume-month {
+    margin-top: 3px;
+
+    font-size: 10px;
+    font-weight: 800;
+    color: #64748b;
+}
+
+.rent-chart-empty {
+    width: 100%;
+    padding: 24px;
+
+    text-align: center;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+/* ===== 전월세 월별 거래량 합계 요약 ===== */
+.rent-volume-summary {
+    margin-top: 14px;
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+
+    padding: 12px;
+
+    border-radius: 22px;
+
+    background: rgba(255,255,255,0.86);
+    border: 1px solid rgba(219,234,254,0.95);
+
+    box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+}
+
+.rent-volume-summary-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    padding: 10px 6px;
+}
+
+.summary-circle {
+    width: 38px;
+    height: 38px;
+
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 900;
+
+    flex-shrink: 0;
+}
+
+.rent-volume-summary-item.blue .summary-circle {
+    background: linear-gradient(135deg, #60a5fa, #2563eb);
+    box-shadow: 0 8px 18px rgba(37,99,235,0.22);
+}
+
+.rent-volume-summary-item.red .summary-circle {
+    background: linear-gradient(135deg, #f87171, #dc2626);
+    box-shadow: 0 8px 18px rgba(220,38,38,0.20);
+}
+
+.summary-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #64748b;
+    line-height: 1.25;
+}
+
+.summary-value {
+    margin-top: 2px;
+
+    font-size: 14px;
+
+    font-weight: 900;
+
+    letter-spacing: -0.2px;
+
+    line-height: 1.2;
+
+    word-break: keep-all;
+}
+
+.rent-volume-summary-item.blue .summary-value {
+    color: #2563eb;
+}
+
+.rent-volume-summary-item.red .summary-value {
+    color: #dc2626;
+}
+
+.rent-summary-value {
+    margin-top: 2px;
+
+    font-size: 14px;
+
+    font-weight: 900;
+
+    letter-spacing: -0.2px;
+
+    line-height: 1.2;
+}
+
+.rent-volume-summary-item.blue .rent-summary-value {
+    color: #2563eb;
+}
+
+.rent-volume-summary-item.red .rent-summary-value {
+    color: #dc2626;
+}
+
+.rent-summary-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #64748b;
+    line-height: 1.2;
+}
+
+.rent-trade-section-title {
+    margin-top: 16px;
+    margin-bottom: 8px;
+
+    font-size: 14px;
+    font-weight: 950;
+}
+
+.rent-trade-section-title.jeonse {
+    color: #2563eb;
+}
+
+.rent-trade-section-title.monthly {
+    color: #dc2626;
+}
+
+.rent-trade-row {
+    display: grid;
+    grid-template-columns: 1.1fr 0.7fr 1.8fr;
+    gap: 8px;
+    align-items: center;
+
+    padding: 11px 12px;
+    border-radius: 16px;
+
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(219,234,254,0.95);
+
+    box-shadow: 0 8px 18px rgba(15,23,42,0.05);
+}
+
+.rent-trade-floor {
+    font-size: 12px;
+    font-weight: 900;
+    color: #475569;
+    text-align: center;
+}
+
+.rent-trade-price {
+    font-size: 13px;
+    font-weight: 950;
+    text-align: right;
+    line-height: 1.3;
+}
+
+.rent-trade-price.blue {
+    color: #2563eb;
+}
+
+.rent-trade-price.red {
+    color: #dc2626;
+}
+
+.rent-ai-analysis {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.rent-ai-section {
+    padding: 14px;
+
+    border-radius: 18px;
+
+    background: rgba(255,255,255,0.85);
+
+    border: 1px solid rgba(219,234,254,0.9);
+}
+
+.rent-ai-label {
+    margin-bottom: 6px;
+
+    font-size: 13px;
+    font-weight: 900;
+
+    color: #2563eb;
+}
+
+.rent-ai-text {
+    font-size: 14px;
+    line-height: 1.7;
+
+    color: #334155;
+}
+
+/* ===== 전월세 시장 추세 카드 ===== */
+
+.rent-trend-card {
+    margin-top: 16px;
+    padding: 22px 20px;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(#ffffff,#f8fbff) padding-box,
+        linear-gradient(
+            135deg,
+            #bfdbfe,
+            #93c5fd,
+            #99f6e4
+        ) border-box;
+
+    border: 2px solid transparent;
+
+    box-shadow:
+        0 18px 42px rgba(15,23,42,0.10),
+        0 8px 18px rgba(37,99,235,0.08);
+}
+
+.rent-trend-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    margin-bottom: 18px;
+}
+
+.rent-trend-title {
+    font-size: 20px;
+    font-weight: 950;
+    color: #0f172a;
+}
+
+.rent-trend-sub {
+    margin-top: 4px;
+
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.rent-trend-chip {
+    padding: 8px 18px;
+    min-width: 95px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #2563eb;
+
+    font-size: 12px;
+    font-weight: 900;
+
+    white-space: nowrap;
+}
+
+.rent-trend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+
+    margin-bottom: 16px;
+}
+
+.rent-trend-item {
+    padding: 16px 10px;
+
+    text-align: center;
+
+    border-radius: 18px;
+
+    background: rgba(255,255,255,0.88);
+
+    border: 1px solid rgba(219,234,254,0.95);
+}
+
+.rent-trend-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
+
+    margin-bottom: 8px;
+}
+
+.rent-trend-value {
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.rent-trend-value.up {
+    color: #dc2626;
+}
+
+.rent-trend-value.down {
+    color: #2563eb;
+}
+
+.rent-trend-value.blue {
+    color: #2563eb;
+}
+
+.rent-trend-comment {
+    padding: 14px;
+
+    border-radius: 18px;
+
+    background: #f8fafc;
+
+    font-size: 14px;
+    line-height: 1.7;
+
+    color: #334155;
+}
+
+/* ===== 전월세 분석 기준 안내 카드 ===== */
+.rent-guide-card {
+    .rent-guide-card {
+
+    margin-top: 16px;
+    padding: 18px 18px;
+
+    border-radius: 24px;
+
+    background:
+        linear-gradient(#ffffff,#f8fbff) padding-box,
+        linear-gradient(
+            135deg,
+            #bfdbfe,
+            #93c5fd,
+            #99f6e4
+        ) border-box;
+
+    border: 2px solid transparent;
+
+    box-shadow:
+        0 18px 42px rgba(15,23,42,0.08),
+        0 8px 18px rgba(37,99,235,0.06);
+}
+
+.rent-guide-title {
+    font-size: 12px;
+    line-height: 1.8;
+    font-weight: 700;
+    color: #475569;
+}
+
+.rent-guide-text {
+    font-size: 12px;
+    line-height: 1.75;
+    font-weight: 650;
+    color: #64748b;
+    word-break: keep-all;
+}
+
+.rent-trend-subcount {
+    margin-top: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.rent-trend-item .rent-trend-value.blue {
+    font-size: 13px;
+}
+
+/* ===== 전월세 분석 기준 카드 ===== */
+
+.rent-guide-section {
+
+    margin-top: 12px;
+
+    padding: 14px;
+
+    border-radius: 18px;
+
+    background: rgba(255,255,255,0.85);
+
+    border: 1px solid rgba(219,234,254,0.9);
+}
+
+.rent-guide-label {
+
+    margin-bottom: 6px;
+
+    font-size: 12px;
+    font-weight: 900;
+
+    color: #2563eb;
+}
+
+.rent-guide-content {
+
+    font-size: 13px;
+    line-height: 1.7;
+
+    color: #475569;
+
+    word-break: keep-all;
+}
+
+/* ✅ 분석 버튼 + 미래예측 버튼 한 줄 고정 */
+.action-btn-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    align-items: stretch !important;  
+}
+
+.action-btn-row button {
+    height: 52px !important;
+    margin: 10px 0 8px 0 !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+}
+
+.main-action-btn {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+}
+
+.action-btn-row #analyzeBtn{
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+.future-action-btn {
+    flex: 0 0 104px !important;
+    width: 104px !important;
+    min-width: 104px !important;
+    font-size: 14px !important;
+    line-height: 1.15 !important;
+}
+
+.action-btn-row #futurePredictBtn {
+    flex: 0 0 110px !important;
+    width: 110px !important;
+    min-width: 110px !important;
+}
+
+#futurePredictBtn{
+    flex:0 0 110px;
+    width:120px;
+    min-width:120px;
+    flex-shrink:0;
+}
+
+.left-panel .action-btn-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    align-items: stretch !important;
+}
+
+.left-panel .action-btn-row > button {
+    margin: 10px 0 8px 0 !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    padding: 0 12px !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+}
+
+.left-panel .action-btn-row > #analyzeBtn {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    max-width: none !important;
+}
+
+.left-panel .action-btn-row > #futurePredictBtn {
+    flex: 0 0 118px !important;
+    width: 118px !important;
+    max-width: 118px !important;
+    min-width: 118px !important;
+    font-size: 14px !important;
+}
+
+.future-modal {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.55);
+    padding: 20px 10px;
+    box-sizing: border-box;
+}
+
+.future-report-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+    background: #f4f7fb;
+    border-radius: 22px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.future-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 38px !important;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: #0f172a;
+    color: white;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.future-report-page {
+    background: #f3f6fb;
+    padding: 14px;
+    border-radius: 18px;
+    box-sizing: border-box;
+}
+
+.future-hero-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 55%, #eef5ff 100%);
+    border: 1px solid #e3eaf5;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    color: #0f172a;
+}
+
+.future-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 26px;
+}
+
+.future-logo {
+    font-size: 18px;
+    font-weight: 900;
+    color: #0b3b91;
+}
+
+.future-logo span {
+    color: #0f172a;
+    font-weight: 800;
+}
+
+.future-date {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.future-hero-main {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-end;
+}
+
+.future-hero-text {
+    flex: 1;
+}
+
+.future-hero-text h2 {
+    margin: 0 0 10px 0;
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: #071a44;
+}
+
+.future-hero-text p {
+    margin: 0 0 22px 0;
+    font-size: 15px;
+    color: #475569;
+}
+
+.future-metric-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    max-width: 560px;
+}
+
+.future-metric-box {
+    background: rgba(255,255,255,0.78);
+    border: 1px solid #edf2fa;
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.06);
+}
+
+.future-metric-box span {
+    display: block;
+    font-size: 12px;
+    color: #334155;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.future-metric-box strong {
+    font-size: 24px;
+    color: #2563eb;
+    font-weight: 900;
+}
+
+.future-building-visual {
+    width: 150px;
+    height: 130px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #dbeafe, #eff6ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 72px;
 }
 </style>
 </head>
@@ -8179,7 +9434,7 @@ body {
             </div>
         </div>
     </div>
-        <div class="step-card step-card-03">
+        <div class="step-card step-card-03" id="conditionCard">
             <div class="step-title">
                 <div class="step-num">03</div>
 
@@ -8261,7 +9516,46 @@ body {
             </div>
             <div id="analysisProgressText" class="analysis-progress-text">0%</div>
         </div>
-        <button id="analyzeBtn" type="button" onclick="analyzePrice();">✨ 아파트 AI 분석하기</button>
+
+        
+        <div class="action-btn-row"
+            
+            style="display:flex; gap:10px; width:100%;">
+
+            <button id="analyzeBtn"
+                    type="button"
+                    onclick="analyzePrice();"
+                    style="flex:1; height:52px; margin:10px 0 8px 0; border-radius:12px; font-size:16px; font-weight:700; white-space:nowrap;">
+                ✨ 아파트 AI 분석하기
+            </button>
+
+            <button id="futurePredictBtn"
+                    type="button"
+                    onclick="openFuturePrediction();"
+                    style="
+                        flex:1;
+                        height:52px;
+                        margin:10px 0 8px 0;
+                        border-radius:12px;
+                        font-size:16px;
+                        font-weight:700;
+                        white-space:nowrap;
+                        background:#ffffff;
+                        color:#1f6feb;
+                        border:1px solid #1f6feb;
+
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+
+                        padding:0;
+                        line-height:1;
+                    ">
+                🔮 미래 예측
+            </button>
+
+        </div>
+        
         
     </div>
 
@@ -8469,25 +9763,54 @@ document.querySelectorAll(".top-tab").forEach(tab => {
         });
 
 
-        if (selectedPropertyType === "presale") {
-            document.getElementById("aptInput").placeholder = "🏢 분양권 단지 입력";
+        const conditionCard = document.getElementById("conditionCard");
+        const conditionSection = document.querySelector(".condition-section");
 
-            document.querySelector(".condition-section").style.display = "none";
-            document.getElementById("priceInputTitle").innerText = "예상 총 매입가 입력";
-            document.getElementById("userPriceInput").placeholder = "예: 85000 (단위: 만원)";
+        if (selectedPropertyType === "presale") {
+
+            document.getElementById("aptInput").placeholder =
+                "🏢 분양권 단지 입력";
+
+            if (conditionCard) conditionCard.style.display = "block";
+            if (conditionSection) conditionSection.style.display = "none";
+
+            document.getElementById("priceInputTitle").innerText =
+                "예상 총 매입가 입력";
+
+            document.getElementById("userPriceInput").placeholder =
+                "예: 85000 (단위: 만원)";
+
             document.getElementById("priceInputDesc").innerText =
                 "분양가 + 프리미엄 + 옵션 포함 기준으로 입력하세요";
-            
-        } else {
-            document.getElementById("aptInput").placeholder = "🏢 아파트 단지 입력";
 
-            document.querySelector(".condition-section").style.display = "block";
-            document.getElementById("priceInputTitle").innerText = "희망 매매가 입력";
-            document.getElementById("userPriceInput").placeholder = "예: 93000 (단위: 만원)";
+        } else if (selectedPropertyType === "rent") {
+
+            document.getElementById("aptInput").placeholder =
+                "🏢 전월세 단지 입력";
+
+            if (conditionCard) conditionCard.style.display = "none";
+            if (conditionSection) conditionSection.style.display = "none";
+
+        } else {
+
+            document.getElementById("aptInput").placeholder =
+                "🏢 아파트 단지 입력";
+
+            if (conditionCard) conditionCard.style.display = "block";
+            if (conditionSection) conditionSection.style.display = "block";
+
+            document.getElementById("priceInputTitle").innerText =
+                "희망 매매가 입력";
+
+            document.getElementById("userPriceInput").placeholder =
+                "예: 93000 (단위: 만원)";
+
             document.getElementById("priceInputDesc").innerText =
                 "AI가 현재 시세와 비교해 적정성을 분석합니다.";
-            
         }
+
+        
+
 
         if (selectedPropertyType === "presale") {
 
@@ -8605,6 +9928,96 @@ ${shareUrl}`;
     });
 }
 
+// ===============================
+// 🔮 미래예측 리포트 열기
+// ===============================
+function openFuturePrediction() {
+    console.log("🔮 미래예측 버튼 클릭");
+
+    const regionInput = document.getElementById("regionInput");
+    const region = regionInput ? regionInput.value.trim() : "";
+
+    if (!region) {
+        showToast("먼저 지역을 선택하세요.");
+
+        if (regionInput) {
+            regionInput.focus();
+        }
+
+        return;
+    }
+
+    const modal = document.getElementById("reportModal");
+    const resultBox = document.getElementById("modalResult");
+
+    if (!modal || !resultBox) {
+        alert("결과 모달 영역을 찾을 수 없습니다.");
+        return;
+    }
+
+    modal.style.display = "block";
+    resultBox.innerHTML = renderFuturePredictionReport();
+}
+
+function renderFuturePredictionReport() {
+    return `
+        <div style="background:#f3f6fb; padding:14px; border-radius:18px; box-sizing:border-box;">
+
+            <div style="background:linear-gradient(135deg,#ffffff 0%,#f8fbff 55%,#eef5ff 100%);
+                        border:1px solid #e3eaf5;
+                        border-radius:20px;
+                        padding:22px;
+                        box-shadow:0 10px 30px rgba(15,23,42,0.08);
+                        color:#0f172a;">
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:26px;">
+                    <div style="font-size:18px; font-weight:900; color:#0b3b91;">
+                        얼마일까? <span style="color:#0f172a;">AI 미래예측 리포트</span>
+                    </div>
+                    <div style="font-size:12px; color:#64748b;">
+                        분석일시 2025.05.24 14:30
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-end;">
+                    <div style="flex:1;">
+                        <h2 style="margin:0 0 10px 0; font-size:30px; font-weight:900; letter-spacing:-1px; color:#071a44;">
+                            의왕더샵캐슬
+                        </h2>
+
+                        <p style="margin:0 0 22px 0; font-size:15px; color:#475569;">
+                            경기도 의왕시 오전동 ㅣ 84㎡ ㅣ 33평형
+                        </p>
+
+                        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:560px;">
+                            <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; border-radius:14px; padding:14px;">
+                                <span style="display:block; font-size:12px; color:#334155; margin-bottom:8px; font-weight:700;">예상 시세(매매)</span>
+                                <strong style="font-size:24px; color:#2563eb; font-weight:900;">9.1억</strong>
+                            </div>
+
+                            <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; border-radius:14px; padding:14px;">
+                                <span style="display:block; font-size:12px; color:#334155; margin-bottom:8px; font-weight:700;">전세가</span>
+                                <strong style="font-size:24px; color:#2563eb; font-weight:900;">6.5억</strong>
+                            </div>
+
+                            <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; border-radius:14px; padding:14px;">
+                                <span style="display:block; font-size:12px; color:#334155; margin-bottom:8px; font-weight:700;">갭(Gap)</span>
+                                <strong style="font-size:24px; color:#2563eb; font-weight:900;">2.6억</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="width:150px; height:130px; border-radius:50%; background:linear-gradient(135deg,#dbeafe,#eff6ff);
+                                display:flex; align-items:center; justify-content:center; font-size:72px;">
+                        🏙️
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    `;
+}
 
 function openNaverRealEstate() {
     window.open("https://land.naver.com/", "_blank");
@@ -8798,8 +10211,8 @@ if (sidoSelect && sigunguSelect) {
                 if (sigunguList) {
                     const rect = sigunguSelect.getBoundingClientRect();
 
-                    sigunguList.style.left = rect.left + "px";
-                    sigunguList.style.top = (rect.bottom + 4) + "px";
+                    sigunguList.style.left = (rect.left + window.scrollX) + "px";
+                    sigunguList.style.top = (rect.bottom + window.scrollY + 4) + "px";
                     sigunguList.style.width = rect.width + "px";
 
                     sigunguList.style.display = "block";
@@ -9482,7 +10895,20 @@ function filterApts(list, keyword) {
 
             const region = document.getElementById("regionInput").value;
             const sizeSelect = document.getElementById("sizeSelect");
-            sizeSelect.innerHTML = '<option value="">🔍 평형 검색중...</option>';
+            const sizeList = document.getElementById("sizeList");
+
+            if (sizeList) {
+                sizeList.innerHTML = `
+                    <div class="item loading-text">
+                        🔍 검색중<span class="loading-dots"></span>
+                    </div>
+                `;
+                sizeList.style.display = "block";
+            }
+
+            if (sizeSelect) {
+                sizeSelect.innerHTML = '<option value="">🔍 검색중...</option>';
+            }
 
             fetch(
                 "/sizes?region=" +
@@ -9544,15 +10970,21 @@ function loadSizes() {
 
     if (sizeList) {
         sizeList.innerHTML = `
-            <div class="item loading-text">
-                🔍 면적 검색중<span class="loading-dots"></span>
+            <div style="
+                padding:30px;
+                text-align:center;
+                font-size:18px;
+                font-weight:bold;
+                color:red;
+            ">
+                🔥 면적 검색중...
             </div>
         `;
         sizeList.style.display = "block";
     }
 
     if (sizeSelect) {
-        sizeSelect.innerHTML = '<option value="">🔍 면적 검색중...</option>';
+        sizeSelect.innerHTML = '<option value="">🔍 검색중...</option>';
     }
 
     fetch(
@@ -9779,6 +11211,12 @@ function renderJeonseDepositChart(trades) {
 
 function analyzePrice() {
 
+    console.log("분석 타입:", selectedPropertyType);
+    console.log("지역:", document.getElementById("regionInput").value);
+    console.log("단지:", document.getElementById("aptInput").value);
+    console.log("면적:", document.getElementById("sizeInput").value);
+    console.log("가격:", document.getElementById("userPriceInput").value);
+
     const analyzeBtn = document.getElementById("analyzeBtn");
 
     if (analyzeBtn.disabled) {
@@ -9936,6 +11374,8 @@ function analyzePrice() {
         })
     
         .then(data => {
+            console.log("===== 분석 결과 =====");
+            console.log(data);
             if (data.결과 === "데이터 없음") {
                 showToast("해당 조건의 실거래 데이터가 없습니다.");
                 closeModal();
@@ -9951,6 +11391,39 @@ function analyzePrice() {
             try {
                 
                 lastResult = data;
+
+                // ✅ 전월세는 별도 리포트 함수로 분리
+                
+                if (selectedPropertyType === "rent") {
+                    renderRentReport(data);
+
+                    document.getElementById("futureBtnWrap").style.display = "block";
+
+                    // ✅ 분석 진행바 강제 종료
+                    document.querySelectorAll(
+                        "#analysisLoading, .analysis-loading-box, .analysis-progress-box, .loading-box"
+                    ).forEach(el => {
+                        el.style.display = "none";
+                    });
+
+                    document.querySelectorAll(
+                        "#analysisProgressFill, .analysis-progress-fill"
+                    ).forEach(el => {
+                        el.style.width = "100%";
+                    });
+
+                    document.querySelectorAll(
+                        "#analysisProgressText, .analysis-progress-text"
+                    ).forEach(el => {
+                        el.innerText = "100%";
+                    });
+
+                    analyzeBtn.disabled = false;
+                    analyzeBtn.innerText = "✨ 전월세 AI 분석하기";
+
+                    return;
+                }
+
                 if (data.결과) {
                     resultBox.innerHTML = data.결과;
                     analyzeBtn.disabled = false;
@@ -10200,45 +11673,7 @@ function analyzePrice() {
 
                 modalResult.innerHTML = `
 
-                ${
-                    selectedPropertyType === "presale"
-                        ? `
-                            ...
-                        `
-                        : selectedPropertyType === "rent"
-                            ? `
-                                <!-- ✅ 전월세 리포트 상단 카드 -->
-                                <div class="rent-header-card">
-
-                                    <div class="rent-header-top">
-                                        <div class="rent-apt-name">
-                                            ${data.아파트}
-                                        </div>
-
-                                        <div class="rent-type-chip">
-                                            전월세
-                                        </div>
-                                    </div>
-
-                                    <div class="rent-location">
-                                        📍 ${document.getElementById("regionInput").value}
-                                    </div>
-
-                                    <div class="rent-summary-line">
-                                        ${data.한줄결론 || "최근 전월세 거래 기준 분석입니다."}
-                                    </div>
-                                    <div class="rent-market-badge">
-                                        ${data.시장유형 || "전월세 시장"}
-                                    </div>
-                                    <div class="rent-level-badge">
-                                        시장 강도 · ${data.시장수준 || "거래 부족"}
-                                    </div>
-
-                                </div>
-                            `
-                            : ""
-                }
-
+                                
                     <div class="result-hero-card">
 
                         <div class="${selectedPropertyType === 'presale' ? 'hero-top-layout' : ''}">
@@ -10286,7 +11721,8 @@ function analyzePrice() {
                             </div>
 
                         </div>
-
+                    
+                    
                         ${
                             selectedPropertyType === "presale"
                                 ? `
@@ -10542,14 +11978,14 @@ function analyzePrice() {
                         <div class="rent-ai-card">
                             <div class="rent-ai-title">🤖 AI 전월세 해설</div>
                             <div class="rent-ai-text">
-                                ${data.AI설명 || "최근 전월세 거래 기준으로 임대 수준을 분석했습니다."}
+                                ${data.AI설명 || "최근 전월세 실거래 기준으로 임대 수준을 분석했습니다."}
                             </div>
                         </div>
                         <!-- ✅ 전월세 거래 구성 카드 -->
                         <div class="rent-summary-grid">
                             
                             <div class="rent-summary-card">
-                                <div class="rent-summary-label">전세 평균</div>
+                                <div class="rent-summary-label">전세 평균보증금</div>
                                 <div class="rent-summary-value">
                                     ${Number(data.평균전세보증금 || 0).toLocaleString()}만
                                 </div>
@@ -10557,7 +11993,7 @@ function analyzePrice() {
                             </div>
 
                             <div class="rent-summary-card">
-                                <div class="rent-summary-label">월세 보증금</div>
+                                <div class="rent-summary-label">월세 평균보증금</div>
                                 <div class="rent-summary-value">
                                     ${Number(data.평균월세보증금 || 0).toLocaleString()}만
                                 </div>
@@ -10569,7 +12005,7 @@ function analyzePrice() {
                                 <div class="rent-summary-value">
                                     ${Number(data.평균월세 || 0).toLocaleString()}만
                                 </div>
-                                <div class="rent-summary-count">월세 ${data.월세거래건수 || 0}건</div>
+                                <!-- <div class="rent-summary-count">월세 ${data.월세거래건수 || 0}건</div> -->
                             </div>
 
                         </div>
@@ -10872,6 +12308,516 @@ function analyzePrice() {
             document.getElementById("dongInput").disabled = false;
         });
                            
+}
+
+function renderRentReport(data) {
+
+    const modalResult = document.getElementById("modalResult");
+    const modal = document.getElementById("reportModal");
+
+    if (!modalResult || !modal) {
+        console.log("❌ 전월세 리포트 영역 없음");
+        return;
+    }
+
+    modalResult.className = "modal-body result-mid";
+
+    modalResult.innerHTML = `
+        <div class="rent-report-wrap">
+
+            <!-- ✅ 전월세 리포트 상단 카드 -->
+            <div class="rent-header-card">
+
+                <div class="rent-header-top">
+                    <div class="rent-apt-name">
+                        ${data.아파트}
+                        <span class="rent-size-badge">
+                            ${document.getElementById("sizeInput").value}
+                        </span>
+                    </div>
+
+                    <div class="rent-type-chip">
+                        RENT REPORT
+                    </div>
+                </div>
+
+                <div class="rent-location">
+                    📍 ${document.getElementById("regionInput").value}
+                    ${document.getElementById("dongInput").value}
+                </div>
+
+                <div class="rent-summary-line">
+                    ${data.한줄결론 || "최근 전월세 거래 기준 분석입니다."}
+                </div>
+
+                <div class="rent-info-grid">
+
+                    <div class="rent-info-item">
+                        <div class="rent-info-icon">🏘️</div>
+                        <div class="rent-info-label">시장 유형</div>
+                        <div class="rent-info-value">
+                            ${data.시장유형 || "전월세 시장"}
+                        </div>
+                    </div>
+
+                    <div class="rent-info-item">
+                        <div class="rent-info-icon">📊</div>
+                        <div class="rent-info-label">시장 강도</div>
+                        <div class="rent-info-value">
+                            ${data.시장수준 || "거래 부족"}
+                        </div>
+                    </div>
+
+                    <div class="rent-info-item">
+                        <div class="rent-info-icon">🛡️</div>
+                        <div class="rent-info-label">분석 기준</div>
+                        <div class="rent-info-value">
+                            최근 거래
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ✅ 전월세 시세 요약 카드 -->
+            <div class="rent-price-summary-card">
+
+                <div class="rent-price-summary-head">
+                    <div>
+                        <div class="rent-price-summary-title">💰 전월세 시세 요약</div>
+                        <div class="rent-price-summary-sub">최근 실거래 기준 평균값입니다</div>
+                    </div>
+
+                    <div class="rent-price-status">
+                        ${data.시장수준 || "거래 부족"}
+                    </div>
+                </div>
+
+                <div class="rent-price-kpi-grid">
+
+                    <div class="rent-price-kpi">
+                        <div class="rent-price-icon">💎</div>
+                        <div class="rent-price-label">전세 평균</div>
+                        <div class="rent-price-value">
+                            ${Number(data.평균전세보증금 || 0).toLocaleString()}만
+                        </div>
+                        <div class="rent-price-count">
+                            전세 ${data.전세거래건수 || 0}건
+                        </div>
+                    </div>
+
+                    <div class="rent-price-kpi">
+                        <div class="rent-price-icon">🏠</div>
+                        <div class="rent-price-label">월세 보증금</div>
+                        <div class="rent-price-value">
+                            ${Number(data.평균월세보증금 || 0).toLocaleString()}만
+                        </div>
+                        <div class="rent-price-count">
+                            월세 ${data.월세거래건수 || 0}건
+                        </div>
+                    </div>
+
+                    <div class="rent-price-kpi">
+                        <div class="rent-price-icon">💵</div>
+                        <div class="rent-price-label">평균 월세</div>
+                        <div class="rent-price-value">
+                            ${Number(data.평균월세 || 0).toLocaleString()}만
+                        </div>
+                        <div class="rent-price-count">
+                            월세 기준
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ✅ 전월세 최근 거래내역 카드 -->
+            <div class="rent-trade-card">
+
+                <div class="rent-trade-title">
+                    📋 최근 전월세 거래내역
+                </div>
+
+                <div class="rent-trade-sub">
+                    최근 전세 5건 · 월세 5건 기준입니다
+                </div>
+
+                <div class="rent-trade-section-title jeonse">
+                    🔵 최근 전세 5건
+                </div>
+
+                <div class="rent-trade-list">
+                    ${
+                        (data.최근전세5건 || []).length > 0
+                            ? (data.최근전세5건 || []).slice(0, 5).map(t => `
+                                <div class="rent-trade-row">
+                                    <div class="rent-trade-date">
+                                        ${t.date || t.계약일 || t.contract_date || "-"}
+                                    </div>
+
+                                    <div class="rent-trade-floor">
+                                        ${t.floor || t.층 || "-"}층
+                                    </div>
+
+                                    <div class="rent-trade-price blue">
+                                        ${Number(t.deposit || t.보증금 || t.price || 0).toLocaleString()}만
+                                    </div>
+                                </div>
+                            `).join("")
+                            : `
+                                <div class="rent-empty-trade">
+                                    최근 전세 거래가 없습니다.
+                                </div>
+                            `
+                    }
+                </div>
+
+                <div class="rent-trade-section-title monthly">
+                    🔴 최근 월세 5건
+                </div>
+
+                <div class="rent-trade-list">
+                    ${
+                        (data.최근월세5건 || [])
+                            .filter(t => Number(t.monthly_rent || 0) > 0)
+                            .slice(0, 5)
+                            ? (data.최근월세5건 || [])
+                                .slice(0, 5)
+                                .map(t => `
+                                    <div class="rent-trade-row">
+                                        <div class="rent-trade-date">
+                                            ${t.date || t.계약일 || t.contract_date || "-"}
+                                        </div>
+
+                                        <div class="rent-trade-floor">
+                                            ${t.floor || t.층 || "-"}층
+                                        </div>
+
+                                        <div class="rent-trade-price red">
+                                            ${Number(t.deposit || 0).toLocaleString()}만 /
+                                            ${Number(t.monthly_rent || 0).toLocaleString()}만
+                                        </div>
+                                    </div>
+                                `).join("")
+                            : `
+                                <div class="rent-empty-trade">
+                                    최근 월세 거래가 없습니다.
+                                </div>
+                            `
+                    }
+                </div>
+
+            </div>
+
+            <!-- ✅ 전월세 월별 거래량 그래프 카드 -->
+            <div class="rent-volume-chart-card">
+
+                <div class="rent-volume-chart-head">
+                    <div>
+                        <div class="rent-volume-chart-title-row">
+
+                        <div class="rent-volume-chart-title">
+                            📈 월별 전월세 거래량
+                        </div>
+
+                        <div class="rent-volume-legend">
+                            <span class="legend-item">
+                                <i class="legend-color legend-blue"></i>
+                                전세
+                            </span>
+
+                            <span class="legend-item">
+                                <i class="legend-color legend-red"></i>
+                                월세
+                            </span>
+                        </div>
+
+                    </div>
+                        <div class="rent-volume-chart-sub">1년간 월별 거래 흐름입니다</div>
+                    </div>
+                </div>
+
+                <div id="rentMonthlyVolumeChart" class="rent-volume-chart-box">
+                    그래프 준비중...
+                </div>
+                <div id="rentMonthlyVolumeSummary" class="rent-volume-summary">
+                </div>
+
+            </div>
+
+            <!-- ✅ 전월세 AI 총평 카드 -->
+            <div class="rent-ai-card">
+
+                <div class="rent-ai-title">
+                    🤖 AI 전월세 분석
+                </div>
+
+                <div class="rent-ai-analysis">
+
+                    <div class="rent-ai-section">
+                        <div class="rent-ai-label">시장 진단</div>
+                        <div class="rent-ai-text">
+                            ${data.시장유형 || "전월세 시장"} ·
+                            ${data.시장수준 || "보통"} 수준으로 분석됩니다.
+                        </div>
+                    </div>
+
+                    <div class="rent-ai-section">
+                        <div class="rent-ai-label">수요 분석</div>
+                        <div class="rent-ai-text">
+                            전세 ${data.전세거래건수 || 0}건,
+                            월세 ${data.월세거래건수 || 0}건이 확인되며
+                            최근 임차 수요가 유지되고 있습니다.
+                        </div>
+                    </div>
+
+                    <div class="rent-ai-section">
+                        <div class="rent-ai-label">종합 의견</div>
+                        <div class="rent-ai-text">
+                            ${data.AI설명 || "최근 거래를 기준으로 안정적인 전월세 시장으로 판단됩니다."}
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ✅ 전월세 시장 추세 카드 -->
+            <div class="rent-trend-card">
+
+                <div class="rent-trend-head">
+                    <div>
+                        <div class="rent-trend-title">📊 전세 시장 추세</div>
+                        <div class="rent-trend-sub">
+                            ${data.전세추세기준 || "최근 3개월 평균 vs 이전 3개월 평균"} 기준입니다
+                        </div>
+                    </div>
+
+                    <div class="rent-trend-chip">
+                        신뢰도 :${data.전세신뢰도 || "보통"}
+                        
+                    </div>
+                </div>
+
+                <div class="rent-trend-grid">
+
+                    <div class="rent-trend-item">
+                        <div class="rent-trend-label">전세 상승률</div>
+                        <div class="rent-trend-value ${Number(data.전세상승률 || 0) >= 0 ? "up" : "down"}">
+                            ${
+                                data.전세상승률 === null || data.전세상승률 === undefined
+                                    ? "산정 불가"
+                                    : Number(data.전세상승률).toFixed(1) + "%"
+                            }
+                        </div>
+                    </div>
+
+                    <div class="rent-trend-item">
+                        <div class="rent-trend-label">전세 최근/이전</div>
+                        <div class="rent-trend-value blue">
+                            ${data.최근3개월전세건수 || 0}건 / ${data.이전3개월전세건수 || 0}건
+                        </div>
+                    </div>
+
+                    <div class="rent-trend-item">
+                        <div class="rent-trend-label">거래활성도</div>
+                        <div class="rent-trend-value blue">
+                            ${data.거래활성도 || "데이터 부족"}
+                        </div>
+                        
+                    </div>
+
+                </div>
+
+                <div class="rent-trend-comment">
+                    ${
+                        data.전세상승률 === null || data.전세상승률 === undefined
+                            ? "전세 상승률은 최근 거래가 부족하여 산정하지 않았습니다."
+
+                            : Number(data.전세상승률) > 0
+                                ? `최근 3개월 평균 전세보증금은 이전 3개월 대비 ${Number(data.전세상승률).toFixed(1)}% 상승했습니다.`
+
+                                : Number(data.전세상승률) < 0
+                                    ? `최근 3개월 평균 전세보증금은 이전 3개월 대비 ${Math.abs(Number(data.전세상승률)).toFixed(1)}% 하락했습니다.`
+
+                                    : "최근 3개월 평균 전세보증금은 이전 3개월과 유사한 수준입니다."
+                    }
+                </div>
+
+            </div>
+
+            <!-- ✅ 전월세 분석 기준 안내 -->
+            
+            <div class="rent-guide-card">
+
+                <div class="rent-guide-title">
+                    ℹ️ 분석 기준 안내
+                </div>
+
+                <div class="rent-guide-section">
+
+                    <div class="rent-guide-label">
+                        데이터 출처
+                    </div>
+
+                    <div class="rent-guide-content">
+                        국토교통부 실거래가 공개시스템 기반 최근 거래 데이터를 활용합니다.
+                    </div>
+
+                </div>
+
+                <div class="rent-guide-section">
+
+                    <div class="rent-guide-label">
+                        전세 · 월세 구분
+                    </div>
+
+                    <div class="rent-guide-content">
+                        월세금액이 0원이면 전세, 0원보다 크면 월세로 구분합니다.
+                    </div>
+
+                </div>
+
+                <div class="rent-guide-section">
+
+                    <div class="rent-guide-label">
+                        전세 추세 계산
+                    </div>
+
+                    <div class="rent-guide-content">
+                        ${data.전세추세기준 || "최근 3개월 평균 vs 이전 3개월 평균"} 기준으로 계산합니다.
+                    </div>
+
+                </div>
+
+                <div class="rent-guide-section">
+
+                    <div class="rent-guide-label">
+                        유의사항
+                    </div>
+
+                    <div class="rent-guide-content">
+                        거래건수가 적은 경우 평균값과 추세 해석의 신뢰도가 낮아질 수 있습니다.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+        </div>
+    `;
+
+    renderRentMonthlyVolumeChart(data.전월세월별거래량 || []);
+
+    modal.style.display = "flex";
+}
+
+function renderRentMonthlyVolumeChart(monthlyData) {
+
+    const chart = document.getElementById("rentMonthlyVolumeChart");
+
+    if (!chart) return;
+
+    if (!monthlyData || monthlyData.length === 0) {
+        chart.innerHTML = `
+            <div class="rent-chart-empty">
+                표시할 월별 거래량 데이터가 없습니다.
+            </div>
+        `;
+        return;
+    }
+
+    const data = monthlyData.slice(-12);
+
+    const maxCount = Math.max(
+        ...data.map(item =>
+            Math.max(
+                Number(item.jeonse || item.전세 || item.jeonse_count || item.전세건수 || 0),
+                Number(item.monthly || item.월세 || item.monthly_count || item.월세건수 || 0)
+            )
+        ),
+        1
+    );
+
+    chart.innerHTML = data.map(item => {
+
+        const month = item.month || item.월 || item.계약월 || "";
+        const jeonseCount = Number(item.jeonse || item.전세 || item.jeonse_count || item.전세건수 || 0);
+        const monthlyCount = Number(item.monthly || item.월세 || item.monthly_count || item.월세건수 || 0);
+
+        const jeonseHeight = Math.max((jeonseCount / maxCount) * 100, jeonseCount > 0 ? 6 : 0);
+        const monthlyHeight = Math.max((monthlyCount / maxCount) * 100, monthlyCount > 0 ? 6 : 0);
+
+        return `
+            <div class="rent-volume-bar-wrap">
+
+                <div class="rent-volume-bar-area dual">
+
+                    <div class="rent-volume-bar-group">
+                        <div class="rent-volume-count blue">
+                            ${jeonseCount}
+                        </div>
+                        <div
+                            class="rent-volume-bar jeonse"
+                            style="height:${jeonseHeight}%"
+                        ></div>
+                    </div>
+
+                    <div class="rent-volume-bar-group">
+                        <div class="rent-volume-count red">
+                            ${monthlyCount}
+                        </div>
+                        <div
+                            class="rent-volume-bar monthly"
+                            style="height:${monthlyHeight}%"
+                        ></div>
+                    </div>
+
+                </div>
+
+                <div class="rent-volume-month">
+                    ${String(month).slice(5) || month}
+                </div>
+
+            </div>
+        `;
+    }).join("");
+
+    const summary = document.getElementById("rentMonthlyVolumeSummary");
+
+    if (summary) {
+        const totalJeonse = data.reduce((sum, item) => {
+            return sum + Number(item.jeonse || item.전세 || item.jeonse_count || item.전세건수 || 0);
+        }, 0);
+
+        const totalMonthly = data.reduce((sum, item) => {
+            return sum + Number(item.monthly || item.월세 || item.monthly_count || item.월세건수 || 0);
+        }, 0);
+
+        summary.innerHTML = `
+            <div class="rent-volume-summary-item blue">
+                <div class="summary-circle">↗</div>
+                <div>
+                    <div class="rent-summary-label">전세 거래량 합계</div>
+                    <div class="rent-summary-value">${totalJeonse}건</div>
+                </div>
+            </div>
+
+            <div class="rent-volume-summary-item red">
+                <div class="summary-circle">↗</div>
+                <div>
+                    <div class="rent-summary-label">월세 거래량 합계</div>
+                    <div class="rent-summary-value">${totalMonthly}건</div>
+                </div>
+            </div>
+        `;
+    }
+
+
 }
 
 function closeModal() {
@@ -11559,6 +13505,14 @@ window.addEventListener("scroll", () => {
 function closeAppInfo() {
     document.getElementById("appInfoModal").style.display = "none";
 }
+
+function closeFuturePredictionModal() {
+    const modal = document.getElementById("futurePredictionModal");
+    if (modal) {
+        modal.style.display = "none";
+    }
+}
+
 </script>
 
 <div id="toastMessage" class="toast-message"></div>
@@ -11762,6 +13716,8 @@ function closeAppInfo() {
     </div>
 
 </div>
+
+
 
 </body>
 </html>

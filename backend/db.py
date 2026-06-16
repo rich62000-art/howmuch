@@ -473,7 +473,7 @@ def get_presale_trades(apt_name, size):
     
     """, (
         apt_name,
-        int(size)
+        float(size)
     ))
 
     rows = cur.fetchall()

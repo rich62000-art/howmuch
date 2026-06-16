@@ -256,34 +256,63 @@ def analyze_rent_engine(region, apt_name, size):
         reverse=True
     )[:5]
 
+    # ✅ 최근 월세 5건
+    recent_monthly_trades = sorted(
+        monthly_items,
+        key=lambda x: x["date"],
+        reverse=True
+    )[:5]
+
     # ✅ 전세 상승률 계산
-    # 최근 전세 3건 평균 VS 이전 전세 3건 평균 기준
+    # 최근 3개월 전세 평균 VS 이전 3개월 전세 평균 기준
+    # 거래일(date)을 기준으로 시간 구간을 나눠 계산한다.
+    from datetime import datetime, timedelta
+
     all_jeonse_trades = sorted(
         [x for x in items if x["monthly_rent"] == 0],
         key=lambda x: x["date"],
         reverse=True
     )
 
-    recent_3_jeonse = all_jeonse_trades[:3]
-    previous_3_jeonse = all_jeonse_trades[3:6]
+    today = datetime.today().date()
+    recent_start = today - timedelta(days=90)
+    previous_start = today - timedelta(days=180)
 
-    if len(all_jeonse_trades) >= 6 and len(previous_3_jeonse) == 3:
+    recent_3m_jeonse = []
+    previous_3m_jeonse = []
+
+    for x in all_jeonse_trades:
+        try:
+            trade_date = x["date"]
+
+            if isinstance(trade_date, str):
+                trade_date = datetime.strptime(trade_date[:10], "%Y-%m-%d").date()
+
+            if trade_date >= recent_start:
+                recent_3m_jeonse.append(x)
+            elif previous_start <= trade_date < recent_start:
+                previous_3m_jeonse.append(x)
+
+        except Exception:
+            continue
+
+    if len(recent_3m_jeonse) >= 2 and len(previous_3m_jeonse) >= 2:
         recent_avg_jeonse = round(
-            sum(x["deposit"] for x in recent_3_jeonse) / 3
+            sum(x["deposit"] for x in recent_3m_jeonse) / len(recent_3m_jeonse)
         )
 
         previous_avg_jeonse = round(
-            sum(x["deposit"] for x in previous_3_jeonse) / 3
+            sum(x["deposit"] for x in previous_3m_jeonse) / len(previous_3m_jeonse)
         )
 
         jeonse_change_rate = round(
             ((recent_avg_jeonse - previous_avg_jeonse) / previous_avg_jeonse) * 100,
             1
-        ) if previous_avg_jeonse else 0
+        ) if previous_avg_jeonse else None
 
         jeonse_trend_reliability = "높음"
 
-    elif len(all_jeonse_trades) >= 4:
+    elif len(recent_3m_jeonse) >= 1 and len(previous_3m_jeonse) >= 1:
         jeonse_change_rate = None
         jeonse_trend_reliability = "보통"
 
@@ -294,6 +323,10 @@ def analyze_rent_engine(region, apt_name, size):
     else:
         jeonse_change_rate = None
         jeonse_trend_reliability = "산정 불가"
+
+    jeonse_trend_basis = "최근 3개월 평균 vs 이전 3개월 평균"
+    jeonse_recent_3m_count = len(recent_3m_jeonse)
+    jeonse_previous_3m_count = len(previous_3m_jeonse)
 
     # ✅ 월세 평균 보증금
     # 월세 거래는 보증금 + 월세 구조이므로,
@@ -309,25 +342,18 @@ def analyze_rent_engine(region, apt_name, size):
         sum(item["monthly_rent"] for item in monthly_items) / len(monthly_items)
     ) if monthly_items else 0
 
-    # ✅ 시장 수준 판단
-    if len(jeonse_items) >= 3:
+    # ✅ 거래 활성도 판단
+    # 최근 12개월 전월세 거래건수를 기준으로 시장 활동성을 판단한다.
+    total_rent_trade_count = len(items)
 
-        deposits = [x["deposit"] for x in jeonse_items]
-
-        high = max(deposits)
-        low = min(deposits)
-
-        gap_ratio = ((high - low) / low) * 100 if low else 0
-
-        if gap_ratio >= 30:
-            rent_level = "높음 🔴"
-        elif gap_ratio >= 15:
-            rent_level = "보통 🟡"
-        else:
-            rent_level = "안정 🟢"
-
+    if total_rent_trade_count >= 20:
+        rent_activity_level = "활발 🟢"
+    elif total_rent_trade_count >= 10:
+        rent_activity_level = "보통 🟡"
+    elif total_rent_trade_count >= 5:
+        rent_activity_level = "적음 🔴"
     else:
-        rent_level = "데이터 부족 ⚪"
+        rent_activity_level = "데이터 부족 ⚪"
 
     # ✅ 전월세 거래 구성에 따른 한줄 결론
     if len(jeonse_items) > 0 and len(monthly_items) == 0:
@@ -350,7 +376,7 @@ def analyze_rent_engine(region, apt_name, size):
         rent_market_type = "월세 중심"
 
     else:
-        rent_market_type = "혼합 시장"
+        rent_market_type = "혼합 시장"   
 
     # ✅ 최근 12개월 전월세 거래량 집계
     # contract_date 앞 7자리(YYYY-MM)를 기준으로 월별 거래건수를 계산한다.
@@ -380,6 +406,29 @@ def analyze_rent_engine(region, apt_name, size):
     rent_monthly_volume = list(rent_monthly_volume_map.values())
     rent_monthly_volume = sorted(rent_monthly_volume, key=lambda x: x["month"])[-12:]
 
+    # ✅ 신뢰도 있는 AI 설명 생성
+    total_trade_count = len(items)
+    jeonse_count = len(jeonse_items)
+    monthly_count = len(monthly_items)
+
+    if jeonse_change_rate is None:
+        trend_text = "전세 상승률은 거래 분포가 부족해 산정하지 않았습니다."
+    else:
+        if jeonse_change_rate > 0:
+            trend_text = f"최근 3개월 평균 전세보증금은 이전 3개월 대비 {jeonse_change_rate}% 상승했습니다."
+        elif jeonse_change_rate < 0:
+            trend_text = f"최근 3개월 평균 전세보증금은 이전 3개월 대비 {abs(jeonse_change_rate)}% 하락했습니다."
+        else:
+            trend_text = "최근 3개월 평균 전세보증금은 이전 3개월과 유사한 수준입니다."
+
+    rent_ai_comment = (
+        f"최근 전월세 거래는 총 {total_trade_count}건이며, "
+        f"전세 {jeonse_count}건, 월세 {monthly_count}건으로 구성되어 있습니다. "
+        f"시장 유형은 {rent_market_type}이며, 거래 활성도는 {rent_activity_level} 수준입니다. "
+        f"{trend_text} "
+        f"본 판단은 {jeonse_trend_basis}과 최근 거래량을 함께 고려한 참고 분석입니다."
+    )
+
     result = {
         "유형": "전월세",
         "아파트": apt_name,
@@ -392,14 +441,19 @@ def analyze_rent_engine(region, apt_name, size):
         "평균월세": avg_monthly_rent,
         "최근거래5건": items[:5],
         "시장유형": rent_market_type,
-        "시장수준": rent_level,
+        "시장수준": rent_activity_level,
+        "거래활성도": rent_activity_level,
         "최근전세5건": recent_jeonse_trades,
+        "최근월세5건": recent_monthly_trades,
         "전월세월별거래량": rent_monthly_volume,
         "전세상승률": jeonse_change_rate,
         "전세신뢰도": jeonse_trend_reliability,
         "전세분석거래건수": len(all_jeonse_trades),
-        "한줄결론": "최근 전월세 거래를 기준으로 임대 수준을 분석했습니다.",
-        "AI설명": "전세 보증금과 월세 부담 수준을 최근 거래 기준으로 참고 판단합니다."
+        "전세추세기준": jeonse_trend_basis,
+        "최근3개월전세건수": jeonse_recent_3m_count,
+        "이전3개월전세건수": jeonse_previous_3m_count,
+        "한줄결론": rent_conclusion,
+        "AI설명": rent_ai_comment,
     }
 
     return result
