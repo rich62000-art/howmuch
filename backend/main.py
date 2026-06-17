@@ -22,7 +22,7 @@ from db import (
     get_analysis_cache_from_db, save_analysis_cache_to_db,
 
     get_rent_dongs_from_db, get_rent_apts_from_db,
-    get_rent_sizes_from_db, get_rent_trades
+    get_rent_sizes_from_db, get_rent_trades, get_pg_connection
 )
 from fastapi.staticfiles import StaticFiles
 from difflib import SequenceMatcher
@@ -1742,6 +1742,127 @@ def analyze_price(
         save_analysis_cache_to_db(cache_key, result)
 
     return result
+
+
+# 🔥 미래 예측 조회
+
+@app.get("/future_prediction")
+def future_prediction(
+    region: str,
+    apt_name: str,
+    size: str = ""
+):
+    try:
+        parts = region.split()
+
+        if len(parts) >= 2:
+            db_region = parts[0]
+            db_sigungu = " ".join(parts[1:])
+        else:
+            db_region = region
+            db_sigungu = ""
+
+        sizes = get_sizes_from_db(
+            db_region,
+            db_sigungu,
+            apt_name
+        )
+
+        # ✅ 입력한 면적과 같은 정수부를 가진 DB 면적 찾기
+        matched_size = None
+
+        for s in sizes:
+            if int(float(s)) == int(float(str(size).replace("㎡", "").strip())):
+                matched_size = s
+                break
+
+        if matched_size is None:
+            return {
+                "지역": region,
+                "동": "",
+                "단지명": apt_name,
+                "면적": size,
+                "결과": "면적 매칭 실패",
+                "DB면적목록": sizes,
+                "AI총평": "입력한 면적과 일치하는 DB 면적을 찾지 못했습니다."
+            }
+
+        # ✅ 매칭된 실제 면적으로 거래 조회
+        db_rows = get_apt_sale_trades(apt_name, matched_size)
+        items = db_rows_to_items(db_rows)
+
+        trades = []
+
+        for item in items:
+            if is_same_apartment_name(apt_name, item["apt_name"]):
+                trades.append({
+                    "price": item["price"],
+                    "date": item["date"],
+                    "size": item["size"],
+                    "dong": item.get("dong", "")
+                })
+
+        if not trades:
+            return {
+                "지역": region,
+                "동": "",
+                "단지명": apt_name,
+                "면적": f"{matched_size}㎡",
+                "결과": "데이터 없음",
+                "거래추세": "데이터 부족",
+                "거래상승률": 0,
+                "최근6개월평균": 0,
+                "이전6개월평균": 0,
+                "AI총평": "최근 매매 거래 데이터가 부족해 미래예측을 산정하지 않았습니다."
+            }
+
+        trades.sort(key=lambda x: x["date"], reverse=True)
+
+        recent_6_prices = [t["price"] for t in trades[:6] if t.get("price")]
+        prev_6_prices = [t["price"] for t in trades[6:12] if t.get("price")]
+
+        recent_avg = round(sum(recent_6_prices) / len(recent_6_prices)) if recent_6_prices else 0
+        prev_avg = round(sum(prev_6_prices) / len(prev_6_prices)) if prev_6_prices else 0
+
+        if recent_avg > 0 and prev_avg > 0:
+            rise_rate = round(((recent_avg - prev_avg) / prev_avg) * 100, 1)
+        else:
+            rise_rate = 0
+
+        if rise_rate > 1:
+            trend = "상승"
+        elif rise_rate < -1:
+            trend = "하락"
+        else:
+            trend = "보합"
+
+        return {
+            "지역": region,
+            "동": trades[0].get("dong", "") if trades else "",
+            "단지명": apt_name,
+            "면적": f"{matched_size}㎡",
+
+            "거래추세": trend,
+            "거래상승률": rise_rate,
+            "최근6개월평균": recent_avg,
+            "이전6개월평균": prev_avg,
+
+            "예상매매가": "계산중",
+            "전세가": "계산중",
+            "갭차이": "계산중",
+            "전세가율": 0,
+            "거래활성도": "계산중",
+            "최근3개월거래량": 0,
+            "전망점수": 0,
+            "전망결론": "계산중",
+            "AI총평": "최근 매매 거래 흐름을 기준으로 미래예측을 준비중입니다."
+        }
+
+    except Exception as e:
+        print("❌ future_prediction error:", e)
+        return {
+            "오류": str(e)
+        }
 
 # 🔥 평형 조회
 @app.get("/sizes")

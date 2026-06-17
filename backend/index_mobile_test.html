@@ -9954,10 +9954,30 @@ function openFuturePrediction() {
     }
 
     modal.style.display = "block";
-    resultBox.innerHTML = renderFuturePredictionReport();
+
+    resultBox.innerHTML = `
+        <div style="padding:30px; text-align:center; font-weight:800;">
+            🔮 미래예측 리포트를 불러오는 중입니다...
+        </div>
+    `;
+
+    fetch(
+        "/future_prediction?region=" + encodeURIComponent(region)
+        + "&apt_name=" + encodeURIComponent(document.getElementById("aptInput").value.trim())
+        + "&size=" + encodeURIComponent(document.getElementById("sizeInput").value.trim())
+    )
+    .then(res => res.json())
+    .then(data => {
+        console.log("🔮 미래예측 데이터:", data);
+        resultBox.innerHTML = renderFuturePredictionReport(data);
+    })
+    .catch(err => {
+        console.error("미래예측 오류:", err);
+        showToast("미래예측 데이터를 불러오지 못했습니다.");
+    });
 }
 
-function renderFuturePredictionReport() {
+function renderFuturePredictionReport(data) {
     return `
         
         <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:20px;
@@ -9965,10 +9985,10 @@ function renderFuturePredictionReport() {
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <div style="font-size:14px; font-weight:900; color:#0b3b91; letter-spacing:-0.5px; line-height:1.25;">
-                    얼마일까? <span style="color:#0f172a;">AI 미래 분석 리포트</span>
+                    AI , <span style="color:#0f172a;">미래 분석 리포트</span>
                 </div>
                 <div style="font-size:11px; color:#64748b;">
-                    분석일시 2025.05.24 14:30
+                    분석일시 2025.05.24 
                 </div>
             </div>
 
@@ -9976,20 +9996,37 @@ function renderFuturePredictionReport() {
                 <div style="flex:1; text-align:left;">
 
                     <!-- 단지명 + 아이콘 -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:8px; 
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:3px; 
                         ">
 
                         <div style="flex:1; min-width:0;">
 
-                            <h2 style="margin:0 0 3px 0; font-size:26px; font-weight:900; letter-spacing:-1.4px; line-height:1.15; 
-                                color:#071a44; text-align:left;
+                            <h2 style="
+                                margin:0 0 3px 0;
+                                font-size:20px;
+                                font-weight:900;
+                                letter-spacing:-1.4px;
+                                line-height:1.15;
+                                color:#071a44;
+                                text-align:left;
                             ">
-                                의왕더샵캐슬
+                                ${data.단지명 || "-"}
+
+                                <span style="
+                                    font-size:15px;
+                                    font-weight:700;
+                                    color:#64748b;
+                                    margin-left:6px;
+                                    vertical-align:middle;
+                                ">
+                                    ${data.면적 || "-"}
+                                </span>
+
                             </h2>
 
-                            <p style="margin:0; font-size:12px; color:#475569; line-height:1.5;
+                            <p style="margin:5; font-size:12px; color:#475569; line-height:1.5;
                             ">
-                                경기도 의왕시 오전동 ㅣ 84㎡
+                                ${data.지역 || "-"} ${data.동 || ""} 
                             </p>
 
                         </div>
@@ -10095,12 +10132,12 @@ function renderFuturePredictionReport() {
 
                     <div style="font-size:18px; font-weight:900; color:#ef4444;
                         line-height:1.1; margin-bottom:4px;">
-                        상승 ↗
+                        ${data.거래추세 || "데이터 부족"} ↗
                     </div>
 
                     <div style="font-size:20px; font-weight:900; color:#ef4444;
                         line-height:1.1; margin-bottom:16px;">
-                        +8.6%
+                        ${data.거래상승률 || 0}%
                     </div>
 
                     <div style="font-size:11px; color:#64748b; margin-bottom:3px;">
@@ -10108,7 +10145,7 @@ function renderFuturePredictionReport() {
                     </div>
 
                     <div style="font-size:16px; font-weight:900; color:#0f172a; margin-bottom:10px;">
-                        20.8억
+                        ${formatEok(data.최근6개월평균)}
                     </div>
 
                     <div style="font-size:11px; color:#64748b; margin-bottom:3px;">
@@ -10600,7 +10637,7 @@ function renderFuturePredictionReport() {
                     color:#2563eb;
                     line-height:1;
                 ">
-                    82
+                    ${data.전망점수 || 0}
                 </div>
 
                 <div style="
@@ -14168,6 +14205,14 @@ function closeFuturePredictionModal() {
     if (modal) {
         modal.style.display = "none";
     }
+}
+
+function formatEok(price) {
+    const n = Number(price || 0);
+
+    if (!n) return "-";
+
+    return (n / 10000).toFixed(1) + "억";
 }
 
 </script>
