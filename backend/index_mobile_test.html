@@ -7430,9 +7430,7 @@ body {
     font-size: 12px !important;
     line-height: 1.25 !important;
 }
-.result-hero-card {
-    border: 2px solid #fecdd3 !important;
-}
+
 .result-hero-card {
     border: 2px solid #fecdd3 !important;
 
@@ -9551,7 +9549,7 @@ body {
                         padding:0;
                         line-height:1;
                     ">
-                🔮 미래 예측
+                🔮 AI 미래 분석
             </button>
 
         </div>
@@ -9961,61 +9959,720 @@ function openFuturePrediction() {
 
 function renderFuturePredictionReport() {
     return `
-        <div style="background:#f3f6fb; padding:14px; border-radius:18px; box-sizing:border-box;">
+        
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:20px;
+            padding:22px; box-shadow:0 6px 16px rgba(15,23,42,0.06); color:#0f172a; ">
 
-            <div style="background:linear-gradient(135deg,#ffffff 0%,#f8fbff 55%,#eef5ff 100%);
-                        border:1px solid #e3eaf5;
-                        border-radius:20px;
-                        padding:22px;
-                        box-shadow:0 10px 30px rgba(15,23,42,0.08);
-                        color:#0f172a;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div style="font-size:14px; font-weight:900; color:#0b3b91; letter-spacing:-0.5px; line-height:1.25;">
+                    얼마일까? <span style="color:#0f172a;">AI 미래 분석 리포트</span>
+                </div>
+                <div style="font-size:11px; color:#64748b;">
+                    분석일시 2025.05.24 14:30
+                </div>
+            </div>
 
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:26px;">
-                    <div style="font-size:18px; font-weight:900; color:#0b3b91;">
-                        얼마일까? <span style="color:#0f172a;">AI 미래예측 리포트</span>
+            <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-end;">
+                <div style="flex:1; text-align:left;">
+
+                    <!-- 단지명 + 아이콘 -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:8px; 
+                        ">
+
+                        <div style="flex:1; min-width:0;">
+
+                            <h2 style="margin:0 0 3px 0; font-size:26px; font-weight:900; letter-spacing:-1.4px; line-height:1.15; 
+                                color:#071a44; text-align:left;
+                            ">
+                                의왕더샵캐슬
+                            </h2>
+
+                            <p style="margin:0; font-size:12px; color:#475569; line-height:1.5;
+                            ">
+                                경기도 의왕시 오전동 ㅣ 84㎡
+                            </p>
+
+                        </div>
+
+                        <div style="width:130px; height:130px; display:flex; align-items:center; justify-content:center;
+                            flex-shrink:0;
+                        ">
+
+                            <img src="/static/apartment_icon.png"
+                                alt="아파트"
+                                style="width:120px; height:120px; object-fit:contain;
+                                ">
+
+                        </div>
+
                     </div>
-                    <div style="font-size:12px; color:#64748b;">
-                        분석일시 2025.05.24 14:30
+
+                    <!-- KPI 카드 3개 -->
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px;
+                        max-width:560px;
+                    ">
+
+                        <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa;
+                            border-radius:14px; padding:14px;
+                        ">
+                            <span style="display:block; font-size:12px; color:#334155;
+                                margin-bottom:8px; font-weight:700;
+                            ">
+                                예상 매매가
+                            </span>
+
+                            <strong style="font-size:24px; color:#2563eb; font-weight:900;
+                            ">
+                                9.1억
+                            </strong>
+                        </div>
+
+                        <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; 
+                            border-radius:14px; padding:14px;
+                        ">
+                            <span style="display:block; font-size:12px; color:#334155;
+                                margin-bottom:8px; font-weight:700;
+                            ">
+                                전세가
+                            </span>
+
+                            <strong style="font-size:24px; color:#2563eb; font-weight:900;">
+                                6.5억
+                            </strong>
+                        </div>
+
+                        <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; border-radius:14px;
+                            padding:14px;
+                        ">
+                            <span style="display:block; font-size:12px; color:#334155;
+                                margin-bottom:8px; font-weight:700;
+                            ">
+                                갭(Gap)
+                            </span>
+
+                            <strong style="font-size:24px; color:#2563eb; font-weight:900;">
+                                2.6억
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 두번째 카드 -->
+        <!-- 1. 거래추세 카드 -->
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:18px;
+            padding:18px; margin-top:14px; box-shadow:0 6px 16px rgba(15,23,42,0.05);">
+
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                <div style="width:34px; height:34px; border-radius:50%; background:#eef4ff;
+                    display:flex; align-items:center; justify-content:center;
+                    color:#2563eb; font-size:17px; font-weight:900;">
+                    ↗
+                </div>
+
+                <div>
+                    <div style="font-size:16px; font-weight:900;
+                        color:#0f172a; line-height:1.2;">
+                        거래추세
+                    </div>
+                    <div style="font-size:11px; color:#64748b;
+                        margin-top:3px;">
+                        최근 6개월 평균 vs 이전 6개월 평균
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:14px; align-items:center;
+                margin-top:14px;">
+
+                <!-- 좌측 요약 -->
+                <div style="width:112px; flex-shrink:0; background:#f8fafc;
+                    border-radius:16px; padding:14px 12px; box-sizing:border-box;">
+
+                    <div style="font-size:18px; font-weight:900; color:#ef4444;
+                        line-height:1.1; margin-bottom:4px;">
+                        상승 ↗
+                    </div>
+
+                    <div style="font-size:20px; font-weight:900; color:#ef4444;
+                        line-height:1.1; margin-bottom:16px;">
+                        +8.6%
+                    </div>
+
+                    <div style="font-size:11px; color:#64748b; margin-bottom:3px;">
+                        최근 6개월 평균
+                    </div>
+
+                    <div style="font-size:16px; font-weight:900; color:#0f172a; margin-bottom:10px;">
+                        20.8억
+                    </div>
+
+                    <div style="font-size:11px; color:#64748b; margin-bottom:3px;">
+                        이전 6개월 평균
+                    </div>
+
+                    <div style="font-size:16px; font-weight:900; color:#0f172a;">
+                        19.2억
+                    </div>
+
+                </div>
+
+                <!-- 우측 SVG 그래프 -->
+                <div style="flex:1; min-width:0; height:190px; background:#ffffff;
+                    border-radius:14px; padding:4px 0 0 0;">
+
+                    <svg viewBox="0 0 360 190" width="100%" height="190" preserveAspectRatio="none">
+
+                        <!-- grid -->
+                        <line x1="42" y1="28" x2="340" y2="28" stroke="#e5e7eb" stroke-width="1"/>
+                        <line x1="42" y1="70" x2="340" y2="70" stroke="#e5e7eb" stroke-width="1"/>
+                        <line x1="42" y1="112" x2="340" y2="112" stroke="#e5e7eb" stroke-width="1"/>
+                        <line x1="42" y1="154" x2="340" y2="154" stroke="#e5e7eb" stroke-width="1"/>
+
+                        <!-- y labels -->
+                        <text x="8" y="32" font-size="10" fill="#64748b">23억</text>
+                        <text x="8" y="74" font-size="10" fill="#64748b">21억</text>
+                        <text x="8" y="116" font-size="10" fill="#64748b">19억</text>
+                        <text x="8" y="158" font-size="10" fill="#64748b">17억</text>
+
+                        <!-- legend -->
+                        <line x1="155" y1="20" x2="178" y2="20" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+                        <text x="184" y="23" font-size="10" fill="#2563eb">최근 6개월</text>
+
+                        <line x1="250" y1="20" x2="273" y2="20" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+                        <text x="279" y="23" font-size="10" fill="#64748b">이전 6개월</text>
+
+                        <!-- previous line -->
+                        <polyline
+                            points="52,142 82,140 112,132 142,120 172,124 202,112 232,118 262,114 292,100 322,94"
+                            fill="none"
+                            stroke="#94a3b8"
+                            stroke-width="3"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+
+                        <!-- current line -->
+                        <polyline
+                            points="52,112 82,106 112,96 142,92 172,80 202,88 232,72 262,66 292,54 322,60"
+                            fill="none"
+                            stroke="#2563eb"
+                            stroke-width="3.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+
+                        <!-- dots current -->
+                        <circle cx="52" cy="112" r="3" fill="#2563eb"/>
+                        <circle cx="82" cy="106" r="3" fill="#2563eb"/>
+                        <circle cx="112" cy="96" r="3" fill="#2563eb"/>
+                        <circle cx="142" cy="92" r="3" fill="#2563eb"/>
+                        <circle cx="172" cy="80" r="3" fill="#2563eb"/>
+                        <circle cx="202" cy="88" r="3" fill="#2563eb"/>
+                        <circle cx="232" cy="72" r="3" fill="#2563eb"/>
+                        <circle cx="262" cy="66" r="3" fill="#2563eb"/>
+                        <circle cx="292" cy="54" r="3" fill="#2563eb"/>
+                        <circle cx="322" cy="60" r="3" fill="#2563eb"/>
+
+                        <!-- x labels -->
+                        <text x="48" y="184" font-size="10" fill="#64748b">24.05</text>
+                        <text x="116" y="184" font-size="10" fill="#64748b">24.08</text>
+                        <text x="184" y="184" font-size="10" fill="#64748b">24.11</text>
+                        <text x="252" y="184" font-size="10" fill="#64748b">25.02</text>
+                        <text x="315" y="184" font-size="10" fill="#64748b">25.05</text>
+
+                    </svg>
+
+                </div>
+
+            </div>
+
+        </div>
+        
+        <!-- 3. 거래활성도 카드 -->
+        <div style="
+            background:#ffffff;
+            border:1px solid #e2e8f0;
+            border-radius:18px;
+            padding:18px;
+            margin-top:14px;
+            box-shadow:0 6px 16px rgba(15,23,42,0.05);
+        ">
+
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:10px;
+                margin-bottom:14px;
+            ">
+                <div style="
+                    width:34px;
+                    height:34px;
+                    border-radius:50%;
+                    background:#eef4ff;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    color:#2563eb;
+                    font-size:16px;
+                    font-weight:900;
+                ">
+                    3
+                </div>
+
+                <div>
+                    <div style="
+                        font-size:18px;
+                        font-weight:900;
+                        color:#0f172a;
+                    ">
+                        거래활성도
+                    </div>
+                    <div style="
+                        font-size:11px;
+                        color:#64748b;
+                        margin-top:3px;
+                    ">
+                        최근 3개월 거래량 기준
+                    </div>
+                </div>
+            </div>
+
+            <div style="
+                display:flex;
+                gap:14px;
+                align-items:center;
+            ">
+
+                <!-- 좌측 요약 -->
+                <div style="
+                    width:112px;
+                    flex-shrink:0;
+                    background:#f8fafc;
+                    border-radius:16px;
+                    padding:14px 12px;
+                    box-sizing:border-box;
+                ">
+
+                    <div style="
+                        font-size:26px;
+                        font-weight:900;
+                        color:#2563eb;
+                        line-height:1.15;
+                        margin-bottom:10px;
+                    ">
+                        활발
+                    </div>
+
+                    <div style="
+                        display:flex;
+                        gap:4px;
+                        margin-bottom:16px;
+                    ">
+                        <div style="width:13px; height:18px; background:#2563eb; border-radius:4px;"></div>
+                        <div style="width:13px; height:18px; background:#3b82f6; border-radius:4px;"></div>
+                        <div style="width:13px; height:18px; background:#60a5fa; border-radius:4px;"></div>
+                        <div style="width:13px; height:18px; background:#93c5fd; border-radius:4px;"></div>
+                        <div style="width:13px; height:18px; background:#bfdbfe; border-radius:4px;"></div>
+                    </div>
+
+                    <div style="
+                        font-size:11px;
+                        color:#64748b;
+                        margin-bottom:3px;
+                    ">
+                        최근 3개월 거래량
+                    </div>
+
+                    <div style="
+                        font-size:22px;
+                        font-weight:900;
+                        color:#0f172a;
+                    ">
+                        28건
+                    </div>
+
+                </div>
+
+                <!-- 우측 막대 그래프 -->
+                <div style="
+                    flex:1;
+                    min-width:0;
+                    height:180px;
+                    background:#ffffff;
+                    border-radius:14px;
+                ">
+
+                    <svg viewBox="0 0 360 180" width="100%" height="180" preserveAspectRatio="none">
+
+                        <!-- grid -->
+                        <line x1="42" y1="35" x2="340" y2="35" stroke="#e5e7eb" stroke-width="1"/>
+                        <line x1="42" y1="75" x2="340" y2="75" stroke="#e5e7eb" stroke-width="1"/>
+                        <line x1="42" y1="115" x2="340" y2="115" stroke="#e5e7eb" stroke-width="1"/>
+                        <line x1="42" y1="155" x2="340" y2="155" stroke="#e5e7eb" stroke-width="1"/>
+
+                        <!-- y labels -->
+                        <text x="18" y="39" font-size="10" fill="#64748b">30</text>
+                        <text x="18" y="79" font-size="10" fill="#64748b">20</text>
+                        <text x="18" y="119" font-size="10" fill="#64748b">10</text>
+                        <text x="24" y="159" font-size="10" fill="#64748b">0</text>
+
+                        <!-- bars -->
+                        <rect x="78" y="85" width="42" height="70" rx="6" fill="#93c5fd"/>
+                        <rect x="158" y="63" width="42" height="92" rx="6" fill="#60a5fa"/>
+                        <rect x="238" y="43" width="42" height="112" rx="6" fill="#3b82f6"/>
+
+                        <!-- values -->
+                        <text x="84" y="78" font-size="12" fill="#0f172a" font-weight="800">18건</text>
+                        <text x="164" y="56" font-size="12" fill="#0f172a" font-weight="800">24건</text>
+                        <text x="244" y="36" font-size="12" fill="#2563eb" font-weight="900">28건</text>
+
+                        <!-- x labels -->
+                        <text x="86" y="174" font-size="11" fill="#64748b">3월</text>
+                        <text x="166" y="174" font-size="11" fill="#64748b">4월</text>
+                        <text x="246" y="174" font-size="11" fill="#64748b">5월</text>
+
+                    </svg>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- 4. AI 전망 총평 카드 -->
+        <div style="
+            background:#ffffff;
+            border:1px solid #e2e8f0;
+            border-radius:18px;
+            padding:18px;
+            margin-top:14px;
+            box-shadow:0 6px 16px rgba(15,23,42,0.05);
+        ">
+
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:10px;
+                margin-bottom:16px;
+            ">
+                <div style="
+                    width:34px;
+                    height:34px;
+                    border-radius:50%;
+                    background:#f3efff;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    color:#7c3aed;
+                    font-size:16px;
+                    font-weight:900;
+                ">
+                    4
+                </div>
+
+                <div style="
+                    font-size:18px;
+                    font-weight:900;
+                    color:#0f172a;
+                ">
+                    AI 전망 총평
+                </div>
+            </div>
+
+            <div style="
+                background:linear-gradient(135deg,#f8fafc 0%,#ffffff 100%);
+                border-radius:16px;
+                padding:20px 18px;
+                position:relative;
+                overflow:hidden;
+            ">
+
+                <div style="
+                    position:absolute;
+                    top:12px;
+                    left:16px;
+                    font-size:42px;
+                    color:#dbeafe;
+                    font-weight:900;
+                    line-height:1;
+                ">
+                    “
+                </div>
+
+                <div style="
+                    position:relative;
+                    z-index:1;
+                    font-size:15px;
+                    line-height:1.75;
+                    color:#0f172a;
+                    font-weight:700;
+                    padding-left:8px;
+                    padding-right:72px;
+                ">
+                    거래량 증가와 전세가 상승이 동반되고 있어<br>
+                    향후 가격 상승 가능성이 높습니다.<br>
+                    단기 조정 가능성은 있으나,<br>
+                    중장기적 관점에서는 긍정적입니다.
+                </div>
+
+                <div style="
+                    position:absolute;
+                    right:14px;
+                    bottom:10px;
+                    width:62px;
+                    height:62px;
+                    border-radius:50%;
+                    background:#eef4ff;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:34px;
+                ">
+                    🧠
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- 5. 미래예측 요약 카드 -->
+        <div style="
+            background:#ffffff;
+            border:1px solid #e2e8f0;
+            border-radius:18px;
+            padding:18px;
+            margin-top:14px;
+            box-shadow:0 6px 16px rgba(15,23,42,0.05);
+        ">
+
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:10px;
+                margin-bottom:16px;
+            ">
+                <div style="
+                    width:34px;
+                    height:34px;
+                    border-radius:50%;
+                    background:#ecfdf5;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    color:#16a34a;
+                    font-size:16px;
+                    font-weight:900;
+                ">
+                    5
+                </div>
+
+                <div style="
+                    font-size:18px;
+                    font-weight:900;
+                    color:#0f172a;
+                ">
+                    미래예측 요약
+                </div>
+            </div>
+
+            <div style="
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:12px;
+            ">
+
+                <!-- 상승 요인 -->
+                <div style="
+                    background:#f0fdf4;
+                    border:1px solid #bbf7d0;
+                    border-radius:16px;
+                    padding:16px;
+                ">
+                    <div style="
+                        font-size:14px;
+                        font-weight:900;
+                        color:#15803d;
+                        margin-bottom:12px;
+                    ">
+                        상승 요인 3개
+                    </div>
+
+                    <div style="font-size:13px; color:#166534; line-height:1.7; font-weight:700;">
+                        ✅ 거래추세 상승<br>
+                        ✅ 전세가율 안정<br>
+                        ✅ 거래량 증가
                     </div>
                 </div>
 
-                <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-end;">
-                    <div style="flex:1;">
-                        <h2 style="margin:0 0 10px 0; font-size:30px; font-weight:900; letter-spacing:-1px; color:#071a44;">
-                            의왕더샵캐슬
-                        </h2>
-
-                        <p style="margin:0 0 22px 0; font-size:15px; color:#475569;">
-                            경기도 의왕시 오전동 ㅣ 84㎡ ㅣ 33평형
-                        </p>
-
-                        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:560px;">
-                            <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; border-radius:14px; padding:14px;">
-                                <span style="display:block; font-size:12px; color:#334155; margin-bottom:8px; font-weight:700;">예상 시세(매매)</span>
-                                <strong style="font-size:24px; color:#2563eb; font-weight:900;">9.1억</strong>
-                            </div>
-
-                            <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; border-radius:14px; padding:14px;">
-                                <span style="display:block; font-size:12px; color:#334155; margin-bottom:8px; font-weight:700;">전세가</span>
-                                <strong style="font-size:24px; color:#2563eb; font-weight:900;">6.5억</strong>
-                            </div>
-
-                            <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; border-radius:14px; padding:14px;">
-                                <span style="display:block; font-size:12px; color:#334155; margin-bottom:8px; font-weight:700;">갭(Gap)</span>
-                                <strong style="font-size:24px; color:#2563eb; font-weight:900;">2.6억</strong>
-                            </div>
-                        </div>
+                <!-- 하락 요인 -->
+                <div style="
+                    background:#fff7ed;
+                    border:1px solid #fed7aa;
+                    border-radius:16px;
+                    padding:16px;
+                ">
+                    <div style="
+                        font-size:14px;
+                        font-weight:900;
+                        color:#c2410c;
+                        margin-bottom:12px;
+                    ">
+                        주의 요인 1개
                     </div>
 
-                    <div style="width:150px; height:130px; border-radius:50%; background:linear-gradient(135deg,#dbeafe,#eff6ff);
-                                display:flex; align-items:center; justify-content:center; font-size:72px;">
-                        🏙️
+                    <div style="font-size:13px; color:#9a3412; line-height:1.7; font-weight:700;">
+                        ⚠ 단기 가격 부담<br>
+                        ⚠ 고점 매수 주의<br>
+                        ⚠ 실거래 추가 확인
                     </div>
                 </div>
 
             </div>
 
         </div>
+
+
+        <!-- 6. 종합 전망점수 카드 -->
+        <div style="
+            background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
+            border:2px solid #bfdbfe;
+            border-radius:22px;
+            padding:24px 20px;
+            margin-top:14px;
+            box-shadow:0 10px 24px rgba(37,99,235,0.08);
+        ">
+
+            <!-- 타이틀 -->
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:10px;
+                margin-bottom:18px;
+            ">
+                <div style="
+                    width:38px;
+                    height:38px;
+                    border-radius:50%;
+                    background:#2563eb;
+                    color:#ffffff;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:18px;
+                    font-weight:900;
+                ">
+                    6
+                </div>
+
+                <div>
+                    <div style="
+                        font-size:20px;
+                        font-weight:900;
+                        color:#0f172a;
+                    ">
+                        종합 전망점수
+                    </div>
+
+                    <div style="
+                        font-size:12px;
+                        color:#64748b;
+                        margin-top:2px;
+                    ">
+                        미래예측 최종 결론
+                    </div>
+                </div>
+            </div>
+
+            <!-- 점수 -->
+            <div style="
+                text-align:center;
+                margin-bottom:20px;
+            ">
+
+                <div style="
+                    font-size:68px;
+                    font-weight:900;
+                    color:#2563eb;
+                    line-height:1;
+                ">
+                    82
+                </div>
+
+                <div style="
+                    font-size:16px;
+                    font-weight:700;
+                    color:#475569;
+                    margin-top:6px;
+                ">
+                    / 100점
+                </div>
+
+            </div>
+
+            <!-- 게이지 -->
+            <div style="
+                width:100%;
+                height:14px;
+                background:#e2e8f0;
+                border-radius:999px;
+                overflow:hidden;
+                margin-bottom:20px;
+            ">
+                <div style="
+                    width:82%;
+                    height:100%;
+                    background:linear-gradient(90deg,#2563eb,#60a5fa);
+                    border-radius:999px;
+                ">
+                </div>
+            </div>
+
+            <!-- 전망 -->
+            <div style="
+                text-align:center;
+                margin-bottom:18px;
+            ">
+
+                <div style="
+                    display:inline-block;
+                    background:#dbeafe;
+                    color:#1d4ed8;
+                    padding:8px 16px;
+                    border-radius:999px;
+                    font-size:15px;
+                    font-weight:900;
+                ">
+                    📈 상승 전망
+                </div>
+
+            </div>
+
+            <!-- 요약 -->
+            <div style="
+                background:#ffffff;
+                border-radius:14px;
+                padding:14px;
+                border:1px solid #e5e7eb;
+                text-align:center;
+                font-size:14px;
+                line-height:1.7;
+                color:#334155;
+                font-weight:700;
+            ">
+                거래추세 상승, 전세가율 안정,
+                거래활성도가 양호한 수준입니다.<br>
+
+                향후 6개월 동안
+                상승 가능성이 상대적으로 높습니다.
+            </div>
+
+        </div>
+
     `;
 }
 
@@ -12519,7 +13176,7 @@ function renderRentReport(data) {
                         <div class="rent-volume-chart-title-row">
 
                         <div class="rent-volume-chart-title">
-                            📈 월별 전월세 거래량
+                            📈 전월세 거래량
                         </div>
 
                         <div class="rent-volume-legend">
