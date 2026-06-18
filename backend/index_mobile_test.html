@@ -9985,6 +9985,116 @@ function formatEok(price) {
     return (n / 10000).toFixed(1) + "억";
 }
 
+function renderFutureTrendSvg(data) {
+    const recent = Array.isArray(data.거래그래프) ? data.거래그래프 : [];
+    const previous = Array.isArray(data.이전거래그래프) ? data.이전거래그래프 : [];
+
+    const recentPrices = recent.map(x => Number(x.price || x || 0)).filter(x => x > 0);
+    const prevPrices = previous.map(x => Number(x.price || x || 0)).filter(x => x > 0);
+    const allPrices = [...recentPrices, ...prevPrices];
+
+    if (recentPrices.length < 2) {
+        return `
+            <div style="height:190px; display:flex; align-items:center; justify-content:center;
+                color:#94a3b8; font-size:13px; font-weight:700;">
+                그래프 표시 데이터 부족
+            </div>
+        `;
+    }
+
+    const maxPrice = Math.max(...allPrices);
+    const minPrice = Math.min(...allPrices);
+    const padding = Math.max((maxPrice - minPrice) * 0.15, 1000);
+
+    const chartMax = maxPrice + padding;
+    const chartMin = Math.max(0, minPrice - padding);
+
+    const xStart = 48;
+    const xEnd = 330;
+    const yTop = 18;
+    const yBottom = 105;
+
+    function getX(i, len) {
+        if (len <= 1) return xStart;
+        return xStart + ((xEnd - xStart) / (len - 1)) * i;
+    }
+
+    function getY(price) {
+        return yBottom - ((price - chartMin) / (chartMax - chartMin)) * (yBottom - yTop);
+    }
+
+    function makePoints(arr) {
+        return arr.map((price, i) => `${getX(i, arr.length)},${getY(price)}`).join(" ");
+    }
+
+    function makeDots(arr, color) {
+        return arr.map((price, i) => `
+            <circle cx="${getX(i, arr.length)}" cy="${getY(price)}" r="3.5" fill="${color}" />
+        `).join("");
+    }
+
+    function yLabel(value) {
+        return (value / 10000).toFixed(1) + "억";
+    }
+
+    const y1 = chartMax;
+    const y2 = chartMin + (chartMax - chartMin) * 0.66;
+    const y3 = chartMin + (chartMax - chartMin) * 0.33;
+    const y4 = chartMin;
+
+    const labels = recent.map(x => {
+        const m = String(x.month || "");
+
+        return m.length >= 7
+            ? m.slice(2, 7).replace("-", ".")
+            : "";
+    });
+
+    return `
+         <svg viewBox="0 0 360 135" width="100%" height="125" preserveAspectRatio="none">
+
+            <line x1="42" y1="18" x2="340" y2="18" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="42" y1="47" x2="340" y2="47" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="42" y1="76" x2="340" y2="76" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="42" y1="105" x2="340" y2="105" stroke="#e5e7eb" stroke-width="1"/>
+
+            <text x="6" y="22" font-size="9" fill="#64748b">${yLabel(y1)}</text>
+            <text x="6" y="51" font-size="9" fill="#64748b">${yLabel(y2)}</text>
+            <text x="6" y="80" font-size="9" fill="#64748b">${yLabel(y3)}</text>
+            <text x="6" y="109" font-size="9" fill="#64748b">${yLabel(y4)}</text>
+
+            ${prevPrices.length >= 2 ? `
+                <polyline
+                    points="${makePoints(prevPrices)}"
+                    fill="none"
+                    stroke="#94a3b8"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    opacity="0.75"
+                />
+            ` : ""}
+
+            <polyline
+                points="${makePoints(recentPrices)}"
+                fill="none"
+                stroke="#2563eb"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            />
+
+            ${makeDots(recentPrices, "#2563eb")}
+
+            ${labels.map((label, i) => {
+                if (!label) return "";
+                return `<text x="${getX(i, labels.length) - 12}" y="128" font-size="9" fill="#64748b">${label}</text>`;
+            }).join("")}
+
+        </svg>
+    `;
+}
+
 
 function renderFuturePredictionReport(data) {
     return `
@@ -10167,71 +10277,28 @@ function renderFuturePredictionReport(data) {
 
                 </div>
 
+              
                 <!-- 우측 SVG 그래프 -->
-                <div style="flex:1; min-width:0; height:190px; background:#ffffff;
-                    border-radius:14px; padding:4px 0 0 0;">
+                <div style="flex:1; min-width:0; height:145px; background:#ffffff;
+                    border-radius:14px; padding:4px 8px 0 8px; box-sizing:border-box;
+                    align-self:flex-start; margin-top:-6px;">
 
-                    <svg viewBox="0 0 360 190" width="100%" height="190" preserveAspectRatio="none">
+                    <!-- 그래프 범례 -->
+                    <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px;
+                        margin-bottom:0px; font-size:8px; font-weight:800; color:#64748b;">
 
-                        <!-- grid -->
-                        <line x1="42" y1="28" x2="340" y2="28" stroke="#e5e7eb" stroke-width="1"/>
-                        <line x1="42" y1="70" x2="340" y2="70" stroke="#e5e7eb" stroke-width="1"/>
-                        <line x1="42" y1="112" x2="340" y2="112" stroke="#e5e7eb" stroke-width="1"/>
-                        <line x1="42" y1="154" x2="340" y2="154" stroke="#e5e7eb" stroke-width="1"/>
+                        <span style="display:flex; align-items:center; gap:4px;">
+                            <i style="width:16px; height:3px; border-radius:999px; background:#2563eb; display:inline-block;"></i>
+                            최근 6개월
+                        </span>
 
-                        <!-- y labels -->
-                        <text x="8" y="32" font-size="10" fill="#64748b">23억</text>
-                        <text x="8" y="74" font-size="10" fill="#64748b">21억</text>
-                        <text x="8" y="116" font-size="10" fill="#64748b">19억</text>
-                        <text x="8" y="158" font-size="10" fill="#64748b">17억</text>
+                        <span style="display:flex; align-items:center; gap:4px;">
+                            <i style="width:16px; height:3px; border-radius:999px; background:#94a3b8; display:inline-block;"></i>
+                            이전 6개월
+                        </span>
+                    </div>
 
-                        <!-- legend -->
-                        <line x1="155" y1="20" x2="178" y2="20" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
-                        <text x="184" y="23" font-size="11" fill="#2563eb">최근 6개월</text>
-
-                        <line x1="250" y1="20" x2="273" y2="20" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
-                        <text x="279" y="23" font-size="11" fill="#64748b">이전 6개월</text>
-
-                        <!-- previous line -->
-                        <polyline
-                            points="52,142 82,140 112,132 142,120 172,124 202,112 232,118 262,114 292,100 322,94"
-                            fill="none"
-                            stroke="#94a3b8"
-                            stroke-width="3"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-
-                        <!-- current line -->
-                        <polyline
-                            points="52,112 82,106 112,96 142,92 172,80 202,88 232,72 262,66 292,54 322,60"
-                            fill="none"
-                            stroke="#2563eb"
-                            stroke-width="3.5"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-
-                        <!-- dots current -->
-                        <circle cx="52" cy="112" r="3" fill="#2563eb"/>
-                        <circle cx="82" cy="106" r="3" fill="#2563eb"/>
-                        <circle cx="112" cy="96" r="3" fill="#2563eb"/>
-                        <circle cx="142" cy="92" r="3" fill="#2563eb"/>
-                        <circle cx="172" cy="80" r="3" fill="#2563eb"/>
-                        <circle cx="202" cy="88" r="3" fill="#2563eb"/>
-                        <circle cx="232" cy="72" r="3" fill="#2563eb"/>
-                        <circle cx="262" cy="66" r="3" fill="#2563eb"/>
-                        <circle cx="292" cy="54" r="3" fill="#2563eb"/>
-                        <circle cx="322" cy="60" r="3" fill="#2563eb"/>
-
-                        <!-- x labels -->
-                        <text x="48" y="184" font-size="10" fill="#64748b">24.05</text>
-                        <text x="116" y="184" font-size="10" fill="#64748b">24.08</text>
-                        <text x="184" y="184" font-size="10" fill="#64748b">24.11</text>
-                        <text x="252" y="184" font-size="10" fill="#64748b">25.02</text>
-                        <text x="315" y="184" font-size="10" fill="#64748b">25.05</text>
-
-                    </svg>
+                    ${renderFutureTrendSvg(data)}
 
                 </div>
 

@@ -1820,9 +1820,94 @@ def future_prediction(
 
         trades.sort(key=lambda x: x["date"], reverse=True)
 
-        recent_6_prices = [t["price"] for t in trades[:6] if t.get("price")]
-        trend_chart = list(reversed(recent_6_prices))
-        prev_6_prices = [t["price"] for t in trades[6:12] if t.get("price")]
+        from collections import defaultdict
+
+        # 월별 평균가 계산
+        monthly_price_map = defaultdict(list)
+
+        for t in trades:
+
+            if not t.get("price"):
+                continue
+
+            month = str(t["date"])[:7]
+
+            monthly_price_map[month].append(
+                int(t["price"])
+            )
+
+        # 월 정렬
+        all_months = sorted(monthly_price_map.keys())
+
+        # 최근 6개월
+        trend_chart = []
+
+        for month in all_months[-6:]:
+
+            prices = monthly_price_map[month]
+
+            trend_chart.append({
+                "month": month,
+                "price": round(sum(prices) / len(prices))
+            })
+
+        # 이전 6개월
+        prev_trend_chart = []
+
+        for month in all_months[-12:-6]:
+
+            prices = monthly_price_map[month]
+
+            prev_trend_chart.append({
+                "month": month,
+                "price": round(sum(prices) / len(prices))
+            })
+
+        # 평균 계산용
+        from collections import defaultdict
+
+        # ✅ 최근 6건이 아니라, 월별 평균가 기준으로 거래추세 계산
+        monthly_price_map = defaultdict(list)
+
+        for t in trades:
+            if not t.get("price"):
+                continue
+
+            month = str(t.get("date", ""))[:7]
+
+            if not month:
+                continue
+
+            monthly_price_map[month].append(int(t["price"]))
+
+        all_months = sorted(monthly_price_map.keys())
+
+        # ✅ 최근 6개월 월평균
+        trend_chart = []
+
+        for month in all_months[-6:]:
+            prices = monthly_price_map[month]
+
+            trend_chart.append({
+                "month": month,
+                "price": round(sum(prices) / len(prices)),
+                "count": len(prices)
+            })
+
+        # ✅ 이전 6개월 월평균
+        prev_trend_chart = []
+
+        for month in all_months[-12:-6]:
+            prices = monthly_price_map[month]
+
+            prev_trend_chart.append({
+                "month": month,
+                "price": round(sum(prices) / len(prices)),
+                "count": len(prices)
+            })
+
+        recent_6_prices = [x["price"] for x in trend_chart]
+        prev_6_prices = [x["price"] for x in prev_trend_chart]
 
         recent_avg = round(sum(recent_6_prices) / len(recent_6_prices)) if recent_6_prices else 0
         prev_avg = round(sum(prev_6_prices) / len(prev_6_prices)) if prev_6_prices else 0
@@ -1852,6 +1937,7 @@ def future_prediction(
             "이전6개월평균": prev_avg,
             "거래건수": len(trades),
             "거래그래프": trend_chart,
+            "이전거래그래프": prev_trend_chart,
 
             "예상매매가": "계산중",
             "전세가": "계산중",
