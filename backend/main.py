@@ -1769,10 +1769,11 @@ def future_prediction(
         )
 
         # ✅ 입력한 면적과 같은 정수부를 가진 DB 면적 찾기
+        input_size = str(size).replace("㎡", "").strip()
         matched_size = None
 
         for s in sizes:
-            if int(float(s)) == int(float(str(size).replace("㎡", "").strip())):
+            if str(s).strip() == input_size:
                 matched_size = s
                 break
 
@@ -1807,7 +1808,8 @@ def future_prediction(
                 "지역": region,
                 "동": "",
                 "단지명": apt_name,
-                "면적": f"{matched_size}㎡",
+                "면적": size,
+                "매칭면적": matched_size,
                 "결과": "데이터 없음",
                 "거래추세": "데이터 부족",
                 "거래상승률": 0,
@@ -1819,6 +1821,7 @@ def future_prediction(
         trades.sort(key=lambda x: x["date"], reverse=True)
 
         recent_6_prices = [t["price"] for t in trades[:6] if t.get("price")]
+        trend_chart = list(reversed(recent_6_prices))
         prev_6_prices = [t["price"] for t in trades[6:12] if t.get("price")]
 
         recent_avg = round(sum(recent_6_prices) / len(recent_6_prices)) if recent_6_prices else 0
@@ -1840,12 +1843,15 @@ def future_prediction(
             "지역": region,
             "동": trades[0].get("dong", "") if trades else "",
             "단지명": apt_name,
-            "면적": f"{matched_size}㎡",
+            "면적": size,
+            "매칭면적": matched_size,
 
             "거래추세": trend,
             "거래상승률": rise_rate,
             "최근6개월평균": recent_avg,
             "이전6개월평균": prev_avg,
+            "거래건수": len(trades),
+            "거래그래프": trend_chart,
 
             "예상매매가": "계산중",
             "전세가": "계산중",
@@ -1855,7 +1861,7 @@ def future_prediction(
             "최근3개월거래량": 0,
             "전망점수": 0,
             "전망결론": "계산중",
-            "AI총평": "최근 매매 거래 흐름을 기준으로 미래예측을 준비중입니다."
+            "AI총평": "최근 매매 거래 흐름을 기준으로 거래추세를 분석했습니다."
         }
 
     except Exception as e:

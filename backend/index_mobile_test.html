@@ -9977,6 +9977,15 @@ function openFuturePrediction() {
     });
 }
 
+function formatEok(price) {
+    const n = Number(price || 0);
+
+    if (!n) return "-";
+
+    return (n / 10000).toFixed(1) + "억";
+}
+
+
 function renderFuturePredictionReport(data) {
     return `
         
@@ -10132,12 +10141,12 @@ function renderFuturePredictionReport(data) {
 
                     <div style="font-size:18px; font-weight:900; color:#ef4444;
                         line-height:1.1; margin-bottom:4px;">
-                        ${data.거래추세 || "데이터 부족"} ↗
+                        ${Number(data.거래건수 || 0) < 6 ? "데이터 부족" : (data.거래추세 || "데이터 부족")} 
                     </div>
 
                     <div style="font-size:20px; font-weight:900; color:#ef4444;
                         line-height:1.1; margin-bottom:16px;">
-                        ${data.거래상승률 || 0}%
+                        ${Number(data.거래건수 || 0) < 6 ? "비교 불가" : ((Number(data.거래상승률 || 0) > 0 ? "+" : "") + (data.거래상승률 || 0) + "%")}
                     </div>
 
                     <div style="font-size:11px; color:#64748b; margin-bottom:3px;">
@@ -10153,7 +10162,7 @@ function renderFuturePredictionReport(data) {
                     </div>
 
                     <div style="font-size:16px; font-weight:900; color:#0f172a;">
-                        19.2억
+                        ${Number(data.이전6개월평균 || 0) > 0 ? formatEok(data.이전6개월평균) : "-"}
                     </div>
 
                 </div>
@@ -10178,10 +10187,10 @@ function renderFuturePredictionReport(data) {
 
                         <!-- legend -->
                         <line x1="155" y1="20" x2="178" y2="20" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
-                        <text x="184" y="23" font-size="10" fill="#2563eb">최근 6개월</text>
+                        <text x="184" y="23" font-size="11" fill="#2563eb">최근 6개월</text>
 
                         <line x1="250" y1="20" x2="273" y2="20" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
-                        <text x="279" y="23" font-size="10" fill="#64748b">이전 6개월</text>
+                        <text x="279" y="23" font-size="11" fill="#64748b">이전 6개월</text>
 
                         <!-- previous line -->
                         <polyline
@@ -10229,6 +10238,140 @@ function renderFuturePredictionReport(data) {
             </div>
 
         </div>
+
+        <!-- ② 전세가율 & 갭차이 -->
+
+        <div style="
+            background:#ffffff;
+            border:1px solid #e5e7eb;
+            border-radius:22px;
+            padding:22px;
+            margin-top:16px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.04);
+        ">
+
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:10px;
+                margin-bottom:18px;
+            ">
+                <div style="
+                    width:34px;
+                    height:34px;
+                    border-radius:50%;
+                    background:#f3f0ff;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:16px;
+                    font-weight:800;
+                    color:#6d5dfc;
+                ">
+                    2
+                </div>
+
+                <div>
+                    <div style="
+                        font-size:18px;
+                        line-height:1.25;
+                        font-weight:800;
+                        color:#0f172a;
+                    ">
+                        전세가율 & 갭차이
+                    </div>
+                </div>
+            </div>
+
+            <div style="
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:14px;
+            ">
+
+                <!-- 전세가율 -->
+
+                <div style="
+                    background:#f8fafc;
+                    border-radius:18px;
+                    padding:20px;
+                    text-align:center;
+                ">
+
+                    <div style="
+                        font-size:16px;
+                        font-weight:700;
+                        color:#1e293b;
+                        margin-bottom:16px;
+                    ">
+                        전세가율
+                    </div>
+
+                    <div style="
+                        width:96px;
+                        height:96px;
+                        margin:0 auto;
+                        border-radius:50%;
+                        border:10px solid #ede9fe;
+                        position:relative;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                    ">
+
+                        <div style="
+                            font-size:20px;
+                            font-weight:900;
+                            color:#6d5dfc;
+                        ">
+                            ${data.전세가율 || 72}%
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- 갭차이 -->
+
+                <div style="
+                    background:#f8fafc;
+                    border-radius:18px;
+                    padding:20px;
+                    text-align:center;
+                ">
+
+                    <div style="
+                        font-size:16px;
+                        font-weight:700;
+                        color:#1e293b;
+                        margin-bottom:20px;
+                    ">
+                        💰 갭차이
+                    </div>
+
+                    <div style="
+                        font-size:26px;
+                        line-height:1.2;
+                        font-weight:900;
+                        color:#2563eb;
+                        margin-top:10px;
+                    ">
+                        ${data.갭차이 || "계산중..."}
+                    </div>
+
+                    <div style="
+                        font-size:40px;
+                        margin-top:8px;
+                    ">
+                        💰
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
         
         <!-- 3. 거래활성도 카드 -->
         <div style="
@@ -14207,13 +14350,6 @@ function closeFuturePredictionModal() {
     }
 }
 
-function formatEok(price) {
-    const n = Number(price || 0);
-
-    if (!n) return "-";
-
-    return (n / 10000).toFixed(1) + "억";
-}
 
 </script>
 
