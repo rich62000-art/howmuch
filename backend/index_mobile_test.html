@@ -9985,6 +9985,34 @@ function formatEok(price) {
     return (n / 10000).toFixed(1) + "억";
 }
 
+function getJeonseGaugeColor(ratio) {
+    const r = Number(ratio || 0);
+
+    if (r >= 70) return "#10b981";   // 녹색
+    if (r >= 60) return "#2563eb";   // 파랑
+    if (r >= 50) return "#f59e0b";   // 주황
+    return "#ef4444";                // 빨강
+}
+
+function getJeonseGaugeDash(ratio) {
+    const r = Math.max(
+        0,
+        Math.min(Number(ratio || 0), 100)
+    );
+
+    return (r / 100) * 188;
+}
+
+function getTodayText() {
+    const now = new Date();
+
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+
+    return `${yyyy}.${mm}.${dd}`;
+}
+
 function renderFutureTrendSvg(data) {
     const recent = Array.isArray(data.거래그래프) ? data.거래그래프 : [];
     const previous = Array.isArray(data.이전거래그래프) ? data.이전거래그래프 : [];
@@ -9992,6 +10020,9 @@ function renderFutureTrendSvg(data) {
     const recentPrices = recent.map(x => Number(x.price || x || 0)).filter(x => x > 0);
     const prevPrices = previous.map(x => Number(x.price || x || 0)).filter(x => x > 0);
     const allPrices = [...recentPrices, ...prevPrices];
+
+    const recentCounts = recent.map(x => Number(x.count || 0));
+    const maxCount = Math.max(...recentCounts, 1);
 
     if (recentPrices.length < 2) {
         return `
@@ -10009,10 +10040,10 @@ function renderFutureTrendSvg(data) {
     const chartMax = maxPrice + padding;
     const chartMin = Math.max(0, minPrice - padding);
 
-    const xStart = 48;
-    const xEnd = 330;
-    const yTop = 18;
-    const yBottom = 105;
+    const xStart = 44;
+    const xEnd = 376;
+    const yTop = 22;
+    const yBottom = 132;
 
     function getX(i, len) {
         if (len <= 1) return xStart;
@@ -10051,17 +10082,40 @@ function renderFutureTrendSvg(data) {
     });
 
     return `
-         <svg viewBox="0 0 360 135" width="100%" height="125" preserveAspectRatio="none">
+         <svg viewBox="0 0 390 165" width="100%" height="165" preserveAspectRatio="none">
 
-            <line x1="42" y1="18" x2="340" y2="18" stroke="#e5e7eb" stroke-width="1"/>
-            <line x1="42" y1="47" x2="340" y2="47" stroke="#e5e7eb" stroke-width="1"/>
-            <line x1="42" y1="76" x2="340" y2="76" stroke="#e5e7eb" stroke-width="1"/>
-            <line x1="42" y1="105" x2="340" y2="105" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="40" y1="22" x2="386" y2="22" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="40" y1="59" x2="386" y2="59" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="40" y1="96" x2="386" y2="96" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="40" y1="132" x2="386" y2="132" stroke="#e5e7eb" stroke-width="1"/>
 
-            <text x="6" y="22" font-size="9" fill="#64748b">${yLabel(y1)}</text>
-            <text x="6" y="51" font-size="9" fill="#64748b">${yLabel(y2)}</text>
-            <text x="6" y="80" font-size="9" fill="#64748b">${yLabel(y3)}</text>
-            <text x="6" y="109" font-size="9" fill="#64748b">${yLabel(y4)}</text>
+            <text x="4" y="26" font-size="9" fill="#64748b">${yLabel(y1)}</text>
+            <text x="4" y="63" font-size="9" fill="#64748b">${yLabel(y2)}</text>
+            <text x="4" y="100" font-size="9" fill="#64748b">${yLabel(y3)}</text>
+            <text x="4" y="136" font-size="9" fill="#64748b">${yLabel(y4)}</text>
+
+            ${recentCounts.map((count, i) => {
+
+                const barMaxHeight = 34;
+                const barHeight = (count / maxCount) * barMaxHeight;
+
+                const barWidth = 18;
+
+                const x = getX(i, recentCounts.length) - (barWidth / 2);
+                const y = yBottom - barHeight;
+
+                return `
+                    <rect
+                        x="${x}"
+                        y="${y}"
+                        width="${barWidth}"
+                        height="${barHeight}"
+                        rx="4"
+                        fill="#fbcfe8"
+                        
+                    />
+                `;
+            }).join("")}
 
             ${prevPrices.length >= 2 ? `
                 <polyline
@@ -10088,7 +10142,7 @@ function renderFutureTrendSvg(data) {
 
             ${labels.map((label, i) => {
                 if (!label) return "";
-                return `<text x="${getX(i, labels.length) - 12}" y="128" font-size="9" fill="#64748b">${label}</text>`;
+                return `<text x="${getX(i, labels.length) - 12}" y="158" font-size="9" fill="#64748b">${label}</text>`;
             }).join("")}
 
         </svg>
@@ -10107,7 +10161,7 @@ function renderFuturePredictionReport(data) {
                     AI , <span style="color:#0f172a;">미래 분석 리포트</span>
                 </div>
                 <div style="font-size:11px; color:#64748b;">
-                    분석일시 2025.05.24 
+                    분석일시 ${getTodayText()} 
                 </div>
             </div>
 
@@ -10246,7 +10300,7 @@ function renderFuturePredictionReport(data) {
                 margin-top:14px;">
 
                 <!-- 좌측 요약 -->
-                <div style="width:112px; flex-shrink:0; background:#f8fafc;
+                <div style="width:104px; flex-shrink:0; background:#f8fafc;
                     border-radius:16px; padding:14px 12px; box-sizing:border-box;">
 
                     <div style="font-size:18px; font-weight:900; color:#ef4444;
@@ -10279,9 +10333,9 @@ function renderFuturePredictionReport(data) {
 
               
                 <!-- 우측 SVG 그래프 -->
-                <div style="flex:1; min-width:0; height:145px; background:#ffffff;
-                    border-radius:14px; padding:4px 8px 0 8px; box-sizing:border-box;
-                    align-self:flex-start; margin-top:-6px;">
+                <div style="flex:1.55; min-width:0; height:190px; background:#ffffff;
+                    border-radius:14px; padding:4px 4px 0 0; box-sizing:border-box;
+                    align-self:flex-start; margin-top:-10px; margin-left:4px;">
 
                     <!-- 그래프 범례 -->
                     <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px;
@@ -10295,6 +10349,11 @@ function renderFuturePredictionReport(data) {
                         <span style="display:flex; align-items:center; gap:4px;">
                             <i style="width:16px; height:3px; border-radius:999px; background:#94a3b8; display:inline-block;"></i>
                             이전 6개월
+                        </span>
+
+                        <span style="display:flex; align-items:center; gap:4px;">
+                            <i style="width:10px; height:10px; border-radius:3px; background:#f472b6; display:inline-block;"></i>
+                            거래량
                         </span>
                     </div>
 
@@ -10340,7 +10399,7 @@ function renderFuturePredictionReport(data) {
 
                 <div>
                     <div style="
-                        font-size:18px;
+                        font-size:16px;
                         line-height:1.25;
                         font-weight:800;
                         color:#0f172a;
@@ -10353,7 +10412,7 @@ function renderFuturePredictionReport(data) {
             <div style="
                 display:grid;
                 grid-template-columns:1fr 1fr;
-                gap:14px;
+                gap:12px;
             ">
 
                 <!-- 전세가율 -->
@@ -10361,12 +10420,13 @@ function renderFuturePredictionReport(data) {
                 <div style="
                     background:#f8fafc;
                     border-radius:18px;
-                    padding:20px;
+                    padding:16px 10px;
                     text-align:center;
+                    min-height:140px;
                 ">
 
                     <div style="
-                        font-size:16px;
+                        font-size:14px;
                         font-weight:700;
                         color:#1e293b;
                         margin-bottom:16px;
@@ -10375,23 +10435,43 @@ function renderFuturePredictionReport(data) {
                     </div>
 
                     <div style="
-                        width:96px;
-                        height:96px;
+                        width:110px;
+                        height:110px;
                         margin:0 auto;
-                        border-radius:50%;
-                        border:10px solid #ede9fe;
                         position:relative;
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
                     ">
 
+                        <svg viewBox="0 0 160 90" width="110" height="90">
+                            <path
+                                d="M20 78 A60 60 0 0 1 140 78"
+                                fill="none"
+                                stroke="#e5e7eb"
+                                stroke-width="14"
+                                stroke-linecap="round"
+                            />
+
+                            <path
+                                d="M20 78 A60 60 0 0 1 140 78"
+                                fill="none"
+                                stroke="${getJeonseGaugeColor(data.전세가율)}"
+                                stroke-width="14"
+                                stroke-linecap="round"
+                                stroke-dasharray="${getJeonseGaugeDash(data.전세가율)} 188"
+                            />
+                        </svg>
+
                         <div style="
+                            position:absolute;
+                            left:0;
+                            right:0;
+                            top:80px;
+                            text-align:center;
                             font-size:20px;
                             font-weight:900;
-                            color:#6d5dfc;
+                            color:${getJeonseGaugeColor(data.전세가율)};
+                            letter-spacing:-0.8px;
                         ">
-                            ${data.전세가율 || 72}%
+                            ${data.전세가율 || 0}%
                         </div>
 
                     </div>
@@ -10405,30 +10485,54 @@ function renderFuturePredictionReport(data) {
                     border-radius:18px;
                     padding:20px;
                     text-align:center;
+                    min-height:140px;
+                    display:flex;
+                    flex-direction:column;
+                    align-items:center;
+                    justify-content:center;
                 ">
 
                     <div style="
-                        font-size:16px;
-                        font-weight:700;
-                        color:#1e293b;
-                        margin-bottom:20px;
+                        margin-top:0;
+                        padding:0;
+                        background:transparent;
+                        border:none;
+                        text-align:center;
                     ">
-                        💰 갭차이
+
+                        <div style="
+                            font-size:14px;
+                            font-weight:700;
+                            color:#1e293b;
+                            margin-bottom:18px;
+                        ">
+                            갭차이
+                        </div>
+
+                        <div style="
+                            font-size:30px;
+                            font-weight:850;
+                            color:#2563eb;
+                            letter-spacing:-2px;
+                            line-height:1;
+                        ">
+                            ${formatEok(data.갭차이 || 0)}
+                        </div>
+
+                        <div style="
+                            margin-top:4px;
+                            font-size:12px;
+                            font-weight:700;
+                            color:#94a3b8;
+                        ">
+                            매매가 - 전세가
+                        </div>
+
                     </div>
 
                     <div style="
-                        font-size:26px;
-                        line-height:1.2;
-                        font-weight:900;
-                        color:#2563eb;
-                        margin-top:10px;
-                    ">
-                        ${data.갭차이 || "계산중..."}
-                    </div>
-
-                    <div style="
-                        font-size:40px;
-                        margin-top:8px;
+                        font-size:24px;
+                        margin-top:6px;
                     ">
                         💰
                     </div>

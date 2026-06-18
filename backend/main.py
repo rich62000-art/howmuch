@@ -1912,6 +1912,34 @@ def future_prediction(
         recent_avg = round(sum(recent_6_prices) / len(recent_6_prices)) if recent_6_prices else 0
         prev_avg = round(sum(prev_6_prices) / len(prev_6_prices)) if prev_6_prices else 0
 
+        # ✅ 실제 전세 평균가 계산
+        rent_size = str(size).replace("㎡", "").strip()
+
+        rent_rows = get_rent_trades(apt_name, rent_size)
+        rent_items = rent_rows_to_items(rent_rows)
+
+        jeonse_prices = [
+            item["deposit"]
+            for item in rent_items
+            if item.get("monthly_rent") == 0 and item.get("deposit", 0) > 0
+        ]
+
+        avg_jeonse = (
+            round(sum(jeonse_prices) / len(jeonse_prices))
+            if jeonse_prices else 0
+        )
+
+        jeonse_ratio = (
+            round((avg_jeonse / recent_avg) * 100, 1)
+            if recent_avg and avg_jeonse else 0
+        )
+
+        gap_price = (
+            recent_avg - avg_jeonse
+            if recent_avg and avg_jeonse else recent_avg
+        )
+
+        
         if recent_avg > 0 and prev_avg > 0:
             rise_rate = round(((recent_avg - prev_avg) / prev_avg) * 100, 1)
         else:
@@ -1939,10 +1967,11 @@ def future_prediction(
             "거래그래프": trend_chart,
             "이전거래그래프": prev_trend_chart,
 
-            "예상매매가": "계산중",
-            "전세가": "계산중",
-            "갭차이": "계산중",
-            "전세가율": 0,
+            "예상매매가": recent_avg,
+            "전세가": avg_jeonse,
+            "전세평균가": avg_jeonse,
+            "갭차이": gap_price,
+            "전세가율": jeonse_ratio,
             "거래활성도": "계산중",
             "최근3개월거래량": 0,
             "전망점수": 0,
