@@ -2001,6 +2001,9 @@ def future_prediction(
             for v in recent_3m_volume
         )
 
+        ai_summary_parts = []
+
+        # 1. 거래활성도 먼저 계산
         if recent_3m_count >= 20:
             trade_activity = "활발"
         elif recent_3m_count >= 10:
@@ -2009,6 +2012,37 @@ def future_prediction(
             trade_activity = "적음"
         else:
             trade_activity = "부족"
+
+        # 2. 그 다음 AI총평 생성
+        ai_summary_parts = []
+
+        ai_summary_parts.append(
+            f"최근 6개월 매매가격은 이전 6개월 대비 {rise_rate}% {trend} 흐름입니다."
+        )
+
+        ai_summary_parts.append(
+            f"최근 3개월 거래량은 {recent_3m_count}건으로 거래활성도는 '{trade_activity}' 수준입니다."
+        )
+
+        if jeonse_ratio > 0:
+            ai_summary_parts.append(
+                f"전세가율은 {jeonse_ratio}%이며, 갭차이는 약 {round(gap_price / 10000, 1)}억입니다."
+            )
+
+        if trend == "상승" and trade_activity in ["활발", "보통"]:
+            ai_summary_parts.append(
+                "가격 흐름과 거래량이 함께 받쳐주고 있어 단기 전망은 비교적 긍정적으로 볼 수 있습니다."
+            )
+        elif trend == "하락":
+            ai_summary_parts.append(
+                "가격 흐름이 약세이므로 매수 판단 시 추가 하락 가능성을 함께 확인할 필요가 있습니다."
+            )
+        else:
+            ai_summary_parts.append(
+                "가격 흐름은 뚜렷한 방향성보다는 관망세에 가까워 보입니다."
+            )
+
+        ai_summary = "\n".join(ai_summary_parts)
 
         
         return {
@@ -2036,7 +2070,7 @@ def future_prediction(
             "최근3개월거래량그래프": recent_3m_volume,
             "전망점수": 0,
             "전망결론": "계산중",
-            "AI총평": "최근 매매 거래 흐름을 기준으로 거래추세를 분석했습니다."
+            "AI총평": ai_summary
         }
 
     except Exception as e:

@@ -10877,10 +10877,7 @@ function renderFuturePredictionReport(data) {
                     padding-left:8px;
                     padding-right:72px;
                 ">
-                    거래량 증가와 전세가 상승이 동반되고 있어<br>
-                    향후 가격 상승 가능성이 높습니다.<br>
-                    단기 조정 가능성은 있으나,<br>
-                    중장기적 관점에서는 긍정적입니다.
+                    ${(data.AI총평 || "최근 거래 흐름을 기준으로 시장 전망을 분석했습니다.").replace(/\n/g, "<br>")}
                 </div>
 
                 <div style="
