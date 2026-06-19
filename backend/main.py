@@ -1795,11 +1795,19 @@ def future_prediction(
         trades = []
 
         for item in items:
+            item_size = str(item.get("size", "")).replace("㎡", "").strip()
+            target_size = str(matched_size).replace("㎡", "").strip()
+
             if (
                 is_same_apartment_name(apt_name, item["apt_name"])
-                and item.get("dong", "") in [row[2] for row in db_rows if row[0] == db_region and row[1] == db_sigungu]
+                and item_size == target_size
+                and item.get("dong", "") in [
+                    row[2]
+                    for row in db_rows
+                    if row[0] == db_region and row[1] == db_sigungu
+                ]
             ):
-                
+
                 trades.append({
                     "price": item["price"],
                     "date": item["date"],

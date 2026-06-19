@@ -10397,18 +10397,29 @@ function renderFuturePredictionReport(data) {
                 </div>
             </div>
 
-            <div style="display:flex; gap:14px; align-items:center;
+            <div style="display:flex; gap:14px; align-items:stretch;
                 margin-top:14px;">
 
                 <!-- 좌측 요약 -->
                 <div style="
                     background:#ffffff;
                     border-radius:14px;
-                    padding:14px;
                     border:1px solid #e5e7eb;
+
+                    width:110px;
+                    min-width:110px;
+                    height:225px;
+
+                    padding:20px 14px;
+                    box-sizing:border-box;
+
+                    display:flex;
+                    flex-direction:column;
+                    justify-content:space-between;
+
                     text-align:center;
                     font-size:14px;
-                    line-height:1.6;
+                    line-height:1.10;
                     color:#334155;
                     font-weight:700;
                 ">
@@ -10419,7 +10430,7 @@ function renderFuturePredictionReport(data) {
                     </div>
 
                     <div style="font-size:16px; font-weight:900; color:#ef4444;
-                        line-height:1.1; margin-bottom:16px;">
+                        line-height:1.1; margin-bottom:20px;">
                         ${Number(data.거래건수 || 0) < 6 ? "비교 불가" : ((Number(data.거래상승률 || 0) > 0 ? "+" : "") + (data.거래상승률 || 0) + "%")}
                     </div>
 
@@ -10427,7 +10438,7 @@ function renderFuturePredictionReport(data) {
                         최근 6개월 평균
                     </div>
 
-                    <div style="font-size:16px; font-weight:900; color:#0f172a; margin-bottom:10px;">
+                    <div style="font-size:16px; font-weight:900; color:#0f172a; margin-bottom:20px;">
                         ${formatEok(data.최근6개월평균)}
                     </div>
 
