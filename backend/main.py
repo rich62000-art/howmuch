@@ -1795,7 +1795,11 @@ def future_prediction(
         trades = []
 
         for item in items:
-            if is_same_apartment_name(apt_name, item["apt_name"]):
+            if (
+                is_same_apartment_name(apt_name, item["apt_name"])
+                and item.get("dong", "") in [row[2] for row in db_rows if row[0] == db_region and row[1] == db_sigungu]
+            ):
+                
                 trades.append({
                     "price": item["price"],
                     "date": item["date"],
@@ -1882,6 +1886,36 @@ def future_prediction(
 
         all_months = sorted(monthly_price_map.keys())
 
+        
+        # ✅ 매매 분석과 동일 기준: 현재 기준 최근 12개월 월별 거래량 생성
+        today = datetime.today()
+        monthly_volume_map = {}
+
+        for i in range(12):
+            target_month = today.month - i
+            target_year = today.year
+
+            while target_month <= 0:
+                target_month += 12
+                target_year -= 1
+
+            month_key = f"{target_year}-{target_month:02d}"
+            monthly_volume_map[month_key] = 0
+
+        for t in trades:
+            month = str(t.get("date", ""))[:7]
+
+            if month in monthly_volume_map:
+                monthly_volume_map[month] += 1
+
+        monthly_volume = [
+            {
+                "month": key,
+                "count": monthly_volume_map[key]
+            }
+            for key in sorted(monthly_volume_map.keys())
+        ]
+
         # ✅ 최근 6개월 월평균
         trend_chart = []
 
@@ -1952,6 +1986,23 @@ def future_prediction(
         else:
             trend = "보합"
 
+        recent_3m_volume = monthly_volume[-3:]
+
+        recent_3m_count = sum(
+            int(v.get("count", 0))
+            for v in recent_3m_volume
+        )
+
+        if recent_3m_count >= 20:
+            trade_activity = "활발"
+        elif recent_3m_count >= 10:
+            trade_activity = "보통"
+        elif recent_3m_count >= 5:
+            trade_activity = "적음"
+        else:
+            trade_activity = "부족"
+
+        
         return {
             "지역": region,
             "동": trades[0].get("dong", "") if trades else "",
@@ -1972,8 +2023,9 @@ def future_prediction(
             "전세평균가": avg_jeonse,
             "갭차이": gap_price,
             "전세가율": jeonse_ratio,
-            "거래활성도": "계산중",
-            "최근3개월거래량": 0,
+            "거래활성도": trade_activity,
+            "최근3개월거래량": recent_3m_count,
+            "최근3개월거래량그래프": recent_3m_volume,
             "전망점수": 0,
             "전망결론": "계산중",
             "AI총평": "최근 매매 거래 흐름을 기준으로 거래추세를 분석했습니다."
