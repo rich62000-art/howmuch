@@ -10153,8 +10153,14 @@ function renderFutureTrendSvg(data) {
 function renderFuturePredictionReport(data) {
     return `
         
-        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:20px;
-            padding:22px; box-shadow:0 6px 16px rgba(15,23,42,0.06); color:#0f172a; ">
+        <div style="
+            background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
+            border:2px solid #bfdbfe;
+            border-radius:22px;
+            padding:24px 20px;
+            margin-top:14px;
+            box-shadow:0 10px 24px rgba(37,99,235,0.08);; 
+        ">
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <div style="font-size:14px; font-weight:900; color:#0b3b91; letter-spacing:-0.5px; line-height:1.25;">
@@ -10274,8 +10280,14 @@ function renderFuturePredictionReport(data) {
 
         <!-- 두번째 카드 -->
         <!-- 1. 거래추세 카드 -->
-        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:18px;
-            padding:18px; margin-top:14px; box-shadow:0 6px 16px rgba(15,23,42,0.05);">
+        <div style="
+            background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
+            border:2px solid #bfdbfe;
+            border-radius:22px;
+            padding:24px 20px;
+            margin-top:14px;
+            box-shadow:0 10px 24px rgba(37,99,235,0.08);
+        ">
 
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
                 <div style="width:34px; height:34px; border-radius:50%; background:#eef4ff;
@@ -10303,12 +10315,12 @@ function renderFuturePredictionReport(data) {
                 <div style="width:104px; flex-shrink:0; background:#f8fafc;
                     border-radius:16px; padding:14px 12px; box-sizing:border-box;">
 
-                    <div style="font-size:18px; font-weight:900; color:#ef4444;
+                    <div style="font-size:16px; font-weight:900; color:#ef4444;
                         line-height:1.1; margin-bottom:4px;">
                         ${Number(data.거래건수 || 0) < 6 ? "데이터 부족" : (data.거래추세 || "데이터 부족")} 
                     </div>
 
-                    <div style="font-size:20px; font-weight:900; color:#ef4444;
+                    <div style="font-size:16px; font-weight:900; color:#ef4444;
                         line-height:1.1; margin-bottom:16px;">
                         ${Number(data.거래건수 || 0) < 6 ? "비교 불가" : ((Number(data.거래상승률 || 0) > 0 ? "+" : "") + (data.거래상승률 || 0) + "%")}
                     </div>
@@ -10368,12 +10380,12 @@ function renderFuturePredictionReport(data) {
         <!-- ② 전세가율 & 갭차이 -->
 
         <div style="
-            background:#ffffff;
-            border:1px solid #e5e7eb;
+            background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
+            border:2px solid #bfdbfe;
             border-radius:22px;
-            padding:22px;
-            margin-top:16px;
-            box-shadow:0 4px 12px rgba(0,0,0,0.04);
+            padding:24px 20px;
+            margin-top:14px;
+            box-shadow:0 10px 24px rgba(37,99,235,0.08);
         ">
 
             <div style="
@@ -10504,7 +10516,8 @@ function renderFuturePredictionReport(data) {
                             font-size:14px;
                             font-weight:700;
                             color:#1e293b;
-                            margin-bottom:18px;
+                            margin-top:-25px;
+                            margin-bottom:16px;
                         ">
                             갭차이
                         </div>
@@ -10525,7 +10538,7 @@ function renderFuturePredictionReport(data) {
                             font-weight:700;
                             color:#94a3b8;
                         ">
-                            매매가 - 전세가
+                            (매매가 - 전세가)
                         </div>
 
                     </div>
@@ -10546,12 +10559,12 @@ function renderFuturePredictionReport(data) {
         
         <!-- 3. 거래활성도 카드 -->
         <div style="
-            background:#ffffff;
-            border:1px solid #e2e8f0;
-            border-radius:18px;
-            padding:18px;
+            background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
+            border:2px solid #bfdbfe;
+            border-radius:22px;
+            padding:24px 20px;
             margin-top:14px;
-            box-shadow:0 6px 16px rgba(15,23,42,0.05);
+            box-shadow:0 10px 24px rgba(37,99,235,0.08);
         ">
 
             <div style="
@@ -10697,12 +10710,12 @@ function renderFuturePredictionReport(data) {
 
         <!-- 4. AI 전망 총평 카드 -->
         <div style="
-            background:#ffffff;
-            border:1px solid #e2e8f0;
-            border-radius:18px;
-            padding:18px;
+            background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
+            border:2px solid #bfdbfe;
+            border-radius:22px;
+            padding:24px 20px;
             margin-top:14px;
-            box-shadow:0 6px 16px rgba(15,23,42,0.05);
+            box-shadow:0 10px 24px rgba(37,99,235,0.08);
         ">
 
             <div style="
@@ -10793,12 +10806,12 @@ function renderFuturePredictionReport(data) {
 
         <!-- 5. 미래예측 요약 카드 -->
         <div style="
-            background:#ffffff;
-            border:1px solid #e2e8f0;
-            border-radius:18px;
-            padding:18px;
+            background:linear-gradient(135deg,#eff6ff 0%,#ffffff 100%);
+            border:2px solid #bfdbfe;
+            border-radius:22px;
+            padding:24px 20px;
             margin-top:14px;
-            box-shadow:0 6px 16px rgba(15,23,42,0.05);
+            box-shadow:0 10px 24px rgba(37,99,235,0.08);
         ">
 
             <div style="
