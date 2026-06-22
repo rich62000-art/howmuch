@@ -1776,7 +1776,7 @@ def future_prediction(
             if str(s).strip() == input_size:
                 matched_size = s
                 break
-
+        
         if matched_size is None:
             return {
                 "지역": region,
@@ -1786,10 +1786,12 @@ def future_prediction(
                 "결과": "면적 매칭 실패",
                 "DB면적목록": sizes,
                 "AI총평": "입력한 면적과 일치하는 DB 면적을 찾지 못했습니다."
+                
             }
 
         # ✅ 매칭된 실제 면적으로 거래 조회
         db_rows = get_apt_sale_trades(apt_name, matched_size)
+        
         items = db_rows_to_items(db_rows)
 
         trades = []
@@ -2016,39 +2018,229 @@ def future_prediction(
         # 2. 그 다음 AI총평 생성
         ai_summary_parts = []
 
-        ai_summary_parts.append(
-            f"최근 6개월 매매가격은 이전 6개월 대비 {rise_rate}% {trend} 흐름입니다."
-        )
+        if trend == "상승":
+            ai_summary_parts.append(
+                f"최근 매매가격은 상승 흐름을 보이고 있으며, 가격 상승률은 {rise_rate}% 수준입니다."
+            )
+        elif trend == "하락":
+            ai_summary_parts.append(
+                f"최근 매매가격은 조정 흐름을 보이고 있으며, 가격 변동률은 {rise_rate}% 수준입니다."
+            )
+        else:
+            ai_summary_parts.append(
+                "최근 매매가격은 뚜렷한 방향성 없이 보합권 흐름을 유지하고 있습니다."
+            )
 
         ai_summary_parts.append(
             f"최근 3개월 거래량은 {recent_3m_count}건으로 거래활성도는 '{trade_activity}' 수준입니다."
         )
 
-        if jeonse_ratio > 0:
+        if trade_activity == "부족" and rise_rate > 5:
             ai_summary_parts.append(
-                f"전세가율은 {jeonse_ratio}%이며, 갭차이는 약 {round(gap_price / 10000, 1)}억입니다."
+                "다만 최근 거래건수가 매우 적어 상승률의 신뢰도는 낮을 수 있으며, 추가 거래 확인이 필요합니다."
+            )
+
+        if jeonse_ratio >= 70:
+            ai_summary_parts.append(
+                f"전세가율은 {jeonse_ratio}%로 높은 편이며, 전세 수요에 따른 실수요 지지력이 비교적 강한 구간입니다."
+            )
+        elif jeonse_ratio >= 55:
+            ai_summary_parts.append(
+                f"전세가율은 {jeonse_ratio}%로 중간 수준이며, 매매가 대비 전세 수요는 보통 수준으로 판단됩니다."
+            )
+        elif jeonse_ratio > 0:
+            ai_summary_parts.append(
+                f"전세가율은 {jeonse_ratio}%로 낮은 편이며, 매매가 대비 전세 지지력은 다소 약한 구간입니다."
+            )
+
+        if jeonse_ratio >= 70:
+            ai_summary_parts.append(
+                "전세가율이 높은 편이라 실투자금 부담은 상대적으로 낮게 해석됩니다."
+            )
+        elif jeonse_ratio >= 55:
+            ai_summary_parts.append(
+                "전세가율은 중간 수준으로, 매매가 대비 전세 수요는 보통 수준으로 판단됩니다."
+            )
+        elif jeonse_ratio > 0:
+            ai_summary_parts.append(
+                "전세가율이 낮은 편이라 갭 부담이 크고, 투자 관점에서는 보수적인 접근이 필요합니다."
+            )
+
+        gap_eok = round(gap_price / 10000, 1)
+
+        if gap_eok >= 8:
+            ai_summary_parts.append(
+                "갭차이가 큰 편이라 초기 자금 부담이 높고, 실거주 중심의 보수적인 판단이 필요합니다."
+            )
+        elif gap_eok >= 4:
+            ai_summary_parts.append(
+                "갭차이는 중간 수준으로, 자금 여력과 전세 수요를 함께 확인하는 것이 좋습니다."
+            )
+        else:
+            ai_summary_parts.append(
+                "갭차이가 비교적 낮아 진입 부담은 상대적으로 낮은 편입니다."
+            )
+
+        if trade_activity == "활발":
+            ai_summary_parts.append(
+                "거래가 꾸준히 발생하고 있어 시장 유동성은 양호한 수준으로 판단됩니다."
+            )
+        elif trade_activity == "보통":
+            ai_summary_parts.append(
+                "거래는 지속되고 있으나, 시장 분위기를 판단하기에는 추가 관찰이 필요합니다."
+            )
+        elif trade_activity == "적음":
+            ai_summary_parts.append(
+                "거래량이 많지 않아 가격 변동성에 주의할 필요가 있습니다."
+            )
+        else:
+            ai_summary_parts.append(
+                "최근 거래가 많지 않아 실제 시장 수요를 판단하기에는 다소 제한적입니다."
             )
 
         if trend == "상승" and trade_activity in ["활발", "보통"]:
             ai_summary_parts.append(
-                "가격 흐름과 거래량이 함께 받쳐주고 있어 단기 전망은 비교적 긍정적으로 볼 수 있습니다."
+                "가격 흐름과 거래량이 함께 받쳐주는 구간으로, 단기 전망은 비교적 긍정적으로 해석됩니다."
             )
         elif trend == "하락":
             ai_summary_parts.append(
-                "가격 흐름이 약세이므로 매수 판단 시 추가 하락 가능성을 함께 확인할 필요가 있습니다."
+                "최근 가격 흐름이 약세를 보이고 있어, 매수 판단 시 추가 조정 가능성을 함께 확인하는 것이 좋습니다."
+            )
+        elif trend == "보합" and trade_activity in ["활발", "보통"]:
+            ai_summary_parts.append(
+                "가격은 보합권이지만 거래는 유지되고 있어, 급등보다는 안정적인 흐름에 가까워 보입니다."
             )
         else:
             ai_summary_parts.append(
-                "가격 흐름은 뚜렷한 방향성보다는 관망세에 가까워 보입니다."
+                "가격과 거래량 모두 뚜렷한 방향성이 강하지 않아, 당분간은 관망 성격이 큰 구간으로 판단됩니다."
             )
+
+        
+        # ✅ 전망점수 계산
+        outlook_score = 50
+
+        if rise_rate >= 10:
+            outlook_score += 20
+        elif rise_rate >= 5:
+            outlook_score += 15
+        elif rise_rate >= 1:
+            outlook_score += 8
+        elif rise_rate <= -10:
+            outlook_score -= 20
+        elif rise_rate <= -5:
+            outlook_score -= 15
+        elif rise_rate <= -1:
+            outlook_score -= 8
+
+        if trade_activity == "활발":
+            outlook_score += 15
+        elif trade_activity == "보통":
+            outlook_score += 8
+        elif trade_activity == "적음":
+            outlook_score -= 3
+        else:
+            outlook_score -= 10
+
+        if jeonse_ratio >= 75:
+            outlook_score += 12
+        elif jeonse_ratio >= 65:
+            outlook_score += 8
+        elif jeonse_ratio >= 55:
+            outlook_score += 3
+        elif jeonse_ratio > 0 and jeonse_ratio < 45:
+            outlook_score -= 10
+        elif jeonse_ratio > 0 and jeonse_ratio < 55:
+            outlook_score -= 5
+
+        gap_eok_for_score = gap_price / 10000 if gap_price else 0
+
+        if gap_eok_for_score >= 10:
+            outlook_score -= 8
+        elif gap_eok_for_score >= 7:
+            outlook_score -= 5
+        elif gap_eok_for_score >= 5:
+            outlook_score -= 3
+        elif gap_eok_for_score > 0 and gap_eok_for_score <= 3:
+            outlook_score += 5
+
+        outlook_score = max(0, min(100, outlook_score))
+
+        if outlook_score >= 80:
+            outlook_result = "매우긍정"
+        elif outlook_score >= 65:
+            outlook_result = "긍정"
+        elif outlook_score >= 45:
+            outlook_result = "보통"
+        elif outlook_score >= 30:
+            outlook_result = "주의"
+        else:
+            outlook_result = "위험"
+
+        if outlook_result == "매우긍정":
+            ai_summary_parts.append(
+                    f"종합 전망은 '{outlook_result}' 단계로 평가됩니다."
+                )
+
+        elif outlook_result == "긍정":
+            ai_summary_parts.append(
+                f"종합 전망은 '{outlook_result}' 수준으로 판단됩니다."
+            )
+
+        elif outlook_result == "보통":
+            ai_summary_parts.append(
+                "상승 요인과 위험 요인이 함께 존재하는 구간으로, 추가 시장 흐름을 확인할 필요가 있습니다."
+            )
+
+        elif outlook_result == "주의":
+            ai_summary_parts.append(
+                "시장 흐름이 다소 약화된 상태로, 보수적인 접근이 필요한 구간입니다."
+            )
+
+        else:
+            ai_summary_parts.append(
+                "시장 위험도가 높은 구간으로 판단되며, 신중한 접근이 필요합니다."
+            )
+
+        ai_summary_parts.append(
+            f"거래추세, 거래활성도, 전세가율, 갭차이를 종합한 전망점수는 {outlook_score}점이며, 종합 평가는 '{outlook_result}'입니다."
+        )
 
         ai_summary = "\n".join(ai_summary_parts)
 
-        
+        positive_factors = []
+        caution_factors = []
+
+        if rise_rate >= 1:
+            positive_factors.append("거래추세 상승")
+        elif rise_rate <= -1:
+            caution_factors.append("거래추세 하락")
+
+        if trade_activity in ["활발", "보통"]:
+            positive_factors.append("거래량 유지")
+        else:
+            caution_factors.append("거래량 부족")
+
+        if jeonse_ratio >= 55:
+            positive_factors.append("전세가율 양호")
+        elif jeonse_ratio > 0:
+            caution_factors.append("전세가율 낮음")
+
+        if gap_price and gap_price / 10000 <= 4:
+            positive_factors.append("갭 부담 낮음")
+        elif gap_price and gap_price / 10000 >= 8:
+            caution_factors.append("갭 부담 큼")
+
         return {
             "지역": region,
             "동": trades[0].get("dong", "") if trades else "",
             "단지명": apt_name,
+
+            # 디버그
+            "디버그입력면적": size,
+            "디버그매칭면적": matched_size,
+            "디버그거래건수": len(trades),
+            "디버그DB조회건수": len(db_rows),
+
             "면적": size,
             "매칭면적": matched_size,
 
@@ -2068,8 +2260,10 @@ def future_prediction(
             "거래활성도": trade_activity,
             "최근3개월거래량": recent_3m_count,
             "최근3개월거래량그래프": recent_3m_volume,
-            "전망점수": 0,
-            "전망결론": "계산중",
+            "전망점수": outlook_score,
+            "전망결론": outlook_result,
+            "상승요인": positive_factors,
+            "주의요인": caution_factors,
             "AI총평": ai_summary
         }
 

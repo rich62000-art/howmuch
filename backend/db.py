@@ -406,7 +406,8 @@ def insert_presale_trade(trade):
 
 
 def get_apt_sale_trades(apt_name, size):
-    cache_key = f"sale_trades:{apt_name}:{int(size)}"
+    size_key = f"{float(size):.4f}"
+    cache_key = f"sale_trades:{apt_name}:{size_key}"
 
     if cache_key in DB_CACHE:
         cached = DB_CACHE[cache_key]
@@ -985,66 +986,76 @@ def insert_analysis_log(region=None, sigungu=None, dong=None, apt_name=None, siz
 
 # 📌 오늘 조회수 가져오기
 def get_today_search_count():
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT COUNT(*)
         FROM search_logs
-        WHERE created_at >= DATE('now', 'localtime')
-        AND created_at < DATE('now', 'localtime', '+1 day')
+        WHERE created_at >= CURRENT_DATE
+        AND created_at < CURRENT_DATE + INTERVAL '1 day'
     """)
 
     count = cur.fetchone()[0]
 
-    conn.close()
+    cur.close()
+    release_pg_connection(conn)
+
     return count
 
 # 📊 오늘 분석수
 def get_today_analysis_count():
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT COUNT(*)
         FROM analysis_logs
-        WHERE created_at >= DATE('now', 'localtime')
-        AND created_at < DATE('now', 'localtime', '+1 day')
+        WHERE created_at >= CURRENT_DATE
+        AND created_at < CURRENT_DATE + INTERVAL '1 day'
     """)
 
     count = cur.fetchone()[0]
 
-    conn.close()
+    cur.close()
+    release_pg_connection(conn)
+
     return count
 
 # 🏢 인기 단지 TOP 5
 def get_popular_apts(limit=5):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT apt_name, COUNT(*) as cnt
+        SELECT
+            apt_name,
+            COUNT(*) as cnt
         FROM search_logs
         WHERE apt_name IS NOT NULL
-        AND apt_name != ''
-        AND created_at >= DATE('now', 'localtime')
-        AND created_at < DATE('now', 'localtime', '+1 day')
+        AND apt_name <> ''
+        AND created_at >= CURRENT_DATE
         GROUP BY apt_name
         ORDER BY cnt DESC
-        LIMIT ?
+        LIMIT %s
     """, (limit,))
 
     rows = cur.fetchall()
-    conn.close()
+
+    cur.close()
+    release_pg_connection(conn)
 
     return [
-        {"아파트": row[0], "조회수": row[1]}
+        {
+            "아파트": row[0],
+            "조회수": row[1]
+        }
         for row in rows
     ]
 
 # 🌎 인기 지역 TOP 5
 def get_popular_regions(limit=5):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
@@ -1054,19 +1065,19 @@ def get_popular_regions(limit=5):
             COUNT(*) as cnt
         FROM search_logs
         WHERE region IS NOT NULL
-        AND region != ''
+        AND region <> ''
         AND sigungu IS NOT NULL
-        AND sigungu != ''
-        AND created_at >= DATE('now', 'localtime')
-        AND created_at < DATE('now', 'localtime', '+1 day')
+        AND sigungu <> ''
+        AND created_at >= CURRENT_DATE
         GROUP BY region, sigungu
         ORDER BY cnt DESC
-        LIMIT ?
+        LIMIT %s
     """, (limit,))
 
     rows = cur.fetchall()
 
-    conn.close()
+    cur.close()
+    release_pg_connection(conn)
 
     return [
         {
@@ -1078,7 +1089,7 @@ def get_popular_regions(limit=5):
 
 # 📋 최근 분석 TOP 10
 def get_recent_analysis(limit=10):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     cur.execute("""
@@ -1091,11 +1102,13 @@ def get_recent_analysis(limit=10):
             created_at
         FROM analysis_logs
         ORDER BY created_at DESC
-        LIMIT ?
+        LIMIT %s
     """, (limit,))
 
     rows = cur.fetchall()
-    conn.close()
+
+    cur.close()
+    release_pg_connection(conn)
 
     return [
         {
