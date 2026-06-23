@@ -9957,7 +9957,7 @@ function openFuturePrediction() {
 
     resultBox.innerHTML = `
         <div style="padding:30px; text-align:center; font-weight:800;">
-            🔮 미래예측 리포트를 불러오는 중입니다...
+            🔮 예측 리포트를 불러오는 중입니다...
         </div>
     `;
 
@@ -9969,6 +9969,11 @@ function openFuturePrediction() {
     .then(res => res.json())
     .then(data => {
         console.log("🔮 미래예측 데이터:", data);
+
+        console.log("입력면적 =", data.디버그입력면적);
+        console.log("매칭면적 =", data.디버그매칭면적);
+        console.log("거래건수 =", data.디버그거래건수);
+
         console.log("최근3개월거래량:", data.최근3개월거래량);
         console.log("최근3개월거래량그래프:", data.최근3개월거래량그래프);
         console.log("거래그래프:", data.거래그래프);
@@ -10342,8 +10347,21 @@ function renderActivityBars(activity) {
     `).join("");
 }
 
+function formatPrice(value) {
+    const num = Number(value || 0);
+
+    if (!num) return "-";
+
+    if (num >= 10000) {
+        const eok = num / 10000;
+        return `${eok.toFixed(1)}억`;
+    }
+
+    return `${num.toLocaleString()}만`;
+}
 
 function renderFuturePredictionReport(data) {
+
     return `
         
         <div style="
@@ -10417,50 +10435,86 @@ function renderFuturePredictionReport(data) {
                     </div>
 
                     <!-- KPI 카드 3개 -->
-                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px;
+                    <div style="
+                        display:grid;
+                        grid-template-columns:1.4fr 1fr 1fr;
+                        gap:8px;
                         max-width:560px;
+                        align-items:start;
                     ">
 
-                        <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa;
-                            border-radius:14px; padding:14px;
+                        <div style="
+                            background:#eef4ff;
+                            border:1px solid #c7d7ff;
+                            border-radius:16px;
+                            padding:12px 10px 10px;
+                            height:auto;
+                            min-height:0;
                         ">
-                            <span style="display:block; font-size:12px; color:#334155;
-                                margin-bottom:8px; font-weight:700;
+                            <span style="
+                                display:block;
+                                font-size:11px;
+                                color:#2563eb;
+                                margin-bottom:4px;
+                                font-weight:700;
                             ">
-                                예상 매매가
+                                6개월 예상가격
                             </span>
 
-                            <strong style="font-size:24px; color:#2563eb; font-weight:900;
+                            <strong style="
+                                display:block;
+                                font-size:18px;
+                                color:#ef4444;
+                                font-weight:900;
+                                line-height:1.1;
+                                white-space:nowrap;
                             ">
-                                9.1억
+                                ${formatPrice(data["6개월예상하한가"])} ~ ${formatPrice(data["6개월예상상한가"])}
                             </strong>
                         </div>
 
-                        <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; 
-                            border-radius:14px; padding:14px;
+                        <div style="
+                            background:#ecfdf5;
+                            border:1px solid #bbf7d0;
+                            border-radius:16px;
+                            padding:12px 10px;
                         ">
-                            <span style="display:block; font-size:12px; color:#334155;
-                                margin-bottom:8px; font-weight:700;
+                            <span style="
+                                display:block;
+                                font-size:11px;
+                                color:#15803d;
+                                margin-bottom:4px;
+                                font-weight:700;
                             ">
                                 전세가
                             </span>
 
-                            <strong style="font-size:24px; color:#2563eb; font-weight:900;">
-                                6.5억
+                            <strong style="
+                                display:block;
+                                font-size:18px;
+                                color:#047857;
+                                font-weight:900;
+                                line-height:1.05;
+                                margin:0;
+                            ">
+                                ${formatPrice(data["전세가"] || data["전세평균가"] || 0)}
                             </strong>
                         </div>
 
-                        <div style="background:rgba(255,255,255,0.78); border:1px solid #edf2fa; border-radius:14px;
-                            padding:14px;
+                        <div style="
+                            background:#fffbeb;
+                            border:1px solid #fde68a;
+                            border-radius:16px;
+                            padding:12px 10px;
                         ">
-                            <span style="display:block; font-size:12px; color:#334155;
-                                margin-bottom:8px; font-weight:700;
+                            <span style="display:block; font-size:11px; color:#b45309;
+                                margin-bottom:4px; font-weight:700;
                             ">
                                 갭(Gap)
                             </span>
 
-                            <strong style="font-size:24px; color:#2563eb; font-weight:900;">
-                                2.6억
+                            <strong style="display:block; font-size:18px; color:#d97706; font-weight:900; line-height:1.05; margin:0; white-space:nowrap;">
+                                ${formatPrice(data["갭차이"] || 0)}
                             </strong>
                         </div>
 

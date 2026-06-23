@@ -2230,6 +2230,59 @@ def future_prediction(
         elif gap_price and gap_price / 10000 >= 8:
             caution_factors.append("갭 부담 큼")
 
+        # ✅ 6개월 예상가격 계산
+        base_price = recent_avg
+
+        activity_factor_map = {
+            "활발": 0.65,
+            "보통": 0.50,
+            "적음": 0.35,
+            "부족": 0.20
+        }
+
+        volatility_map = {
+            "활발": 3,
+            "보통": 5,
+            "적음": 7,
+            "부족": 10
+        }
+
+        activity_factor = activity_factor_map.get(trade_activity, 0.35)
+        volatility = volatility_map.get(trade_activity, 7)
+
+        trend_adjust = rise_rate * activity_factor
+        score_adjust = (outlook_score - 50) * 0.03
+
+        if jeonse_ratio >= 70:
+            jeonse_adjust = 0.6
+        elif jeonse_ratio >= 60:
+            jeonse_adjust = 0.3
+        elif jeonse_ratio >= 50:
+            jeonse_adjust = 0
+        elif jeonse_ratio > 0:
+            jeonse_adjust = -0.3
+        else:
+            jeonse_adjust = 0
+
+        if recent_3m_count >= 20:
+            volume_adjust = 0.4
+        elif recent_3m_count >= 10:
+            volume_adjust = 0.2
+        elif recent_3m_count >= 5:
+            volume_adjust = 0
+        else:
+            volume_adjust = -0.3
+
+        expected_rate = trend_adjust + score_adjust + jeonse_adjust + volume_adjust
+
+        expected_center = base_price * (1 + expected_rate / 100)
+        expected_low = expected_center * (1 - volatility / 100)
+        expected_high = expected_center * (1 + volatility / 100)
+
+        expected_center = int(round(expected_center))
+        expected_low = int(round(expected_low))
+        expected_high = int(round(expected_high))
+
         return {
             "지역": region,
             "동": trades[0].get("dong", "") if trades else "",
@@ -2253,6 +2306,12 @@ def future_prediction(
             "이전거래그래프": prev_trend_chart,
 
             "예상매매가": recent_avg,
+
+            "6개월예상하한가": expected_low,
+            "6개월예상상한가": expected_high,
+            "6개월예상중심가": expected_center,
+            "6개월예상상승률": round(expected_rate, 2),
+
             "전세가": avg_jeonse,
             "전세평균가": avg_jeonse,
             "갭차이": gap_price,
