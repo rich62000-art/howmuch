@@ -10437,7 +10437,7 @@ function renderFuturePredictionReport(data) {
                     <!-- KPI 카드 3개 -->
                     <div style="
                         display:grid;
-                        grid-template-columns:1.4fr 1fr 1fr;
+                        grid-template-columns:1.5fr 1.15fr 1.15fr;
                         gap:8px;
                         max-width:560px;
                         align-items:start;
@@ -10485,6 +10485,7 @@ function renderFuturePredictionReport(data) {
                                 color:#15803d;
                                 margin-bottom:4px;
                                 font-weight:700;
+                                white-space: nowrap;
                             ">
                                 전세가
                             </span>
@@ -10496,6 +10497,7 @@ function renderFuturePredictionReport(data) {
                                 font-weight:900;
                                 line-height:1.05;
                                 margin:0;
+                                white-space: nowrap;
                             ">
                                 ${formatPrice(data["전세가"] || data["전세평균가"] || 0)}
                             </strong>
@@ -10508,7 +10510,7 @@ function renderFuturePredictionReport(data) {
                             padding:12px 10px;
                         ">
                             <span style="display:block; font-size:11px; color:#b45309;
-                                margin-bottom:4px; font-weight:700;
+                                margin-bottom:4px; font-weight:700; white-space: nowrap;
                             ">
                                 갭(Gap)
                             </span>
