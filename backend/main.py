@@ -2251,7 +2251,8 @@ def future_prediction(
         volatility = volatility_map.get(trade_activity, 7)
 
         trend_adjust = rise_rate * activity_factor
-        score_adjust = (outlook_score - 50) * 0.03
+        # 전망점수는 이미 종합 결과값이므로 예상가격 계산에는 중복 반영하지 않음
+        # score_adjust = (outlook_score - 50) * 0.03
 
         if jeonse_ratio >= 70:
             jeonse_adjust = 0.6
@@ -2273,7 +2274,41 @@ def future_prediction(
         else:
             volume_adjust = -0.3
 
-        expected_rate = trend_adjust + score_adjust + jeonse_adjust + volume_adjust
+        # 5. 전체 거래건수 반영
+        total_trade_count = len(trades)
+
+        if total_trade_count >= 50:
+            total_trade_adjust = 0.3
+        elif total_trade_count >= 30:
+            total_trade_adjust = 0.2
+        elif total_trade_count >= 15:
+            total_trade_adjust = 0.1
+        elif total_trade_count >= 5:
+            total_trade_adjust = 0
+        else:
+            total_trade_adjust = -0.3
+
+        # 6. 갭차이 반영
+        gap_eok_for_expected = gap_price / 10000 if gap_price else 0
+
+        if gap_eok_for_expected >= 10:
+            gap_adjust = -0.4
+        elif gap_eok_for_expected >= 7:
+            gap_adjust = -0.25
+        elif gap_eok_for_expected >= 5:
+            gap_adjust = -0.1
+        elif gap_eok_for_expected > 0 and gap_eok_for_expected <= 3:
+            gap_adjust = 0.2
+        else:
+            gap_adjust = 0
+
+        expected_rate = (
+            trend_adjust
+            + jeonse_adjust
+            + volume_adjust
+            + total_trade_adjust
+            + gap_adjust
+        )
 
         expected_center = base_price * (1 + expected_rate / 100)
         expected_low = expected_center * (1 - volatility / 100)
