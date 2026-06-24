@@ -10088,22 +10088,22 @@ function getOutlookSummary(data) {
     const score = data.전망점수 || 0;
 
     if (result === "매우긍정") {
-        return `전망점수 ${score}%로 상승 요인이 강한 구간입니다.<br>거래추세와 시장 지표가 전반적으로 긍정적입니다.`;
+        return `전망 지수는 ${score}%로 상승 요인이 강한 구간입니다.<br>거래추세와 시장 지표가 전반적으로 긍정적입니다.`;
     }
 
     if (result === "긍정") {
-        return `전망점수 ${score}%로 긍정 요인이 우세합니다.<br>다만 추가 거래 흐름은 함께 확인하는 것이 좋습니다.`;
+        return `전망 지수는 ${score}%로 긍정 요인이 우세합니다.<br>다만 추가 거래 흐름은 함께 확인하는 것이 좋습니다.`;
     }
 
     if (result === "보통") {
-        return `전망점수 ${score}%로 상승 요인과 주의 요인이 함께 존재합니다.<br>당분간 추가 거래 흐름을 확인할 필요가 있습니다.`;
+        return `전망 지수는 ${score}%로 상승 요인과 주의 요인이 함께 존재합니다.<br>당분간 추가 거래 흐름을 확인할 필요가 있습니다.`;
     }
 
     if (result === "주의") {
-        return `전망점수 ${score}%로 주의 요인이 큰 구간입니다.<br>매수 판단 시 가격 조정 가능성과 거래량을 함께 확인해야 합니다.`;
+        return `전망 지수는 ${score}%로 주의 요인이 큰 구간입니다.<br>매수 판단 시 가격 조정 가능성과 거래량을 함께 확인해야 합니다.`;
     }
 
-    return `전망점수 ${score}%로 위험 요인이 큰 구간입니다.<br>충분한 추가 확인 전까지는 보수적인 접근이 필요합니다.`;
+    return `전망 지수는 ${score}%로 위험 요인이 큰 구간입니다.<br>충분한 추가 확인 전까지는 보수적인 접근이 필요합니다.`;
 }
 
 function getJeonseGaugeDash(ratio) {
@@ -10445,22 +10445,19 @@ function renderFuturePredictionReport(data) {
                     <!-- KPI 카드 3개 -->
                     <div style="
                         display:grid;
-                        grid-template-columns:1.5fr 1.15fr 1.15fr;
-                        gap:8px;
-                        max-width:560px;
-                        align-items:start;
-                        margin-left:0;
-                        margin-right:auto;
-                        transform:translateX(-6px);
-                    ">
+                            grid-template-columns:minmax(0,1.45fr) minmax(0,1fr) minmax(0,1fr);
+                            gap:8px;
+                            width:100%;
+                            max-width:100%;
+                            box-sizing:border-box;
+                        ">
 
                         <div style="
                             background:#eef4ff;
                             border:1px solid #c7d7ff;
                             border-radius:16px;
                             padding:12px 10px 10px;
-                            height:auto;
-                            min-height:0;
+                            overflow:hidden;
                         ">
                             <span style="
                                 display:block;
@@ -10474,11 +10471,13 @@ function renderFuturePredictionReport(data) {
 
                             <strong style="
                                 display:block;
-                                font-size:18px;
+                                font-size:17px;
                                 color:#ef4444;
                                 font-weight:900;
-                                line-height:1.1;
-                                white-space:nowrap;
+                                line-height:1.15;
+                                white-space:normal;
+                                letter-spacing:-1px;
+                                word-break:keep-all;
                             ">
                                 ${formatPrice(data["6개월예상하한가"])} ~ ${formatPrice(data["6개월예상상한가"])}
                             </strong>
@@ -10508,7 +10507,8 @@ function renderFuturePredictionReport(data) {
                                 font-weight:900;
                                 line-height:1.05;
                                 margin:0;
-                                white-space: nowrap;
+                                white-space:nowrap;
+                                letter-spacing:-0.8px;
                             ">
                                 ${formatPrice(data["전세가"] || data["전세평균가"] || 0)}
                             </strong>
@@ -10526,7 +10526,7 @@ function renderFuturePredictionReport(data) {
                                 갭(Gap)
                             </span>
 
-                            <strong style="display:block; font-size:18px; color:#d97706; font-weight:900; line-height:1.05; margin:0; white-space:nowrap;">
+                            <strong style="display:block; font-size:18px; color:#d97706; font-weight:900; line-height:1.05; margin:0; letter-spacing:-0.8px; white-space:nowrap;">
                                 ${formatPrice(data["갭차이"] || 0)}
                             </strong>
                         </div>
