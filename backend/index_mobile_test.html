@@ -10126,136 +10126,128 @@ function getTodayText() {
 }
 
 function renderFutureTrendSvg(data) {
-    const recent = Array.isArray(data.거래그래프) ? data.거래그래프 : [];
-    const previous = Array.isArray(data.이전거래그래프) ? data.이전거래그래프 : [];
+    const yearly = Array.isArray(data["최근12개월가격거래그래프"])
+        ? data["최근12개월가격거래그래프"]
+        : [];
 
-    const recentPrices = recent.map(x => Number(x.price || x || 0)).filter(x => x > 0);
-    const prevPrices = previous.map(x => Number(x.price || x || 0)).filter(x => x > 0);
-    const allPrices = [...recentPrices, ...prevPrices];
-
-    const recentCounts = recent.map(x => Number(x.count || 0));
-    const maxCount = Math.max(...recentCounts, 1);
-
-    if (recentPrices.length < 2) {
+    if (!yearly || yearly.length === 0) {
         return `
-            <div style="height:190px; display:flex; align-items:center; justify-content:center;
+            <div style="height:220px; display:flex; align-items:center; justify-content:center;
                 color:#94a3b8; font-size:13px; font-weight:700;">
                 그래프 표시 데이터 부족
             </div>
         `;
     }
 
-    const maxPrice = Math.max(...allPrices);
-    const minPrice = Math.min(...allPrices);
-    const padding = Math.max((maxPrice - minPrice) * 0.15, 1000);
+    const prices = yearly.map(x => Number(x.price || 0)).filter(x => x > 0);
+    const counts = yearly.map(x => Number(x.count || 0));
 
+    const maxPrice = Math.max(...prices);
+    const minPrice = Math.min(...prices);
+    const maxCount = Math.max(...counts, 1);
+
+    const padding = Math.max((maxPrice - minPrice) * 0.15, 1000);
     const chartMax = maxPrice + padding;
     const chartMin = Math.max(0, minPrice - padding);
 
-    const xStart = 44;
-    const xEnd = 376;
-    const yTop = 22;
+    const xStart = 42;
+    const xEnd = 380;
+    const yTop = 24;
     const yBottom = 132;
 
-    function getX(i, len) {
-        if (len <= 1) return xStart;
-        return xStart + ((xEnd - xStart) / (len - 1)) * i;
+    function getX(i) {
+        if (yearly.length <= 1) return xStart;
+        return xStart + ((xEnd - xStart) / (yearly.length - 1)) * i;
     }
 
     function getY(price) {
         return yBottom - ((price - chartMin) / (chartMax - chartMin)) * (yBottom - yTop);
     }
 
-    function makePoints(arr) {
-        return arr.map((price, i) => `${getX(i, arr.length)},${getY(price)}`).join(" ");
-    }
-
-    function makeDots(arr, color) {
-        return arr.map((price, i) => `
-            <circle cx="${getX(i, arr.length)}" cy="${getY(price)}" r="3.5" fill="${color}" />
-        `).join("");
-    }
-
     function yLabel(value) {
         return (value / 10000).toFixed(1) + "억";
     }
+
+    const linePoints = yearly
+        .map((x, i) => {
+            const price = Number(x.price || 0);
+            if (price <= 0) return null;
+            return `${getX(i)},${getY(price)}`;
+        })
+        .filter(Boolean)
+        .join(" ");
 
     const y1 = chartMax;
     const y2 = chartMin + (chartMax - chartMin) * 0.66;
     const y3 = chartMin + (chartMax - chartMin) * 0.33;
     const y4 = chartMin;
 
-    const labels = recent.map(x => {
-        const m = String(x.month || "");
-
-        return m.length >= 7
-            ? m.slice(2, 7).replace("-", ".")
-            : "";
-    });
-
     return `
-         <svg viewBox="0 0 390 165" width="100%" height="165" preserveAspectRatio="none">
+        <svg viewBox="0 0 390 220" width="100%" height="220" preserveAspectRatio="none">
 
-            <line x1="40" y1="22" x2="386" y2="22" stroke="#e5e7eb" stroke-width="1"/>
-            <line x1="40" y1="59" x2="386" y2="59" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="40" y1="24" x2="386" y2="24" stroke="#e5e7eb" stroke-width="1"/>
+            <line x1="40" y1="60" x2="386" y2="60" stroke="#e5e7eb" stroke-width="1"/>
             <line x1="40" y1="96" x2="386" y2="96" stroke="#e5e7eb" stroke-width="1"/>
             <line x1="40" y1="132" x2="386" y2="132" stroke="#e5e7eb" stroke-width="1"/>
 
-            <text x="4" y="26" font-size="9" fill="#64748b">${yLabel(y1)}</text>
-            <text x="4" y="63" font-size="9" fill="#64748b">${yLabel(y2)}</text>
+            <text x="4" y="28" font-size="9" fill="#64748b">${yLabel(y1)}</text>
+            <text x="4" y="64" font-size="9" fill="#64748b">${yLabel(y2)}</text>
             <text x="4" y="100" font-size="9" fill="#64748b">${yLabel(y3)}</text>
             <text x="4" y="136" font-size="9" fill="#64748b">${yLabel(y4)}</text>
 
-            ${recentCounts.map((count, i) => {
-
-                const barMaxHeight = 34;
-                const barHeight = (count / maxCount) * barMaxHeight;
-
-                const barWidth = 18;
-
-                const x = getX(i, recentCounts.length) - (barWidth / 2);
-                const y = yBottom - barHeight;
+            ${yearly.map((x, i) => {
+                const count = Number(x.count || 0);
+                const barHeight = count > 0 ? (count / maxCount) * 34 : 0;
+                const barWidth = 14;
+                const barX = getX(i) - barWidth / 2;
+                const barY = 168 - barHeight;
 
                 return `
-                    <rect
-                        x="${x}"
-                        y="${y}"
-                        width="${barWidth}"
-                        height="${barHeight}"
-                        rx="4"
-                        fill="#fbcfe8"
-                        
-                    />
+                    <rect x="${barX}" y="${barY}" width="${barWidth}" height="${barHeight}" rx="4"
+                        fill="#f9a8d4" opacity="${count > 0 ? "0.9" : "0"}" />
+                    ${count > 0 ? `
+                        <text x="${barX + 2}" y="${barY - 4}" font-size="8" fill="#ec4899" font-weight="800">
+                            ${count}
+                        </text>
+                    ` : ""}
                 `;
             }).join("")}
 
-            ${prevPrices.length >= 2 ? `
-                <polyline
-                    points="${makePoints(prevPrices)}"
-                    fill="none"
-                    stroke="#94a3b8"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    opacity="0.75"
-                />
-            ` : ""}
-
             <polyline
-                points="${makePoints(recentPrices)}"
+                points="${linePoints}"
                 fill="none"
                 stroke="#2563eb"
-                stroke-width="4"
+                stroke-width="3.5"
                 stroke-linecap="round"
                 stroke-linejoin="round"
             />
 
-            ${makeDots(recentPrices, "#2563eb")}
+            ${yearly.map((x, i) => {
+                const price = Number(x.price || 0);
+                if (price <= 0) return "";
 
-            ${labels.map((label, i) => {
-                if (!label) return "";
-                return `<text x="${getX(i, labels.length) - 12}" y="158" font-size="9" fill="#64748b">${label}</text>`;
+                return `
+                    <circle cx="${getX(i)}" cy="${getY(price)}" r="3.5" fill="#2563eb" />
+                `;
             }).join("")}
+
+            <line x1="210" y1="18" x2="210" y2="188" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 4"/>
+
+            ${yearly.map((x, i) => {
+                const label = String(x.month || "").slice(2).replace("-", ".");
+                return `
+                    <text x="${getX(i) - 11}" y="206" font-size="8" fill="#64748b">
+                        ${label}
+                    </text>
+                `;
+            }).join("")}
+
+            <text x="78" y="218" font-size="9" fill="#64748b" font-weight="800">
+                이전 6개월
+            </text>
+            <text x="265" y="218" font-size="9" fill="#2563eb" font-weight="800">
+                최근 6개월
+            </text>
 
         </svg>
     `;
@@ -10361,6 +10353,8 @@ function formatPrice(value) {
 }
 
 function renderFuturePredictionReport(data) {
+    console.log("🔥 미래예측 data 전체:", data);
+    console.log("최근12개월그래프", data["최근12개월가격거래그래프"]);
 
     return `
         
@@ -10524,6 +10518,35 @@ function renderFuturePredictionReport(data) {
                         </div>
 
                     </div>
+                    <div style="
+                        margin-top:10px;
+                        padding:10px 14px;
+                        background:#f8fafc;
+                        border:1px solid #e2e8f0;
+                        border-radius:12px;
+                        font-size:12px;
+                        color:#475569;
+                        line-height:1.5;
+                    ">
+                        📈 최근 거래상승률
+                        <strong style="color:#2563eb;">
+                            ${data["거래상승률"] || 0}%
+                        </strong>
+                        와 최근 3개월 거래량
+                        <strong style="color:#dc2626;">
+                            ${data["최근3개월거래량"] || 0}건
+                        </strong>
+                        · 거래활성도
+                        <strong style="color:#7c3aed;">
+                            ${data["거래활발도"] || data["거래활성도"] || "-"}
+                        </strong>
+
+                        · 전세가율
+                        <strong style="color:#059669;">
+                            ${data["전세가율"] || 0}%
+                        </strong>
+                        을 반영한 예상가격 범위입니다.
+                    </div>
 
                 </div>
             </div>
@@ -10560,98 +10583,72 @@ function renderFuturePredictionReport(data) {
                 </div>
             </div>
 
-            <div style="display:flex; gap:14px; align-items:stretch;
-                margin-top:14px;">
+            <!-- 상단 요약 배지 3개 -->
+            <div style="
+                display:grid;
+                grid-template-columns:1.2fr 1fr 1fr;
+                gap:8px;
+                margin-top:14px;
+            ">
 
-                <!-- 좌측 요약 -->
-                <div style="
-                    background:#ffffff;
-                    border-radius:14px;
-                    border:1px solid #e5e7eb;
-
-                    width:110px;
-                    min-width:110px;
-                    height:225px;
-
-                    padding:20px 14px;
-                    box-sizing:border-box;
-
-                    display:flex;
-                    flex-direction:column;
-                    justify-content:space-between;
-
-                    text-align:center;
-                    font-size:14px;
-                    line-height:1.10;
-                    color:#334155;
-                    font-weight:700;
-                ">
-
-                    <div style="font-size:16px; font-weight:900; color:#ef4444;
-                        line-height:1.1; margin-bottom:4px;">
-                        ${Number(data.거래건수 || 0) < 6 ? "데이터 부족" : (data.거래추세 || "데이터 부족")} 
+                <div style="background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 8px; text-align:center;">
+                    <div style="font-size:11px; color:#64748b; font-weight:800;">거래추세</div>
+                    <div style="
+                        font-size:18px;
+                        color:#ef4444;
+                        font-weight:900;
+                        margin-top:8px;
+                        white-space:nowrap;
+                    ">
+                        ${data.거래추세 || "-"} ${Number(data.거래상승률 || 0) > 0 ? "+" : ""}${data.거래상승률 || 0}%
                     </div>
+                    
+                </div>
 
-                    <div style="font-size:16px; font-weight:900; color:#ef4444;
-                        line-height:1.1; margin-bottom:20px;">
-                        ${Number(data.거래건수 || 0) < 6 ? "비교 불가" : ((Number(data.거래상승률 || 0) > 0 ? "+" : "") + (data.거래상승률 || 0) + "%")}
-                    </div>
-
-                    <div style="font-size:11px; color:#64748b; margin-bottom:3px;">
-                        최근 6개월 평균
-                    </div>
-
-                    <div style="font-size:16px; font-weight:900; color:#0f172a; margin-bottom:20px;">
+                <div style="background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 8px; text-align:center;">
+                    <div style="font-size:11px; color:#64748b; font-weight:800;">최근 6개월 평균</div>
+                    <div style="font-size:18px; color:#0f172a; font-weight:900; margin-top:8px;">
                         ${formatEok(data.최근6개월평균)}
                     </div>
+                </div>
 
-                    <div style="font-size:11px; color:#64748b; margin-bottom:3px;">
-                        이전 6개월 평균
-                    </div>
-
-                    <div style="font-size:16px; font-weight:900; color:#0f172a;">
+                <div style="background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 8px; text-align:center;">
+                    <div style="font-size:11px; color:#64748b; font-weight:800;">이전 6개월 평균</div>
+                    <div style="font-size:18px; color:#0f172a; font-weight:900; margin-top:8px;">
                         ${Number(data.이전6개월평균 || 0) > 0 ? formatEok(data.이전6개월평균) : "-"}
                     </div>
-
                 </div>
 
-              
-                <!-- 우측 SVG 그래프 -->
-                <div style="
-                    background:#ffffff;
-                    border-radius:14px;
-                    padding:14px;
-                    border:1px solid #e5e7eb;
-                    text-align:center;
-                    font-size:14px;
-                    line-height:1.5;
-                    color:#334155;
-                    font-weight:700;
-                ">
+            </div>
 
-                    <!-- 그래프 범례 -->
-                    <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px;
-                        margin-bottom:0px; font-size:8px; font-weight:800; color:#64748b;">
+            <!-- 하단 전체폭 그래프 -->
+            <div style="
+                background:#ffffff;
+                border-radius:16px;
+                padding:14px 10px;
+                border:1px solid #e5e7eb;
+                margin-top:10px;
+                text-align:center;
+                font-size:14px;
+                color:#334155;
+                font-weight:700;
+            ">
 
-                        <span style="display:flex; align-items:center; gap:4px;">
-                            <i style="width:16px; height:3px; border-radius:999px; background:#2563eb; display:inline-block;"></i>
-                            최근 6개월
-                        </span>
+                <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px;
+                    margin-bottom:6px; font-size:9px; font-weight:800; color:#64748b;">
 
-                        <span style="display:flex; align-items:center; gap:4px;">
-                            <i style="width:16px; height:3px; border-radius:999px; background:#94a3b8; display:inline-block;"></i>
-                            이전 6개월
-                        </span>
+                    <span style="display:flex; align-items:center; gap:4px;">
+                        <i style="width:16px; height:3px; border-radius:999px; background:#2563eb; display:inline-block;"></i>
+                        가격
+                    </span>
 
-                        <span style="display:flex; align-items:center; gap:4px;">
-                            <i style="width:10px; height:10px; border-radius:3px; background:#f472b6; display:inline-block;"></i>
-                            거래량
-                        </span>
-                    </div>
-
-                    ${renderFutureTrendSvg(data)}
-
+                    <span style="display:flex; align-items:center; gap:4px;">
+                        <i style="width:10px; height:10px; border-radius:3px; background:#f472b6; display:inline-block;"></i>
+                        거래량
+                    </span>
                 </div>
+
+                ${renderFutureTrendSvg(data)}
 
             </div>
 

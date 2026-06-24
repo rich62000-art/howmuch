@@ -1853,29 +1853,25 @@ def future_prediction(
         # 월 정렬
         all_months = sorted(monthly_price_map.keys())
 
-        # 최근 6개월
-        trend_chart = []
+        # ✅ 현재 기준 최근 12개월 월 배열 생성
+        today = datetime.today()
 
-        for month in all_months[-6:]:
+        recent_12_months = []
 
-            prices = monthly_price_map[month]
+        for i in range(11, -1, -1):
+            target_month = today.month - i
+            target_year = today.year
 
-            trend_chart.append({
-                "month": month,
-                "price": round(sum(prices) / len(prices))
-            })
+            while target_month <= 0:
+                target_month += 12
+                target_year -= 1
 
-        # 이전 6개월
-        prev_trend_chart = []
+            recent_12_months.append(
+                f"{target_year}-{target_month:02d}"
+            )
 
-        for month in all_months[-12:-6]:
-
-            prices = monthly_price_map[month]
-
-            prev_trend_chart.append({
-                "month": month,
-                "price": round(sum(prices) / len(prices))
-            })
+        prev_6_months = recent_12_months[:6]
+        recent_6_months = recent_12_months[6:]
 
         # 평균 계산용
         from collections import defaultdict
@@ -1896,12 +1892,12 @@ def future_prediction(
 
         all_months = sorted(monthly_price_map.keys())
 
-        
-        # ✅ 매매 분석과 동일 기준: 현재 기준 최근 12개월 월별 거래량 생성
+        # ✅ 현재 기준 최근 12개월 월 배열 생성
         today = datetime.today()
-        monthly_volume_map = {}
 
-        for i in range(12):
+        recent_12_months = []
+
+        for i in range(11, -1, -1):
             target_month = today.month - i
             target_year = today.year
 
@@ -1909,50 +1905,71 @@ def future_prediction(
                 target_month += 12
                 target_year -= 1
 
-            month_key = f"{target_year}-{target_month:02d}"
-            monthly_volume_map[month_key] = 0
+            recent_12_months.append(
+                f"{target_year}-{target_month:02d}"
+            )
 
-        for t in trades:
-            month = str(t.get("date", ""))[:7]
+        prev_6_months = recent_12_months[:6]
+        recent_6_months = recent_12_months[6:]
 
-            if month in monthly_volume_map:
-                monthly_volume_map[month] += 1
+        
+        # ✅ 현재 기준 최근 12개월 생성
+        today = datetime.today()
 
-        monthly_volume = [
-            {
-                "month": key,
-                "count": monthly_volume_map[key]
-            }
-            for key in sorted(monthly_volume_map.keys())
-        ]
+        recent_12_months = []
+
+        for i in range(11, -1, -1):
+            target_month = today.month - i
+            target_year = today.year
+
+            while target_month <= 0:
+                target_month += 12
+                target_year -= 1
+
+            recent_12_months.append(
+                f"{target_year}-{target_month:02d}"
+            )
+
+        prev_6_months = recent_12_months[:6]
+        recent_6_months = recent_12_months[6:]
 
         # ✅ 최근 6개월 월평균
         trend_chart = []
 
-        for month in all_months[-6:]:
-            prices = monthly_price_map[month]
+        for month in recent_6_months:
+            prices = monthly_price_map.get(month, [])
 
             trend_chart.append({
                 "month": month,
-                "price": round(sum(prices) / len(prices)),
+                "price": round(sum(prices) / len(prices)) if prices else 0,
                 "count": len(prices)
             })
 
         # ✅ 이전 6개월 월평균
         prev_trend_chart = []
 
-        for month in all_months[-12:-6]:
-            prices = monthly_price_map[month]
+        for month in prev_6_months:
+            prices = monthly_price_map.get(month, [])
 
             prev_trend_chart.append({
                 "month": month,
-                "price": round(sum(prices) / len(prices)),
+                "price": round(sum(prices) / len(prices)) if prices else 0,
                 "count": len(prices)
             })
 
-        recent_6_prices = [x["price"] for x in trend_chart]
-        prev_6_prices = [x["price"] for x in prev_trend_chart]
+        recent_6_prices = [
+            x["price"]
+            for x in trend_chart
+            if x["price"] > 0
+        ]
 
+        prev_6_prices = [
+            x["price"]
+            for x in prev_trend_chart
+            if x["price"] > 0
+        ]
+
+    
         recent_avg = round(sum(recent_6_prices) / len(recent_6_prices)) if recent_6_prices else 0
         prev_avg = round(sum(prev_6_prices) / len(prev_6_prices)) if prev_6_prices else 0
 
@@ -1995,6 +2012,53 @@ def future_prediction(
             trend = "하락"
         else:
             trend = "보합"
+
+        # ✅ 최근 12개월 월별 거래량 생성
+        today = datetime.today()
+        monthly_volume_map = {}
+
+        for i in range(12):
+            target_month = today.month - i
+            target_year = today.year
+
+            while target_month <= 0:
+                target_month += 12
+                target_year -= 1
+
+            month_key = f"{target_year}-{target_month:02d}"
+            monthly_volume_map[month_key] = 0
+
+        for t in trades:
+            month = str(t.get("date", ""))[:7]
+
+            if month in monthly_volume_map:
+                monthly_volume_map[month] += 1
+
+        monthly_volume = [
+            {
+                "month": key,
+                "count": monthly_volume_map[key]
+            }
+            for key in sorted(monthly_volume_map.keys())
+        ]
+        
+        # ✅ 최근 12개월 가격 + 거래량 통합 그래프용
+        recent_12m_price_volume_chart = []
+
+        for month in recent_12_months:
+            prices = monthly_price_map.get(month, [])
+            volume = 0
+
+            for v in monthly_volume:
+                if v["month"] == month:
+                    volume = v["count"]
+                    break
+
+            recent_12m_price_volume_chart.append({
+                "month": month,
+                "price": round(sum(prices) / len(prices)) if prices else 0,
+                "count": volume
+            })
 
         recent_3m_volume = monthly_volume[-3:]
 
@@ -2320,15 +2384,9 @@ def future_prediction(
 
         return {
             "지역": region,
+            "디버그테스트": "future_prediction_return_ok",
             "동": trades[0].get("dong", "") if trades else "",
             "단지명": apt_name,
-
-            # 디버그
-            "디버그입력면적": size,
-            "디버그매칭면적": matched_size,
-            "디버그거래건수": len(trades),
-            "디버그DB조회건수": len(db_rows),
-
             "면적": size,
             "매칭면적": matched_size,
 
@@ -2338,7 +2396,15 @@ def future_prediction(
             "이전6개월평균": prev_avg,
             "거래건수": len(trades),
             "거래그래프": trend_chart,
+            
+            "디버그최근6개월월목록": recent_6_months,
+            "디버그이전6개월월목록": prev_6_months,
+            "디버그월별거래량": monthly_volume,
+            "디버그거래그래프": trend_chart,
+            "최근12개월가격거래그래프": recent_12m_price_volume_chart,
+
             "이전거래그래프": prev_trend_chart,
+            # "최근6개월거래량그래프": recent_6m_volume,
 
             "예상매매가": recent_avg,
 
@@ -2354,6 +2420,7 @@ def future_prediction(
             "거래활성도": trade_activity,
             "최근3개월거래량": recent_3m_count,
             "최근3개월거래량그래프": recent_3m_volume,
+            
             "전망점수": outlook_score,
             "전망결론": outlook_result,
             "상승요인": positive_factors,
