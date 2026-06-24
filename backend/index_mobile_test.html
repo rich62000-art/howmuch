@@ -10234,9 +10234,23 @@ function renderFutureTrendSvg(data) {
             <line x1="210" y1="18" x2="210" y2="188" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 4"/>
 
             ${yearly.map((x, i) => {
-                const label = String(x.month || "").slice(2).replace("-", ".");
+
+                const label = String(x.month || "")
+                    .slice(2)
+                    .replace("-", ".");
+
+                const color =
+                    i >= 6
+                        ? "#2563eb"      // 최근 6개월
+                        : "#64748b";     // 이전 6개월
+
                 return `
-                    <text x="${getX(i) - 11}" y="206" font-size="8" fill="#64748b">
+                    <text
+                        x="${getX(i) - 11}"
+                        y="206"
+                        font-size="8"
+                        font-weight="800"
+                        fill="${color}">
                         ${label}
                     </text>
                 `;
@@ -10574,11 +10588,11 @@ function renderFuturePredictionReport(data) {
                 <div>
                     <div style="font-size:16px; font-weight:900;
                         color:#0f172a; line-height:1.2;">
-                        거래추세
+                        최근 12개월 가격 흐름
                     </div>
                     <div style="font-size:11px; color:#64748b;
                         margin-top:3px;">
-                        최근 6개월 평균 vs 이전 6개월 평균
+                        가격 추세와 거래량의 변화
                     </div>
                 </div>
             </div>
@@ -10606,14 +10620,14 @@ function renderFuturePredictionReport(data) {
                 </div>
 
                 <div style="background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 8px; text-align:center;">
-                    <div style="font-size:11px; color:#64748b; font-weight:800;">최근 6개월 평균</div>
+                    <div style="font-size:11px; color:#64748b; font-weight:800;">최근 6월 평균</div>
                     <div style="font-size:18px; color:#0f172a; font-weight:900; margin-top:8px;">
                         ${formatEok(data.최근6개월평균)}
                     </div>
                 </div>
 
                 <div style="background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 8px; text-align:center;">
-                    <div style="font-size:11px; color:#64748b; font-weight:800;">이전 6개월 평균</div>
+                    <div style="font-size:11px; color:#64748b; font-weight:800;">이전 6월 평균</div>
                     <div style="font-size:18px; color:#0f172a; font-weight:900; margin-top:8px;">
                         ${Number(data.이전6개월평균 || 0) > 0 ? formatEok(data.이전6개월평균) : "-"}
                     </div>
@@ -10634,18 +10648,41 @@ function renderFuturePredictionReport(data) {
                 font-weight:700;
             ">
 
-                <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px;
-                    margin-bottom:6px; font-size:9px; font-weight:800; color:#64748b;">
+                
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    margin-bottom:8px;
+                ">
 
-                    <span style="display:flex; align-items:center; gap:4px;">
-                        <i style="width:16px; height:3px; border-radius:999px; background:#2563eb; display:inline-block;"></i>
-                        가격
-                    </span>
+                    <div style="
+                        font-size:14px;
+                        font-weight:900;
+                        color:#0f172a;
+                    ">
+                        📊 가격·거래량 변화
+                    </div>
 
-                    <span style="display:flex; align-items:center; gap:4px;">
-                        <i style="width:10px; height:10px; border-radius:3px; background:#f472b6; display:inline-block;"></i>
-                        거래량
-                    </span>
+                    <div style="
+                        display:flex;
+                        align-items:center;
+                        gap:10px;
+                        font-size:9px;
+                        font-weight:800;
+                        color:#64748b;
+                    ">
+
+                        <span style="display:flex; align-items:center; gap:4px;">
+                            <i style="width:16px; height:3px; border-radius:999px; background:#2563eb; display:inline-block;"></i>
+                            가격
+                        </span>
+
+                        <span style="display:flex; align-items:center; gap:4px;">
+                            <i style="width:10px; height:10px; border-radius:3px; background:#f472b6; display:inline-block;"></i>
+                            거래량
+                        </span>
+                    </div>
                 </div>
 
                 ${renderFutureTrendSvg(data)}
