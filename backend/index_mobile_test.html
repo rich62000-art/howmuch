@@ -9757,7 +9757,7 @@ body {
                 <div class="step-text">
                     <div class="step-main">지역 선택</div>
                     <div class="step-sub">
-                        시/구 또는 동/리를 선택하세요
+                        시/군/구, 동/리를 선택하세요
                     </div>
                 </div>
 
@@ -12503,12 +12503,15 @@ function renderDongs(dongs) {
             // V3 지역 선택 팝업에서 동/리 목록을 기다리는 상태라면
             // 기존 dongList는 열지 않고, V3 팝업 안에 동/리 리스트를 표시한다.
             if (window.v3WaitingDongList) {
-                window.v3WaitingDongList = false;
 
                 dongList.style.display = "none";
                 dongList.style.visibility = "hidden";
 
-                renderDongV3();
+                setTimeout(() => {
+                    renderDongV3();
+                    window.v3WaitingDongList = false;
+                }, 100);
+
                 return;
             }
 
@@ -15670,6 +15673,24 @@ function renderDongV3() {
     }
 
     grid.innerHTML = "";
+
+    if (!dongs || dongs.length === 0) {
+        grid.innerHTML = `
+            <div style="
+                grid-column: 1 / -1;
+                padding: 28px 10px;
+                text-align: center;
+                color: #64748b;
+                font-size: 14px;
+                font-weight: 700;
+                line-height: 1.6;
+            ">
+                조회 가능한 동/리 목록이 없습니다.<br>
+                다른 시·군·구를 선택해 주세요.
+            </div>
+        `;
+        return;
+    }
 
     dongs.forEach(dong => {
         const btn = document.createElement("div");
