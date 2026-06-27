@@ -6545,9 +6545,13 @@ body {
     display: flex;
     align-items: center;
 
-    min-height: 50px;
+    width: 100%;
+    min-width: 0;
 
-    border-radius: 20px;
+    height: 38px;
+    min-height: 38px;
+
+    border-radius: 14px;
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     border: 1.5px solid #dbeafe;
 
@@ -6558,18 +6562,18 @@ body {
     overflow: visible;
 }
 
-.region-select-box select,
-.region-select-box input {
+.region-card-v2 .region-select-box select,
+.region-card-v2 .region-select-box input {
     width: 100%;
-    height: 50px !important;
+    height: 42px !important;
 
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
 
-    padding: 0 46px 0 16px !important;
+    padding: 0 28px 0 10px !important;
 
-    font-size: 15px !important;
+    font-size: 12px !important;
     font-weight: 800 !important;
     color: #0f172a !important;
 }
@@ -6645,6 +6649,10 @@ body {
     background: #e2e8f0 !important;
     color: transparent !important;
     box-shadow: none !important;
+}
+
+.region-card-v2 .region-check {
+    display: none !important;
 }
 
 .region-select-item.selected .region-check {
@@ -6790,9 +6798,8 @@ body {
 
 .inline-region-item {
 
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    display: block;
+    min-width: 0;
 }
 
 .inline-region-item label {
@@ -7142,7 +7149,7 @@ body {
     }
 
     .step-sub {
-        font-size: 8px;
+        font-size: 12px;
     }
 }
 
@@ -9115,6 +9122,514 @@ body {
     justify-content: center;
     font-size: 72px;
 }
+
+/* ===== 01 지역 선택 카드 전용 리뉴얼 ===== */
+.region-card-v2 .region-select-row-3 {
+    margin-top: 10px !important;
+}
+
+.region-card-v2 .region-select-box {
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 14px !important;
+    background: #ffffff !important;
+    border: 1px solid #dbeafe !important;
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.08) !important;
+    overflow: hidden !important;
+}
+
+.region-card-v2 select,
+.region-card-v2 #dongInput {
+    height: 44px !important;
+    min-height: 44px !important;
+    border: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+
+    padding-left: 10px !important;
+    padding-right: 28px !important;
+
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.4px !important;
+}
+
+.region-card-v2 .region-check {
+    display: none !important;
+}
+
+/* ===== 01 지역 선택: select 삼각형 제거 ===== */
+.region-card-v2 select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background-image: none !important;
+    background: transparent !important;
+}
+
+/* ===== 01 지역 선택: 입력창 크기 최종 강제 ===== */
+.region-card-v2 .region-select-box {
+    height: 42px !important;
+    min-height: 42px !important;
+    border-radius: 14px !important;
+}
+
+.region-card-v2 .region-select-box select,
+.region-card-v2 .region-select-box input {
+    height: 42px !important;
+    min-height: 42px !important;
+    font-size: 12px !important;
+    padding: 0 10px !important;
+}
+
+/* ===== 01 지역 선택: 화살표 제거 후 글자 영역 복구 ===== */
+.region-card-v2 .region-select-box select,
+.region-card-v2 .region-select-box input {
+    padding-left: 12px !important;
+    padding-right: 8px !important;
+    text-align: left !important;
+
+    font-size: 12px !important;
+    font-weight: 800 !important;
+
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.region-card-v2 .region-select-box {
+    overflow: hidden !important;
+}
+
+.region-card-v2 #sidoSelect,
+.region-card-v2 #sigunguSelect,
+.region-card-v2 #dongInput {
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+/* 01 지역 선택: 시/군/구 선택 후 글자색 */
+.region-card-v2 #sigunguSelect {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+}
+
+.region-card-v2 #sigunguSelect:disabled {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+/* 시/군/구 비활성화 상태에서도 글자색 선명하게 */
+#regionSelectRow3 #sigunguSelect:disabled,
+.region-card-v2 #sigunguSelect:disabled {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+}
+
+.region-open-box-v3 {
+    margin-top: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #eef6ff;
+    border: 1px solid #bfdbfe;
+    text-align: center;
+    cursor: pointer;
+}
+
+.region-open-box-v3{
+
+    margin-top:12px;
+
+    padding:14px 18px;
+
+    border-radius:16px;
+
+    background:#ffffff;
+
+    border:1px solid #dbeafe;
+
+    cursor:pointer;
+
+    font-size:17px;
+
+    font-weight:800;
+
+    color:#111827;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+}
+
+.path-arrow{
+
+    color:#94a3b8;
+
+    font-weight:700;
+
+}
+
+.region-sheet-overlay-v3 {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 30000;
+}
+
+.region-sheet-v3 {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30001;
+
+    background: #ffffff;
+    border-radius: 24px 24px 0 0;
+    padding: 10px 16px 24px;
+
+    max-height: 78vh;
+    overflow-y: auto;
+    box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.18);
+}
+
+.region-sheet-handle-v3 {
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    margin: 0 auto 12px;
+}
+
+.region-sheet-header-v3 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.region-sheet-title-v3 {
+    font-size: 18px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.region-sheet-close-v3 {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.region-grid-v3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+}
+
+.region-option-v3 {
+    height: 38px;
+    border: none;
+    border-radius: 8px;
+    background: #f0f9ff;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 800;
+    width: 100%;
+}
+
+.region-path-btn-v3 {
+    all: unset;
+
+    display: inline-block;
+
+    cursor: pointer;
+
+    font-size: 18px;
+
+    font-weight: 800;
+
+    color: #111827;
+
+    line-height: 1.4;
+}
+
+.region-path-btn-v3:hover{
+
+    color:#2563eb;
+
+}
+
+.region-open-box-v3 button{
+
+    all:unset;
+
+    cursor:pointer;
+
+    display:inline;
+
+}
+
+.region-path-btn-v3:disabled {
+    color: #94a3b8 !important;
+    cursor: default !important;
+}
+.region-path-text-v3 {
+    display: inline;
+    font-size: 17px;
+    font-weight: 800;
+    color: #111827;
+    cursor: pointer;
+    line-height: 1.5;
+}
+
+#regionSheetOverlayV3 {
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.45) !important;
+    z-index: 999998 !important;
+}
+
+#regionSheetV3 {
+    display: none;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999999 !important;
+
+    width: 100% !important;
+    max-height: 78vh !important;
+    overflow-y: auto !important;
+
+    background: #ffffff !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 12px 16px 24px !important;
+
+    box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.22) !important;
+}
+
+.region-path-text-v3 {
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+.region-open-box-v3 {
+    cursor: default !important;
+    user-select: none !important;
+}
+
+
+/* ===== V3 지역 선택 Bottom Sheet 강제 고정 ===== */
+#regionSheetOverlayV3 {
+    display: none;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.45) !important;
+    z-index: 999998 !important;
+}
+
+#regionSheetV3 {
+    display: none;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+
+    width: 100vw !important;
+    max-height: 78vh !important;
+    overflow-y: auto !important;
+
+    background: #ffffff !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding: 14px 14px 24px !important;
+
+    z-index: 999999 !important;
+    box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.22) !important;
+}
+
+#regionSheetV3 .region-option-v3 {
+    width: 100% !important;
+    height: 40px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    background: #f4f6f8 !important;
+    color: #111827 !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+}
+
+#regionSheetV3 .region-grid-v3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 7px !important;
+}
+
+/* ===== 지역 선택 팝업: 네이버식 3열 버튼 ===== */
+#regionSheetV3 .region-grid-v3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 7px !important;
+    margin-top: 10px !important;
+}
+
+#regionSheetV3 .region-option-v3 {
+    width: 100% !important;
+    height: 38px !important;
+    min-height: 38px !important;
+
+    margin: 0 !important;
+    padding: 0 4px !important;
+
+    border: none !important;
+    border-radius: 7px !important;
+
+    background: #f1f5f9 !important;
+    color: #111827 !important;
+
+    font-size: 13px !important;
+    font-weight: 700 !important;
+
+    box-shadow: none !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#regionSheetV3 .region-option-v3:active {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+/* ===== 메인 지역 경로: 네이버식 텍스트 버튼 ===== */
+.region-path-main-v3 {
+    margin-top: 12px;
+    padding: 0;
+    background: transparent;
+    border: none;
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.region-path-click-v3 {
+    cursor: pointer !important;
+    user-select: none !important;
+    color: #0f172a;
+}
+
+.region-path-click-v3:active {
+    color: #2563eb;
+}
+
+.path-arrow-v3 {
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+#regionSheetV3 .region-grid-v3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 7px !important;
+}
+
+#regionSheetV3 .region-option-v3 {
+    height: 38px !important;
+    border-radius: 7px !important;
+    background: #f1f5f9 !important;
+    color: #111827 !important;
+
+    font-size: 13px !important;
+    font-weight: 800 !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    cursor: pointer !important;
+    user-select: none !important;
+}
+
+#regionSheetV3 .region-option-v3:active {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+#regionGridV3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 7px !important;
+    margin-top: 10px !important;
+}
+
+.region-sheet-header-v3,
+.region-path-v3 {
+    display: none !important;
+}
+
+
+
+#regionGridV3 .region-option-v3 {
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    min-height: 44px !important;
+    margin-bottom: 8px !important;
+    padding: 0 12px !important;
+
+    background: #f8fbff !important;
+    border: 1px solid #dbeafe !important;
+    border-radius: 10px !important;
+
+    color: #0f172a !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+
+    cursor: pointer !important;
+    user-select: none !important;
+
+    transition: all .15s ease;
+}
+
+#regionGridV3 .region-option-v3:hover {
+    background: #eef6ff !important;
+}
+
+#regionGridV3 .region-option-v3:active {
+    background: #dbeafe !important;
+    border-color: #60a5fa !important;
+    transform: scale(0.98);
+}
+
+#regionGridV3 {
+    padding-bottom: 70px !important;
+}
+
 </style>
 </head>
 
@@ -9205,7 +9720,7 @@ body {
                         <div class="hero-info-card">
                             <div class="hero-info-icon">📊</div>
                             <div class="hero-info-title">실거래 데이터</div>
-                            <div class="hero-info-value">24만+ 건</div>
+                            <div class="hero-info-value">127만+ 건</div>
                             <div class="hero-info-sub">최근 12개월 기준</div>
                         </div>
 
@@ -9229,7 +9744,7 @@ body {
 
                 </div>
 
-    <div class="card">
+    <div class="card region-card-v2">
 
         <!-- 지역, 동 입력 -->
         
@@ -9256,17 +9771,34 @@ body {
 
         </div>
 
+        <!-- ✅ 네이버식 지역 선택 버튼 -->
+        <div id="regionPathMainV3" class="region-path-main-v3">
 
+            <span id="pathSidoMain" class="region-path-click-v3" onclick="openRegionSheetV3('sido')">
+                시/도
+            </span>
 
-        <div class="region-select-list">
+            <span class="path-arrow-v3">›</span>
 
-            <div class="region-select-item inline-region-item">
-                <label for="sidoSelect">(1) 시/도 선택</label>
+            <span id="pathSigunguMain" class="region-path-click-v3" onclick="openRegionSheetV3('sigungu')">
+                시·군·구
+            </span>
 
+            <span class="path-arrow-v3">›</span>
+
+            <span id="pathDongMain" class="region-path-click-v3" onclick="openRegionSheetV3('dong')">
+                읍·면·동 선택
+            </span>
+
+        </div>
+
+        <div class="region-select-list region-select-row-3" style="display:none; !important; flex-direction:row !important; flex-wrap:nowrap !important; gap:6px !important; width:100% !important;">
+
+            <div class="region-select-item inline-region-item" style="flex:1 1 0 !important; width:0 !important; min-width:0 !important;">
                 <div class="region-select-box">
-                    <select id="sidoSelect">
+                    <select id="sidoSelect" style="appearance:none !important; -webkit-appearance:none !important; background-image:none !important; background:none !important; padding:0 !important; height:34px !important; line-height:34px !important; font-size:12px !important; width:100% !important; text-align:center !important; text-align-last:center !important;">
                         <option value="" disabled selected hidden>
-                            🏙️ 시/도를 선택 하세요
+                            시/도
                         </option>
                     </select>
 
@@ -9274,57 +9806,42 @@ body {
                 </div>
             </div>
 
-            <div class="region-select-item inline-region-item">
-                <label for="sigunguSelect">(2) 시/군/구 선택</label>
-
+            <div class="region-select-item inline-region-item" style="flex:1 1 0 !important; width:0 !important; min-width:0 !important;">
                 <div class="region-select-box">
-                    <select id="sigunguSelect">
+                    <select id="sigunguSelect" disabled style="appearance:none !important; -webkit-appearance:none !important; background-image:none !important; background:none !important; padding:0 !important; height:34px !important; line-height:34px !important; font-size:12px !important; width:100% !important; text-align-last:center !important; ">
                         <option value="" disabled selected hidden>
-                            🏙️ 시/군/구를 선택 하세요
+                            시/군/구
                         </option>
                     </select>
+
                     <div id="sigunguList" class="list overlay-list" style="display:none;"></div>
 
                     <span class="region-check">✓</span>
                 </div>
             </div>
 
-        </div>
+            <div class="region-select-item inline-region-item" style="flex:1 1 0 !important; width:0 !important; min-width:0 !important;">
+                <div class="region-select-box">
 
-
-
-
-            <div class="region-select-list dong-region-list">
-
-                <div class="region-select-item inline-region-item">
-
-                    <label for="dongInput">(3) 동/리 선택</label>
-
-                    <div class="region-select-box">
-
-                        <div class="apt-input-wrap">
-
-                            <input 
-                                type="text" 
+                    <div class="apt-input-wrap">
+                        <input 
+                            type="text" 
                                 id="dongInput" 
-                                placeholder="🏠 동/리를 선택하세요"
+                                placeholder="동/리"
                                 readonly 
-                                onclick="toggleDongList()"
-                            >
-
-                            <span class="apt-arrow dong-arrow" onclick="toggleDongList()"></span>
-
-                            <div id="dongList" class="list overlay-list" style="display:none;"></div>
-
-                        </div>
-
-                        <span class="region-check">✓</span>
+                                onclick="if(this.dataset.locked === '1') return false; toggleDongList()"
+                                style="padding:0 !important; height:34px !important; line-height:34px !important; font-size:12px !important; width:100% !important; text-align-last:center !important;"
+                        >
                         
+
+                        <div id="dongList" class="list overlay-list" style="display:none;"></div>
                     </div>
 
+                    <span class="region-check">✓</span>
                 </div>
-
             </div>
+
+        </div>
 
             <select id="dongSelect" style="display:none;">
                 <option value="">동 선택</option>
@@ -9694,9 +10211,6 @@ document.querySelectorAll(".top-tab").forEach(tab => {
         sigunguSelect.style.color = "#94a3b8";
 
         updateRegionSelectedState();
-
-        // document.getElementById("aptInput").value = "";
-        // document.getElementById("aptList").innerHTML = "";
 
         const regionInput = document.getElementById("regionInput");
         if (regionInput) {
@@ -11435,8 +11949,8 @@ if (sidoSelect && sigunguSelect) {
         sigunguSelect.innerHTML =
             '<option value="">시/군/구 불러오는 중...</option>';
 
-        sidoSelect.style.color = "#6b7280";
-        sigunguSelect.style.color = "#6b7280";
+        sidoSelect.style.color = "#0f172a";
+        sigunguSelect.style.color = "#0f172a";
 
         if (!selectedSido) {
             sigunguSelect.innerHTML =
@@ -11448,12 +11962,25 @@ if (sidoSelect && sigunguSelect) {
         // 세종특별자치시 예외 처리
         if (selectedSido === "세종특별자치시") {
 
-            sigunguSelect.innerHTML =
-                '<option value="세종시">세종시</option>';
+            sigunguSelect.innerHTML = "";
+
+            const option = document.createElement("option");
+            option.value = "세종시";
+            option.textContent = "세종시";
+            sigunguSelect.appendChild(option);
 
             sigunguSelect.value = "세종시";
 
-            sigunguSelect.dispatchEvent(new Event("change"));
+            document.getElementById("pathSidoMain").innerText = "세종특별자치시";
+            document.getElementById("pathSigunguMain").innerText = "세종시";
+            document.getElementById("pathDongMain").innerText = "읍·면·동 선택";
+
+            window.v3WaitingDongList = true;
+            showRegionLoadingV3("동/리 불러오는 중...");
+
+            setTimeout(() => {
+                sigunguSelect.dispatchEvent(new Event("change"));
+            }, 50);
 
             return;
         }
@@ -11504,6 +12031,7 @@ if (sidoSelect && sigunguSelect) {
                     if (sigunguList) {
                         sigunguList.appendChild(div);
                     }
+            
                 });
 
                 if (sigunguList) {
@@ -11513,11 +12041,70 @@ if (sidoSelect && sigunguSelect) {
                     sigunguList.style.top = (rect.bottom + window.scrollY + 4) + "px";
                     sigunguList.style.width = rect.width + "px";
 
-                    sigunguList.style.display = "block";
-                    sigunguList.style.visibility = "visible";
-                    sigunguList.style.opacity = "1";
+                    sigunguList.style.display = "none";
+                    sigunguList.style.visibility = "hidden";
+                    sigunguList.style.opacity = "0";
                 }
+                // ===== V3 UI =====
+                const grid = document.getElementById("regionGridV3");
+
+                if (grid) {
+
+                    // 기존 리스트 대신 새 UI로 교체
+                    grid.innerHTML = "";
+
+                    (data.검색결과 || []).forEach(sigungu => {
+
+                        const btn = document.createElement("div");
+
+                        btn.className = "region-option-v3";
+                        btn.innerText = sigungu;
+
+                        btn.style.cssText = `
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            height:42px;
+                            margin:0 0 8px 0;
+                            padding:0 10px;
+                            background:#eef6ff;
+                            border:1px solid #bfdbfe;
+                            border-radius:10px;
+                            color:#0f172a;
+                            font-size:14px;
+                            font-weight:800;
+                            cursor:pointer;
+                            user-select:none;
+                        `;
+                        btn.onclick = function () {
+
+                            document.getElementById("pathSigungu").innerText = sigungu;
+                            document.getElementById("pathDong").innerText = "읍·면·동 선택";
+
+                            document.getElementById("pathSigunguMain").innerText = sigungu;
+                            document.getElementById("pathDongMain").innerText = "읍·면·동 선택";
+
+                            sigunguSelect.value = sigungu;
+                            window.v3WaitingDongList = true;
+                            showRegionLoadingV3("동/리 불러오는 중...");
+                            sigunguSelect.dispatchEvent(new Event("change"));
+
+                            setTimeout(() => {
+                                renderDongV3();
+                            }, 300);
+                        };
+
+                        grid.appendChild(btn);
+
+                    });
+
+                }
+
             })
+
+            
+
+
             .catch(err => {
                 console.error("시군구 로딩 오류:", err);
 
@@ -11582,6 +12169,7 @@ let analyzeFetchController = null;
 let lastDongRegion = "";
 let dongLoading = false;
 let dongProgressTimer = null;
+let dongAutoOpened = false;
 
 const regionInput = document.getElementById("regionInput");
 const dongSelect = document.getElementById("dongSelect");
@@ -11872,52 +12460,72 @@ function renderDongs(dongs) {
     });
 
     setTimeout(() => {
-    dongSelect.value = "";
-    dongSelect.selectedIndex = 0;
+        dongSelect.value = "";
+        dongSelect.selectedIndex = 0;
 
-    const dongList = document.getElementById("dongList");
+        const dongList = document.getElementById("dongList");
 
-    if (dongList) {
-        dongList.innerHTML = "";
+        if (dongList) {
+            dongList.innerHTML = "";
 
-        dongs.forEach(dong => {
-            const div = document.createElement("div");
-            div.className = "item";
-            div.innerText = dong;
+            dongs.forEach(dong => {
+                const div = document.createElement("div");
+                div.className = "item";
+                div.innerText = dong;
 
-            div.onclick = () => {
-                const dongInput = document.getElementById("dongInput");
-                const dongItem = dongInput.closest(".region-select-item");
+                div.onclick = () => {
+                    const dongInput = document.getElementById("dongInput");
+                    const dongItem = dongInput.closest(".region-select-item");
 
-                dongInput.value = dong;
-                dongSelect.value = dong;
+                    dongAutoOpened = false;
+                    dongInput.value = dong;
+                    dongSelect.value = dong;
+
+                    dongList.style.display = "none";
+
+                    if (dongItem) {
+                        dongItem.classList.add("selected");
+                    }
+
+                    updateRegionSelectedState();
+                    setTimeout(updateRegionSelectedState, 0);
+
+                    dongSelect.dispatchEvent(new Event("change"));
+                    document.getElementById("aptInput").focus();
+                };
+
+                dongList.appendChild(div);
+            });
+
+            dongList.style.visibility = "hidden";
+            dongList.style.display = "none";
+
+            // V3 지역 선택 팝업에서 동/리 목록을 기다리는 상태라면
+            // 기존 dongList는 열지 않고, V3 팝업 안에 동/리 리스트를 표시한다.
+            if (window.v3WaitingDongList) {
+                window.v3WaitingDongList = false;
 
                 dongList.style.display = "none";
+                dongList.style.visibility = "hidden";
 
-                if (dongItem) {
-                    dongItem.classList.add("selected");
-                }
+                renderDongV3();
+                return;
+            }
 
-                updateRegionSelectedState();
-                setTimeout(updateRegionSelectedState, 0);
+            dongClickLocked = true;
 
-                dongSelect.dispatchEvent(new Event("change"));
-                document.getElementById("aptInput").focus();
-            };
+            requestAnimationFrame(() => {
+                positionDongList();
+                dongList.style.display = "block";
+                dongList.style.visibility = "visible";
+                dongInput.dataset.locked = "1";
+                dongInput.style.pointerEvents = "none";
 
-            dongList.appendChild(div);
-        });
-
-        dongList.style.visibility = "hidden";
-        dongList.style.display = "none";
-
-        requestAnimationFrame(() => {
-            positionDongList();
-            dongList.style.display = "block";
-            dongList.style.visibility = "visible";
-        });
-    }
-}, 150);
+                // 시/도 또는 시/군/구 선택으로 자동 열린 상태
+                dongAutoOpened = true;
+            });
+        }
+    }, 150);
 
 }
 
@@ -14315,10 +14923,34 @@ setTimeout(() => {
 // 🔥 동 리스트 토글
 function toggleDongList() {
     const list = document.getElementById("dongList");
+    const sido = document.getElementById("sidoSelect").value;
+    const sigungu = document.getElementById("sigunguSelect").value;
+
+    if (!list) return;
+
+    // 시/도 또는 시/군/구가 없으면 동 리스트 열지 않음
+    if (!sido || !sigungu) {
+        list.style.display = "none";
+        list.innerHTML = "";
+        return;
+    }
+
+    // 동 데이터가 없으면 열지 않음
+    if (!allDongs || allDongs.length === 0) {
+        list.style.display = "none";
+        list.innerHTML = "";
+        return;
+    }
 
     if (list.style.display === "none" || list.style.display === "") {
-        list.style.display = "block";
         renderDongList();
+
+        if (!list.innerHTML.trim()) {
+            list.style.display = "none";
+            return;
+        }
+
+        list.style.display = "block";
         requestAnimationFrame(() => positionDongList());
     } else {
         list.style.display = "none";
@@ -14391,6 +15023,8 @@ function renderDongList() {
         div.innerText = opt.value;
 
         div.onclick = () => {
+            dongInput.dataset.locked = "0";
+            dongInput.style.pointerEvents = "auto";
             const dongInput = document.getElementById("dongInput");
             const dongItem = dongInput.closest(".region-select-item");
 
@@ -14774,12 +15408,13 @@ function positionDongList() {
     list.style.setProperty("position", "fixed", "important");
     list.style.setProperty("top", (rect.bottom - 1) + "px", "important");
 
-    const listWidth = 220;
+    const listWidth = 100;
+    const listLeft = rect.left + (rect.width - listWidth) / 2;
 
     list.style.setProperty("width", listWidth + "px", "important");
-    list.style.setProperty("left", "62%", "important");
+    list.style.setProperty("left", listLeft + "px", "important");
     list.style.setProperty("right", "auto", "important");
-    list.style.setProperty("transform", "translateX(-50%)", "important");
+    list.style.setProperty("transform", "none", "important");
     list.style.height = visibleHeight + "px";
     list.style.minHeight = visibleHeight + "px";
     list.style.maxHeight = visibleHeight + "px";
@@ -14812,7 +15447,280 @@ function closeFuturePredictionModal() {
     }
 }
 
+function renderSidoV3() {
+    const grid = document.getElementById("regionGridV3");
+    const pathSido = document.getElementById("pathSido");
+    const pathSigungu = document.getElementById("pathSigungu");
+    const pathDong = document.getElementById("pathDong");
 
+    if (!grid) return;
+
+    grid.innerHTML = "";
+
+    grid.style.cssText = `
+        display:grid !important;
+        grid-template-columns:repeat(3, 1fr) !important;
+        gap:8px !important;
+        margin-top:8px !important;
+    `;
+
+    pathSido.innerText = "시/도";
+    pathSigungu.innerText = "시·군·구";
+    pathDong.innerText = "읍·면·동 선택";
+
+    pathSido.classList.add("active");
+    pathSigungu.classList.remove("active");
+    pathDong.classList.remove("active");
+
+    sidoList.forEach(sido => {
+        const item = document.createElement("div");
+        item.className = "region-option-v3";
+        item.innerText = sido;
+
+        item.style.cssText = `
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:42px;
+            margin:0;
+            padding:0 10px;
+            background:#eef6ff;
+            border:1px solid #bfdbfe;
+            border-radius:10px;
+            color:#0f172a;
+            font-size:14px;
+            font-weight:800;
+            cursor:pointer;
+            user-select:none;
+        `;
+
+        item.onclick = () => {
+            pathSido.innerText = sido;
+
+            const pathSidoMain = document.getElementById("pathSidoMain");
+            const pathSigunguMain = document.getElementById("pathSigunguMain");
+            const pathDongMain = document.getElementById("pathDongMain");
+
+            if (pathSidoMain) pathSidoMain.innerText = sido;
+            if (pathSigunguMain) pathSigunguMain.innerText = "시·군·구";
+            if (pathDongMain) pathDongMain.innerText = "읍·면·동 선택";
+
+            sidoSelect.value = sido;
+            sidoSelect.dispatchEvent(new Event("change"));
+        };
+
+        grid.appendChild(item);
+    });
+}
+
+renderSidoV3();
+
+function openRegionSheetV3(step = "sido") {
+
+    const overlay = document.getElementById("regionSheetOverlayV3");
+    const sheet = document.getElementById("regionSheetV3");
+
+    if (!overlay || !sheet) {
+        console.log("❌ regionSheetOverlayV3 또는 regionSheetV3 없음");
+        return;
+    }
+
+    // ✅ 부모 영향 제거: 무조건 body 바로 아래로 이동
+    if (overlay.parentElement !== document.body) {
+        document.body.appendChild(overlay);
+    }
+
+    if (sheet.parentElement !== document.body) {
+        document.body.appendChild(sheet);
+    }
+
+    overlay.style.cssText = `
+        display:block !important;
+        position:fixed !important;
+        left:0 !important;
+        top:0 !important;
+        width:100vw !important;
+        height:100vh !important;
+        background:rgba(15,23,42,0.45) !important;
+        z-index:999998 !important;
+    `;
+
+    const regionPath = document.getElementById("regionPathMainV3");
+    const rect = regionPath.getBoundingClientRect();
+    const sheetTop = rect.bottom + 8;
+
+    sheet.style.cssText = `
+        display:block !important;
+        position:fixed !important;
+        left:0 !important;
+        right:0 !important;
+        top:${sheetTop}px !important;
+        bottom:auto !important;
+        width:100vw !important;
+        max-height:70vh !important;
+        overflow-y:auto !important;
+        background:#ffffff !important;
+        border-radius:24px 24px 0 0 !important;
+        padding:14px 14px 80px !important;
+        z-index:999999 !important;
+        box-shadow:0 -18px 40px rgba(15,23,42,0.22) !important;
+    `;
+
+    if (step === "sido") {
+        renderSidoV3();
+    }
+
+    if (step === "sigungu") {
+        const selectedSido = document.getElementById("sidoSelect").value;
+
+        if (!selectedSido) {
+            renderSidoV3();
+            return;
+        }
+
+        document.getElementById("sidoSelect").dispatchEvent(new Event("change"));
+    }
+
+    if (step === "dong") {
+        renderDongV3();
+    }
+}
+
+function closeRegionSheetV3() {
+    const overlay = document.getElementById("regionSheetOverlayV3");
+    const sheet = document.getElementById("regionSheetV3");
+
+    if (overlay) overlay.style.display = "none";
+    if (sheet) sheet.style.display = "none";
+}
+
+const pathSidoMain = document.getElementById("pathSidoMain");
+const pathSigunguMain = document.getElementById("pathSigunguMain");
+const pathDongMain = document.getElementById("pathDongMain");
+
+if (pathSidoMain) {
+    pathSidoMain.addEventListener("click", function () {
+        openRegionSheetV3("sido");
+    });
+}
+
+if (pathSigunguMain) {
+    pathSigunguMain.addEventListener("click", function () {
+        openRegionSheetV3("sigungu");
+    });
+}
+
+if (pathDongMain) {
+    pathDongMain.addEventListener("click", function () {
+        openRegionSheetV3("dong");
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const pathSidoMain = document.getElementById("pathSidoMain");
+    const pathSigunguMain = document.getElementById("pathSigunguMain");
+    const pathDongMain = document.getElementById("pathDongMain");
+
+    if (pathSidoMain) {
+        pathSidoMain.addEventListener("click", function () {
+            openRegionSheetV3("sido");
+        });
+    }
+
+    if (pathSigunguMain) {
+        pathSigunguMain.addEventListener("click", function () {
+            openRegionSheetV3("sigungu");
+        });
+    }
+
+    if (pathDongMain) {
+        pathDongMain.addEventListener("click", function () {
+            openRegionSheetV3("dong");
+        });
+    }
+
+});
+
+function renderDongV3() {
+    const grid = document.getElementById("regionGridV3");
+    const dongSelect = document.getElementById("dongSelect");
+    const dongInput = document.getElementById("dongInput");
+
+    if (!grid || !dongSelect) return;
+
+    let dongs = Array.from(dongSelect.options)
+        .map(option => option.value)
+        .filter(value => value && value.trim() !== "" && value !== "동 선택");
+
+    // dongSelect가 비어 있으면 기존 dongList에서 가져오기
+    if (dongs.length === 0) {
+        const oldDongList = document.getElementById("dongList");
+
+        if (oldDongList) {
+            dongs = Array.from(oldDongList.querySelectorAll(".item"))
+                .map(item => item.innerText.trim())
+                .filter(value => value && value !== "실거래 단지 없음");
+        }
+    }
+
+    const oldDongList = document.getElementById("dongList");
+    if (oldDongList) {
+        oldDongList.style.display = "none";
+    }
+
+    grid.innerHTML = "";
+
+    dongs.forEach(dong => {
+        const btn = document.createElement("div");
+        btn.className = "region-option-v3";
+        btn.innerText = dong;
+
+        btn.style.cssText = `
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            height:42px;
+            margin:0 0 8px 0;
+            padding:0 10px;
+            background:#eef6ff;
+            border:1px solid #bfdbfe;
+            border-radius:10px;
+            color:#0f172a;
+            font-size:14px;
+            font-weight:800;
+            cursor:pointer;
+            user-select:none;
+        `;
+
+                
+        btn.onclick = function () {
+            document.getElementById("pathDong").innerText = dong;
+            document.getElementById("pathDongMain").innerText = dong;
+
+            if (dongInput) dongInput.value = dong;
+            dongSelect.value = dong;
+
+            dongSelect.dispatchEvent(new Event("change"));
+
+            closeRegionSheetV3();
+        };
+
+        grid.appendChild(btn);
+    });
+}
+
+function showRegionLoadingV3(message) {
+    const grid = document.getElementById("regionGridV3");
+    if (!grid) return;
+
+    grid.innerHTML = `
+        <div class="region-loading-v3">
+            <div class="region-loading-spinner-v3"></div>
+            <div>${message}</div>
+        </div>
+    `;
+}
 </script>
 
 <div id="toastMessage" class="toast-message"></div>
@@ -15017,7 +15925,25 @@ function closeFuturePredictionModal() {
 
 </div>
 
+<!-- ✅ 지역 선택 Bottom Sheet V3 -->
+<div id="regionSheetOverlayV3" class="region-sheet-overlay-v3" onclick="closeRegionSheetV3()"></div>
 
+<div id="regionSheetV3" class="region-sheet-v3">
+    <div class="region-sheet-handle-v3"></div>
+
+    
+
+    <div class="region-path-v3">
+        <span id="pathSido" class="active">시/도</span>
+        <span class="path-arrow">›</span>
+        <span id="pathSigungu">시·군·구</span>
+        <span class="path-arrow">›</span>
+        <span id="pathDong">읍·면·동 선택</span>
+    </div>
+
+    <div id="regionGridV3" class="region-grid-v3"></div>
+
+</div>
 
 </body>
 </html>
