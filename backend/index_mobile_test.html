@@ -1210,12 +1210,14 @@ select option {
     font-size: 13px;
     color: #64748b;
     margin-bottom: 8px;
+    white-space:nowrap;
 }
 
 .trade-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap:12px;
 }
 
 .trade-floor {
@@ -9630,6 +9632,31 @@ body {
     padding-bottom: 70px !important;
 }
 
+.apt-trade-price {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+}
+
+.apt-trade-card {
+    padding: 2px 10px !important;
+    min-height: 15px !important;
+    height: 15px !important;
+}
+
+.apt-trade-card .trade-info {
+    min-height: 28px !important;
+    height: 28px !important;
+    line-height: 1 !important;
+    align-items: center !important;
+}
+
+.apt-trade-card .trade-date,
+.apt-trade-card .trade-floor,
+.apt-trade-card .apt-trade-price {
+    font-size: 13px !important;
+    line-height: 1 !important;
+}
 </style>
 </head>
 
@@ -10187,17 +10214,23 @@ document.querySelectorAll(".top-tab").forEach(tab => {
         // 아파트: apt / 분양권: presale / 전월세: rent
         if (this.innerText.includes("분양권")) {
             selectedPropertyType = "presale";
+            
         } else if (this.innerText.includes("전월세")) {
             selectedPropertyType = "rent";
         } else {
             selectedPropertyType = "apt";
         }
+
+        updateFutureButtonVisibility();
+
         sidoSelect.value = "";
         sigunguSelect.innerHTML = '<option value="">🏙️ 시/군/구를 선택 하세요</option>';
         sigunguSelect.value = "";
 
         dongSelect.innerHTML = '<option value="">동 선택</option>';
         dongSelect.value = "";
+
+        resetRegionV3();
 
         document.getElementById("dongInput").value = "";
         document.getElementById("aptInput").value = "";
@@ -13307,7 +13340,11 @@ function analyzePrice() {
                 if (selectedPropertyType === "rent") {
                     renderRentReport(data);
 
-                    document.getElementById("futureBtnWrap").style.display = "block";
+                    const futureBtnWrap = document.getElementById("futureBtnWrap");
+
+                    if (futureBtnWrap) {
+                        futureBtnWrap.style.display = "block";
+                    }
 
                     // ✅ 분석 진행바 강제 종료
                     document.querySelectorAll(
@@ -14063,7 +14100,7 @@ function analyzePrice() {
                                                 isLow ? `<span class="trade-badge low">최저가</span>` : "";
 
                                 return `
-                                    <div class="trade-card ${tradeClass} ${
+                                    <div class="trade-card ${selectedPropertyType !== "rent" ? "apt-trade-card" : ""} ${tradeClass} ${
                                         selectedPropertyType === "rent"
                                             ? Number(t.monthly_rent || 0) > 0
                                                 ? "rent-monthly-card"
@@ -14071,13 +14108,28 @@ function analyzePrice() {
                                             : ""
                                     }">
 
+                                        
                                         <div class="trade-info">
+                                            <span class="trade-date">
+                                                ${t.date || t.거래일 || t.contract_date || "-"}
+                                            </span>
                                             <span class="trade-floor">
                                                 ${t.apt_dong ? (t.apt_dong.includes("동") ? t.apt_dong : t.apt_dong + "동") + " · " : ""}
                                                 ${t.floor !== null && t.floor !== undefined ? t.floor + "층" : "층수 -"}
                                             </span>
 
-                                            <strong class="trade-price">
+                                            <strong 
+                                                class="trade-price ${
+                                                    selectedPropertyType === "rent"
+                                                        ? ""
+                                                        : "apt-trade-price"
+                                                }"
+                                                style="${
+                                                    selectedPropertyType === "rent"
+                                                        ? ""
+                                                        : "font-size:14px !important; font-weight:700 !important; color:#0f172a !important;"
+                                                }"
+                                            >
                                                 ${
                                                     selectedPropertyType === "rent"
                                                         ? (
@@ -15742,6 +15794,45 @@ function showRegionLoadingV3(message) {
         </div>
     `;
 }
+
+function updateFutureButtonVisibility() {
+    const futureBtn = document.getElementById("futurePredictBtn");
+
+    if (!futureBtn) return;
+
+    if (selectedPropertyType === "presale") {
+        futureBtn.style.display = "none";
+    } else {
+        futureBtn.style.display = "flex";
+    }
+}
+
+updateFutureButtonVisibility();
+
+function resetRegionV3() {
+    const pathSidoMain = document.getElementById("pathSidoMain");
+    const pathSigunguMain = document.getElementById("pathSigunguMain");
+    const pathDongMain = document.getElementById("pathDongMain");
+
+    if (pathSidoMain) pathSidoMain.innerText = "시/도";
+    if (pathSigunguMain) pathSigunguMain.innerText = "시·군·구";
+    if (pathDongMain) pathDongMain.innerText = "읍·면·동 선택";
+
+    const regionInput = document.getElementById("regionInput");
+    if (regionInput) regionInput.value = "";
+
+    const dongInput = document.getElementById("dongInput");
+    if (dongInput) dongInput.value = "";
+
+    const dongList = document.getElementById("dongList");
+    if (dongList) {
+        dongList.innerHTML = "";
+        dongList.style.display = "none";
+    }
+
+    const regionGridV3 = document.getElementById("regionGridV3");
+    if (regionGridV3) regionGridV3.innerHTML = "";
+}
 </script>
 
 <div id="toastMessage" class="toast-message"></div>
@@ -15952,9 +16043,7 @@ function showRegionLoadingV3(message) {
 <div id="regionSheetV3" class="region-sheet-v3">
     <div class="region-sheet-handle-v3"></div>
 
-    
-
-    <div class="region-path-v3">
+    <div class="region-path-v3" style="display:none !important;">
         <span id="pathSido" class="active">시/도</span>
         <span class="path-arrow">›</span>
         <span id="pathSigungu">시·군·구</span>
