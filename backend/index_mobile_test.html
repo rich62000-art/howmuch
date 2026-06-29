@@ -12496,6 +12496,12 @@ function renderDongs(dongs) {
         dongSelect.value = "";
         dongSelect.selectedIndex = 0;
 
+        const aptList = document.getElementById("aptList");
+        if (aptList) {
+            aptList.innerHTML = "";
+            aptList.style.display = "none";
+        }
+
         const dongList = document.getElementById("dongList");
 
         if (dongList) {
@@ -12579,6 +12585,18 @@ function searchApts() {
     console.log("동:", dongValue);
     console.log("검색어:", keyword);
     console.log("타입:", selectedPropertyType);
+
+    if (!region || !dongValue) {
+        console.log("⏸️ 지역 또는 동 미선택 상태라 단지 검색 중단");
+
+        const listEl = document.getElementById("aptList");
+        if (listEl) {
+            listEl.innerHTML = "";
+            listEl.style.display = "none";
+        }
+
+        return;
+    }
 
     fetch("/apts?region="
         + encodeURIComponent(region)
@@ -12724,6 +12742,11 @@ document.getElementById("aptInput").addEventListener("input", function () {
 
 // 🔥 아파트 가져오기 (캐시 포함)
 function fetchApts(region, keyword = "") {
+    const dongSelect = document.getElementById("dongSelect");
+
+    if (!dongSelect || !dongSelect.value) {
+        return;
+    }
 
     if (aptFetchController) {
         aptFetchController.abort();
