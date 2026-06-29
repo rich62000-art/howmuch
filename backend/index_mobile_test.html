@@ -9886,18 +9886,7 @@ body {
             <div class="region-summary" id="regionSummary">
                 📍 지역을 선택해 주세요
             </div>
-            
-
-            <div class="dong-loading-col">
-                <div id="dongLoading" class="dong-loading-box" style="display:none;">
-                    <div class="dong-loading-title">🔍 동 목록 조회중...</div>
-                    <div class="dong-progress-bar">
-                        <div id="dongProgressFill" class="dong-progress-fill"></div>
-                    </div>
-                    <div id="dongProgressText" class="dong-progress-text">0%</div>
-                </div>
-            </div>
-
+                        
             <input type="hidden" id="regionInput">
         </div>
 
@@ -10222,6 +10211,18 @@ document.querySelectorAll(".top-tab").forEach(tab => {
     tab.addEventListener("click", function () {
         document.querySelectorAll(".top-tab").forEach(t => t.classList.remove("active"));
         this.classList.add("active");
+
+        // ✅ 탭 이동 시 열려 있는 자동완성/평형 리스트 닫기
+        ["aptList", "sizeList", "dongList"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                // el.innerHTML = "";   ← 삭제 또는 주석 처리
+
+                el.style.display = "none";
+                el.style.visibility = "visible";
+                el.style.opacity = "1";
+            }
+        });
 
         // ✅ 탭 텍스트 기준 거래 유형 설정
         // 아파트: apt / 분양권: presale / 전월세: rent
@@ -12510,11 +12511,18 @@ async function loadDongs(region) {
         }
 
         if (dongs.length === 0) {
+            // ✅ V3에서는 구버전 dongList를 띄우지 않는다.
+            if (window.useRegionV3) {
+                renderDongV3();
+                return;
+            }
+
             if (dongList) {
                 dongList.innerHTML =
                     '<div class="item">최근 실거래 단지가 없습니다</div>';
                 dongList.style.display = "block";
             }
+
             return;
         }
 
@@ -12551,6 +12559,19 @@ async function loadDongs(region) {
 }
 
 function renderDongs(dongs) {
+     // ✅ V3 지역검색 사용 중: 구버전 dongList는 절대 표시하지 않음
+    const oldDongList = document.getElementById("dongList");
+    if (oldDongList) {
+        oldDongList.innerHTML = "";
+        oldDongList.style.display = "none";
+        oldDongList.style.visibility = "hidden";
+    }
+
+    // ✅ 동/리 결과가 0개여도 V3 팝업 안에서 안내 표시
+    if (!dongs || dongs.length === 0) {
+        renderDongV3();
+        return;
+    }
     const dongLoading = document.getElementById("dongLoading");
     const dongProgressFill = document.getElementById("dongProgressFill");
     const dongProgressText = document.getElementById("dongProgressText");
@@ -12576,13 +12597,27 @@ function renderDongs(dongs) {
         dongSelect.innerHTML =
         '<option value="">실거래 단지 없음</option>';
 
-        const dongList = document.getElementById("dongList");
+        // ✅ 동/리 로딩 상태 종료
+        window.v3WaitingDongList = false;
+        isDongListLoadingV3 = false;
 
-        if (dongList) {
-            dongList.innerHTML =
-                '<div class="item">실거래 단지 없음</div>';
-
-            showDongListAfterPosition();
+        // ✅ 로딩 표시 제거
+        const grid = document.getElementById("regionGridV3");
+        if (grid) {
+            grid.innerHTML = `
+                <div style="
+                    grid-column:1 / -1;
+                    padding:28px 10px;
+                    text-align:center;
+                    color:#64748b;
+                    font-size:14px;
+                    font-weight:800;
+                    line-height:1.6;
+                ">
+                    조회 가능한 동/리 목록이 없습니다.<br>
+                    다른 시·군·구를 선택해 주세요.
+                </div>
+            `;
         }
 
         return;
@@ -12799,8 +12834,11 @@ function showSizes(data) {
     });
 
     renderSizeList();
+
     if ((data.평형목록 || []).length > 0) {
         sizeList.style.display = "block";
+        sizeList.style.visibility = "visible";
+        sizeList.style.opacity = "1";
     }
 }
 
@@ -15975,7 +16013,7 @@ function renderDongV3() {
     grid.innerHTML = "";
 
     isDongListLoadingV3 = false;
-    if ((!dongs || dongs.length === 0) && window.v3WaitingDongList) {
+    if ((!dongs || dongs.length === 0) && window.v3WaitingDongList && isDongListLoadingV3) {
         console.log("⏳ 동/리 목록 아직 준비 안 됨 - 로딩 유지");
         showRegionLoadingV3("동/리 불러오는 중...");
         return;
