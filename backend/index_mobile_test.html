@@ -9657,6 +9657,15 @@ body {
     font-size: 13px !important;
     line-height: 1 !important;
 }
+
+#regionSheetV3 {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+#regionGridV3 {
+    padding-bottom: 90px !important;
+}
 </style>
 </head>
 
@@ -12566,16 +12575,12 @@ function renderDongs(dongs) {
 
             dongClickLocked = true;
 
-            requestAnimationFrame(() => {
-                positionDongList();
-                dongList.style.display = "block";
-                dongList.style.visibility = "visible";
-                dongInput.dataset.locked = "1";
-                dongInput.style.pointerEvents = "none";
+            // ✅ V3 지역 선택 방식 사용 중이므로
+            // 기존 dongList 자동 표시 기능은 사용하지 않음
+            dongList.style.display = "none";
+            dongList.style.visibility = "hidden";
 
-                // 시/도 또는 시/군/구 선택으로 자동 열린 상태
-                dongAutoOpened = true;
-            });
+            return;
         }
     }, 150);
 
@@ -15591,6 +15596,7 @@ function renderSidoV3() {
         grid-template-columns:repeat(3, 1fr) !important;
         gap:8px !important;
         margin-top:8px !important;
+        padding-bottom:90px !important;
     `;
 
     pathSido.innerText = "시/도";
@@ -15688,6 +15694,7 @@ function openRegionSheetV3(step = "sido") {
         width:100vw !important;
         max-height:70vh !important;
         overflow-y:auto !important;
+        -webkit-overflow-scrolling:touch !important;
         background:#ffffff !important;
         border-radius:24px 24px 0 0 !important;
         padding:14px 14px 80px !important;
