@@ -12411,6 +12411,11 @@ async function loadDongs(region) {
 
         return;
 
+        if (window.useRegionV3) {
+            renderDongV3();
+            return;
+        }
+
         if (dongs.length === 0) {
             if (dongList) {
                 dongList.innerHTML =
@@ -12554,6 +12559,8 @@ function renderDongs(dongs) {
                 dongList.style.visibility = "hidden";
 
                 renderDongV3();
+
+                window.v3WaitingDongList = false;
                 return;
             }
 
@@ -12836,6 +12843,12 @@ function filterApts(list, keyword) {
     const keywordNorm = (keyword || "").replace(/\s/g, "").toLowerCase();
     const selectedDong = document.getElementById("dongSelect").value;
 
+    console.log("🟨 filterApts 실행");
+    console.log("원본 list 개수:", list.length);
+    console.log("keyword:", keyword);
+    console.log("selectedDong:", selectedDong);
+    console.log("isDongSelectedV3:", isDongSelectedV3);
+
     let filtered = list;
 
     // 🔥 아파트만 프론트에서 동 필터 적용
@@ -12852,11 +12865,10 @@ function filterApts(list, keyword) {
     }
 
     if (filtered.length === 0) {
-        console.log("🟥 filterApts 빈 결과");
-        console.log("isDongListLoadingV3:", isDongListLoadingV3);
-        console.log("isDongSelectedV3:", isDongSelectedV3);
+        console.log("🟥 단지 없음 표시 직전");
+        console.log("filtered.length:", filtered.length);
         console.log("selectedDong:", selectedDong);
-        console.log("keyword:", keyword);
+        console.log("isDongSelectedV3:", isDongSelectedV3);
 
         // ✅ 동/리 로딩 중이면 단지 없음 표시 금지
         if (isDongListLoadingV3 || !isDongSelectedV3) {
@@ -15799,6 +15811,11 @@ function renderDongV3() {
     grid.innerHTML = "";
 
     isDongListLoadingV3 = false;
+    if ((!dongs || dongs.length === 0) && window.v3WaitingDongList) {
+        console.log("⏳ 동/리 목록 아직 준비 안 됨 - 로딩 유지");
+        showRegionLoadingV3("동/리 불러오는 중...");
+        return;
+    }
 
     if (!dongs || dongs.length === 0) {
         grid.innerHTML = `
