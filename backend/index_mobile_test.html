@@ -10605,7 +10605,7 @@ function shareFutureKakao(event) {
 
 📍 ${region}
 
-🏢 ${aptName} ${size}㎡
+🏢 ${aptName} ${size}
 
 📊 6개월 가격 흐름
 최근 6개월 평균: ${recentAvg ? recentAvg.toLocaleString() + "만원" : "산정 불가"}
@@ -14996,48 +14996,111 @@ window.onclick = function (event) {
 
 
 function copyLink(event) {
-    // ✅ 미래 분석 리포트 복사
-    if (isFutureReport) {
-        copyFutureLink(event);
-        return;
-    }
-
     if (event) {
         event.preventDefault();
         event.stopPropagation();
     }
 
-    if (!lastResult) {
-        showToast("먼저 분석을 실행해주세요.");
-        return;
+    let text = "";
+
+    if (isFutureReport) {
+        if (!lastFutureResult) {
+            showToast("먼저 미래 분석을 실행해주세요.");
+            return;
+        }
+
+        const d = lastFutureResult;
+        const shareUrl = buildShareUrl();
+
+        text = `🔮 얼마일까 - 6개월 미래 분석 리포트
+
+📍 ${d.지역 || document.getElementById("regionInput")?.value || ""}
+
+🏢 ${d.단지명 || document.getElementById("aptInput")?.value || ""} ${d.면적 || document.getElementById("sizeInput")?.value || ""}㎡
+
+📊 최근 6개월 평균: ${Number(d.최근6개월평균 || 0).toLocaleString()}만원
+📈 거래 추세: ${d.거래추세 || "-"} ${d.거래상승률 !== undefined ? `(${d.거래상승률 > 0 ? "+" : ""}${d.거래상승률}%)` : ""}
+
+🏦 전세가율: ${d.전세가율 || 0}%
+💰 갭차이: ${Number(d.갭차이 || 0).toLocaleString()}만원
+
+🔥 거래활성도: ${d.거래활성도 || "-"}
+⭐ 매수 신뢰도: ${d.전망점수 || 0}%
+
+🤖 AI 총평
+${d.AI총평 || ""}
+
+👉 자세히 보기
+${shareUrl}`;
+
+    } else {
+        if (!lastResult) {
+            showToast("먼저 분석을 실행해주세요.");
+            return;
+        }
+
+        const shareUrl = buildShareUrl();
+
+        if (selectedPropertyType === "rent") {
+            text = `🏠 얼마일까 - 전월세 리포트
+
+📍 ${lastResult?.지역 || document.getElementById("regionInput")?.value || ""}
+
+🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
+
+📌 시장 유형: ${lastResult?.시장유형 || ""}
+📊 시장 강도: ${lastResult?.시장수준 || ""}
+
+🏦 평균 전세보증금: ${Number(lastResult?.평균전세보증금 || 0).toLocaleString()}만원
+💵 평균 월세보증금: ${Number(lastResult?.평균월세보증금 || 0).toLocaleString()}만원
+💰 평균 월세: ${Number(lastResult?.평균월세 || 0).toLocaleString()}만원
+
+📈 전세 추세: ${lastResult?.전세시장상태 || "거래 부족"}
+
+👉 자세히 보기
+${shareUrl}`;
+
+        } else if (selectedPropertyType === "presale") {
+            text = `🏠 얼마일까 - 분양권 리포트
+
+📍 ${lastResult?.지역 || document.getElementById("regionInput")?.value || ""}
+
+🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
+
+💰 입력 가격: ${Number(lastResult?.사용자입력가격 || 0).toLocaleString()}만원
+📌 판단: ${lastResult?.한줄결론 || ""}
+
+🤖 AI 해설
+${lastResult?.AI설명 || ""}
+
+👉 자세히 보기
+${shareUrl}`;
+
+        } else {
+            text = `🏠 얼마일까 - 매매가 리포트
+
+📍 ${lastResult?.지역 || document.getElementById("regionInput")?.value || ""}
+
+🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
+
+💰 내가 생각한 가격: ${Number(lastResult?.사용자입력가격 || 0).toLocaleString()}만원
+🎯 AI 추천 매수가: ${Number(lastResult?.보정추천가 || lastResult?.추천매수가 || 0).toLocaleString()}만원
+
+📌 판단: ${lastResult?.가격판단 || ""}
+📈 최근 추세: ${lastResult?.추세 || ""} ${lastResult?.상승률텍스트 || ""}
+
+👉 자세히 보기
+${shareUrl}`;
+        }
     }
 
-    const shareUrl = buildShareUrl();
-    
-    const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
-    const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
-
-    const text = `📊 아파트 AI 분석 결과
-
-    🏢 ${lastResult?.아파트 || ""} ${lastResult?.평형 || ""}㎡
-
-    💰 내가 생각한 가격: ${userPrice}만원
-    🎯 AI 추천 매수가: ${recommendPrice}만원
-
-    📈 ${lastResult?.한줄결론 || ""}
-
-    👉 자세히 보기
-    ${shareUrl}`;
-
-        // 🔥 최신 브라우저 (HTTPS)
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text)
-                .then(() => showToast("링크가 복사되었습니다!"))
-                .catch(() => fallbackCopy(text));
-        } else {
-            // 🔥 fallback (모바일/HTTP)
-            fallbackCopy(text);
-        }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+            .then(() => showToast("요약 내용이 복사되었습니다."))
+            .catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
 }
 
 
