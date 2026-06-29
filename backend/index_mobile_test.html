@@ -15684,22 +15684,26 @@ function openRegionSheetV3(step = "sido") {
     const rect = regionPath.getBoundingClientRect();
     const sheetTop = rect.bottom + 8;
 
+    const windowBottomGap = 24;
+    const sheetMaxHeight = window.innerHeight - sheetTop - windowBottomGap;
+
     sheet.style.cssText = `
         display:block !important;
         position:fixed !important;
-        left:0 !important;
-        right:0 !important;
+        left:12px !important;
+        right:12px !important;
         top:${sheetTop}px !important;
         bottom:auto !important;
-        width:100vw !important;
-        max-height:70vh !important;
+        width:auto !important;
+        height:${sheetMaxHeight}px !important;
+        max-height:${sheetMaxHeight}px !important;
         overflow-y:auto !important;
         -webkit-overflow-scrolling:touch !important;
         background:#ffffff !important;
-        border-radius:24px 24px 0 0 !important;
-        padding:14px 14px 80px !important;
+        border-radius:18px !important;
+        padding:14px 14px 90px !important;
         z-index:999999 !important;
-        box-shadow:0 -18px 40px rgba(15,23,42,0.22) !important;
+        box-shadow:0 16px 34px rgba(15,23,42,0.18) !important;
     `;
 
     if (step === "sido") {
