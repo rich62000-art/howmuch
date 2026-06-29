@@ -10478,8 +10478,8 @@ ${shareUrl}`;
         objectType: "text",
         text: kakaoText,
         link: {
-            mobileWebUrl: shareUrl,
-            webUrl: shareUrl
+            mobileWebUrl: appUrl,
+            webUrl: appUrl
         },
         buttonTitle: "앱에서 확인하기"
     });
@@ -14843,7 +14843,7 @@ function renderRentMonthlyVolumeChart(monthlyData) {
             <div class="rent-volume-summary-item blue">
                 <div class="summary-circle">↗</div>
                 <div>
-                    <div class="rent-summary-label">전세 거래량 합계</div>
+                    <div class="rent-summary-label">전세 거래량</div>
                     <div class="rent-summary-value">${totalJeonse}건</div>
                 </div>
             </div>
@@ -14851,7 +14851,7 @@ function renderRentMonthlyVolumeChart(monthlyData) {
             <div class="rent-volume-summary-item red">
                 <div class="summary-circle">↗</div>
                 <div>
-                    <div class="rent-summary-label">월세 거래량 합계</div>
+                    <div class="rent-summary-label">월세 거래량</div>
                     <div class="rent-summary-value">${totalMonthly}건</div>
                 </div>
             </div>
@@ -14923,6 +14923,7 @@ function copyLink(event) {
     }
 
     const shareUrl = buildShareUrl();
+    const appUrl = "https://howmuch-xt70.onrender.com";
 
     const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
     const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
