@@ -12543,14 +12543,12 @@ function renderDongs(dongs) {
             // 기존 dongList는 열지 않고, V3 팝업 안에 동/리 리스트를 표시한다.
             if (window.v3WaitingDongList) {
 
+                 window.v3WaitingDongList = false;
+
                 dongList.style.display = "none";
                 dongList.style.visibility = "hidden";
 
-                setTimeout(() => {
-                    renderDongV3();
-                    window.v3WaitingDongList = false;
-                }, 100);
-
+                renderDongV3();
                 return;
             }
 
@@ -12744,15 +12742,20 @@ document.getElementById("aptInput").addEventListener("input", function () {
 function fetchApts(region, keyword = "") {
     const dongSelect = document.getElementById("dongSelect");
 
+    console.log("🚀 fetchApts 호출됨");
+    console.log("region:", region);
+    console.log("dong:", dongSelect?.value);
+
     if (!dongSelect || !dongSelect.value) {
         return;
     }
 
-    if (aptFetchController) {
+    if (aptFetchController && !aptFetchController.signal.aborted) {
         aptFetchController.abort();
     }
 
     aptFetchController = new AbortController();
+    const currentController = aptFetchController;
 
     const listEl = document.getElementById("aptList");
     const selectedDong = document.getElementById("dongSelect").value;
@@ -12766,10 +12769,19 @@ function fetchApts(region, keyword = "") {
     // ✅ 캐시 있으면 서버 호출 없이 바로 필터
     if (aptCache[cacheKey]) {
         filterApts(aptCache[cacheKey], keyword || "");
+
+        listEl.style.display = "block";
+        listEl.style.visibility = "visible";
+        listEl.style.opacity = "1";
+
         return;
     }
 
     listEl.innerHTML = "<div class='item loading-text'>🔍 아파트 검색중.</div>";
+
+    listEl.style.display = "block";
+    listEl.style.visibility = "visible";
+    listEl.style.opacity = "1";
 
     fetch(
         "/apts?region=" +
@@ -12780,7 +12792,7 @@ function fetchApts(region, keyword = "") {
         + "&dong=" +
         encodeURIComponent(selectedDong || ""),
         {
-            signal: aptFetchController.signal
+            signal: currentController.signal
         }
     )
     .then(res => {
@@ -12793,6 +12805,10 @@ function fetchApts(region, keyword = "") {
         const result = data.검색결과 || [];
         aptCache[cacheKey] = result;
         filterApts(result, keyword || "");
+
+        listEl.style.display = "block";
+        listEl.style.visibility = "visible";
+        listEl.style.opacity = "1";
     })
     .catch(err => {
         console.log("❌ 아파트 조회 에러:", err);
@@ -12855,6 +12871,8 @@ function filterApts(list, keyword) {
             document.getElementById("aptInput").value = aptName;
             document.getElementById("aptInput").dataset.realName = realAptName;
             listEl.innerHTML = "";
+            listEl.style.display = "none";
+            listEl.style.visibility = "hidden";
 
             resetAfterAptChange();
 
@@ -12894,9 +12912,11 @@ function filterApts(list, keyword) {
             })
             .catch(err => {
                 console.log("❌ 평형 조회 에러:", err);
-                sizeSelect.innerHTML = '<option value="">평형 조회 오류</option>';
+                if (sizeSelect) {
+                    sizeSelect.innerHTML = '<option value="">평형 조회 오류</option>';
+                }
             });
-};
+        };
         listEl.appendChild(div);
     });
 }
@@ -15801,9 +15821,34 @@ function renderDongV3() {
             document.getElementById("pathDongMain").innerText = dong;
 
             if (dongInput) dongInput.value = dong;
+
+            // ✅ 핵심: dongSelect에 option이 없으면 먼저 추가
+            let exists = Array.from(dongSelect.options).some(opt => opt.value === dong);
+
+            if (!exists) {
+                const option = document.createElement("option");
+                option.value = dong;
+                option.textContent = dong;
+                dongSelect.appendChild(option);
+            }
+
             dongSelect.value = dong;
 
-            dongSelect.dispatchEvent(new Event("change"));
+            const aptList = document.getElementById("aptList");
+            if (aptList) {
+                aptList.innerHTML = "";
+                aptList.style.display = "none";
+            }
+
+            const region = document.getElementById("regionInput")?.value || "";
+            console.log("✅ V3 동 선택:", dong);
+            console.log("✅ dongSelect.value:", dongSelect.value);
+            console.log("✅ regionInput:", region);
+
+            if (region && dongSelect.value) {
+                
+                fetchApts(region, "");
+            }
 
             closeRegionSheetV3();
         };
