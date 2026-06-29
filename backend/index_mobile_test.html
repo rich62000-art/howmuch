@@ -10184,6 +10184,9 @@ let lastResult = null;
 
 let selectedPropertyType = "apt";
 
+let isDongListLoadingV3 = false;
+let isDongSelectedV3 = false;
+
 function showToast(message) {
 
     const toast = document.getElementById("toastMessage");
@@ -12010,6 +12013,8 @@ if (sidoSelect && sigunguSelect) {
 
             window.v3WaitingDongList = true;
             showRegionLoadingV3("동/리 불러오는 중...");
+            isDongListLoadingV3 = true;
+            isDongSelectedV3 = false;
 
             setTimeout(() => {
                 sigunguSelect.dispatchEvent(new Event("change"));
@@ -12847,13 +12852,20 @@ function filterApts(list, keyword) {
     }
 
     if (filtered.length === 0) {
-        // ✅ 동/리 리스트 로딩 중에는 단지 없음 표시 금지
-        if (window.v3WaitingDongList) {
+        console.log("🟥 filterApts 빈 결과");
+        console.log("isDongListLoadingV3:", isDongListLoadingV3);
+        console.log("isDongSelectedV3:", isDongSelectedV3);
+        console.log("selectedDong:", selectedDong);
+        console.log("keyword:", keyword);
+
+        // ✅ 동/리 로딩 중이면 단지 없음 표시 금지
+        if (isDongListLoadingV3 || !isDongSelectedV3) {
             listEl.innerHTML = "";
             listEl.style.display = "none";
             return;
         }
 
+        // ✅ 실제로 동을 선택한 뒤 단지가 없을 때만 표시
         listEl.innerHTML =
             "<div class='item'>최근 실거래 단지가 없습니다</div>";
 
@@ -15780,7 +15792,13 @@ function renderDongV3() {
         oldDongList.style.display = "none";
     }
 
+    console.log("🟦 renderDongV3 실행");
+    console.log("동 목록 개수:", dongs.length);
+    console.log("isDongListLoadingV3:", isDongListLoadingV3);
+    console.log("isDongSelectedV3:", isDongSelectedV3);
     grid.innerHTML = "";
+
+    isDongListLoadingV3 = false;
 
     if (!dongs || dongs.length === 0) {
         grid.innerHTML = `
@@ -15824,6 +15842,8 @@ function renderDongV3() {
 
                 
         btn.onclick = function () {
+            isDongSelectedV3 = true;
+            isDongListLoadingV3 = false;
             document.getElementById("pathDong").innerText = dong;
             document.getElementById("pathDongMain").innerText = dong;
 
