@@ -15738,7 +15738,13 @@ function renderDongV3() {
         if (oldDongList) {
             dongs = Array.from(oldDongList.querySelectorAll(".item"))
                 .map(item => item.innerText.trim())
-                .filter(value => value && value !== "실거래 단지 없음");
+                .filter(value =>
+                    value &&
+                    value !== "실거래 단지 없음" &&
+                    value !== "검색 단지 없음" &&
+                    !value.includes("단지 없음") &&
+                    !value.includes("검색중")
+                );
         }
     }
 
