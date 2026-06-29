@@ -10478,10 +10478,10 @@ ${shareUrl}`;
         objectType: "text",
         text: kakaoText,
         link: {
-            mobileWebUrl: appUrl,
-            webUrl: appUrl
+            mobileWebUrl: shareUrl,
+            webUrl: shareUrl
         },
-        buttonTitle: "앱에서 확인하기"
+        
     });
 }
 
@@ -13536,7 +13536,7 @@ function analyzePrice() {
                     `💰 추천가: ${Number(data.추천매수가 || 0).toLocaleString()}만원`,
                     `📌 결과: ${data.한줄결론 || data.가격판단 || "-"}`,
                     "",
-                    "👉 자세히 보기",
+                    "👉 AI 분석 전체 보기",
                     shareUrl
                 ].join("\n");
                 //console.log("shareText:", shareText);
@@ -14923,8 +14923,7 @@ function copyLink(event) {
     }
 
     const shareUrl = buildShareUrl();
-    const appUrl = "https://howmuch-xt70.onrender.com";
-
+    
     const userPrice = Number(lastResult?.사용자입력가격 || 0).toLocaleString();
     const recommendPrice = Number(lastResult?.보정추천가 || 0).toLocaleString();
 
