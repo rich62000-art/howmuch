@@ -12847,6 +12847,13 @@ function filterApts(list, keyword) {
     }
 
     if (filtered.length === 0) {
+        // ✅ 동/리 리스트 로딩 중에는 단지 없음 표시 금지
+        if (window.v3WaitingDongList) {
+            listEl.innerHTML = "";
+            listEl.style.display = "none";
+            return;
+        }
+
         listEl.innerHTML =
             "<div class='item'>최근 실거래 단지가 없습니다</div>";
 
