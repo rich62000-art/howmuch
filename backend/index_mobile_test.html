@@ -10182,6 +10182,7 @@ let lastResult = null;
 let lastFutureResult = null;
 
 let selectedPropertyType = "apt";
+let dongRequestSeq = 0;
 
 let isDongListLoadingV3 = false;
 let isDongSelectedV3 = false;
@@ -12209,6 +12210,7 @@ if (sidoSelect && sigunguSelect) {
                             user-select:none;
                         `;
                         btn.onclick = function () {
+                            resetAptAndSizeOnRegionChange();
 
                             document.getElementById("pathSigungu").innerText = sigungu;
                             document.getElementById("pathDong").innerText = "읍·면·동 선택";
@@ -12216,14 +12218,33 @@ if (sidoSelect && sigunguSelect) {
                             document.getElementById("pathSigunguMain").innerText = sigungu;
                             document.getElementById("pathDongMain").innerText = "읍·면·동 선택";
 
-                            sigunguSelect.value = sigungu;
-                            window.v3WaitingDongList = true;
-                            showRegionLoadingV3("동/리 불러오는 중...");
-                            sigunguSelect.dispatchEvent(new Event("change"));
+                            // ✅ 이전 동/리 상태 초기화
+                            dongSelect.innerHTML = '<option value="">동 선택</option>';
+                            dongSelect.value = "";
 
-                            setTimeout(() => {
-                                renderDongV3();
-                            }, 300);
+                            const dongInput = document.getElementById("dongInput");
+                            if (dongInput) dongInput.value = "";
+
+                            const grid = document.getElementById("regionGridV3");
+                            if (grid) {
+                                grid.innerHTML = "";
+                            }
+
+                            sigunguSelect.value = sigungu;
+
+                            const regionInput = document.getElementById("regionInput");
+                            if (regionInput) {
+                                regionInput.value = `${sidoSelect.value} ${sigungu}`;
+                            }
+
+                            window.v3WaitingDongList = true;
+                            isDongListLoadingV3 = true;
+                            isDongSelectedV3 = false;
+
+                            showRegionLoadingV3("동/리 불러오는 중...");
+
+                            // ✅ change 이벤트 의존하지 말고 직접 호출
+                            loadDongs(sidoSelect.value + " " + sigungu);
                         };
 
                         grid.appendChild(btn);
@@ -12287,9 +12308,6 @@ sigunguSelect.addEventListener("change", function () {
     loadDongs(fullRegion);
 
 });
-
-
-
 
 // 🔥 캐시
 let aptCache = {};
@@ -12441,7 +12459,7 @@ async function loadDongs(region) {
         dongSelect.innerHTML = '<option value="">동을 선택 하세요</option>';
         return;
     }
-
+    const requestSeq = ++dongRequestSeq;
     // ✅ 캐시 있으면 바로 사용
     const dongCacheKey = selectedPropertyType + "_" + region;
 
@@ -12495,43 +12513,59 @@ async function loadDongs(region) {
         }
 
         const data = await res.json();
+        if (requestSeq !== dongRequestSeq) {
+            console.log("⛔ 오래된 동/리 응답 무시:", region);
+            return;
+        }
 
         const dongs = data["동목록"] || [];
 
         // ✅ 캐시에 저장
         dongCache[dongCacheKey] = dongs;
 
+        // ✅ 로딩 상태 종료
+        window.v3WaitingDongList = false;
+        isDongListLoadingV3 = false;
+        isDongSelectedV3 = false;
+
+        // ✅ 0개면 V3 안내 메시지 직접 표시
+        if (!dongs || dongs.length === 0) {
+            dongSelect.innerHTML = '<option value="">동/리 없음</option>';
+            dongSelect.value = "";
+
+            window.v3WaitingDongList = false;
+            isDongListLoadingV3 = false;
+            isDongSelectedV3 = false;
+
+            const grid = document.getElementById("regionGridV3");
+            if (grid) {
+                grid.innerHTML = `
+                    <div style="
+                        grid-column:1 / -1;
+                        padding:28px 10px;
+                        text-align:center;
+                        color:#64748b;
+                        font-size:14px;
+                        font-weight:800;
+                        line-height:1.6;
+                    ">
+                        조회 가능한 동/리 목록이 없습니다.<br>
+                        다른 시·군·구를 선택해 주세요.
+                    </div>
+                `;
+            }
+
+            return;
+        }
+
+        // ✅ 동/리 목록이 있을 때도 로딩 상태 종료
+        window.v3WaitingDongList = false;
+        isDongListLoadingV3 = false;
+        isDongSelectedV3 = false;
+
         renderDongs(dongs);
 
-        return;
-
-        if (window.useRegionV3) {
-            renderDongV3();
-            return;
-        }
-
-        if (dongs.length === 0) {
-            // ✅ V3에서는 구버전 dongList를 띄우지 않는다.
-            if (window.useRegionV3) {
-                renderDongV3();
-                return;
-            }
-
-            if (dongList) {
-                dongList.innerHTML =
-                    '<div class="item">최근 실거래 단지가 없습니다</div>';
-                dongList.style.display = "block";
-            }
-
-            return;
-        }
-
-        renderDongList(); 
-
-        if (dongList) {
-            openDongList();
-        }
-
+        
     } catch (e) {
         if (e.name === "AbortError") {
             return;
@@ -12559,150 +12593,53 @@ async function loadDongs(region) {
 }
 
 function renderDongs(dongs) {
-     // ✅ V3 지역검색 사용 중: 구버전 dongList는 절대 표시하지 않음
+
+    const dongSelect = document.getElementById("dongSelect");
+    const dongInput = document.getElementById("dongInput");
     const oldDongList = document.getElementById("dongList");
+    const aptList = document.getElementById("aptList");
+
+    dongs = Array.isArray(dongs) ? dongs : [];
+
+    // ✅ 구버전 동 리스트는 항상 닫기
     if (oldDongList) {
         oldDongList.innerHTML = "";
         oldDongList.style.display = "none";
         oldDongList.style.visibility = "hidden";
     }
 
-    // ✅ 동/리 결과가 0개여도 V3 팝업 안에서 안내 표시
-    if (!dongs || dongs.length === 0) {
-        renderDongV3();
-        return;
-    }
-    const dongLoading = document.getElementById("dongLoading");
-    const dongProgressFill = document.getElementById("dongProgressFill");
-    const dongProgressText = document.getElementById("dongProgressText");
-
-    if (dongProgressTimer) {
-        clearInterval(dongProgressTimer);
-        dongProgressTimer = null;
+    // ✅ 단지 리스트도 초기화
+    if (aptList) {
+        aptList.innerHTML = "";
+        aptList.style.display = "none";
     }
 
-    if (dongProgressFill) dongProgressFill.style.width = "100%";
-    if (dongProgressText) dongProgressText.innerText = "100%";
+    // ✅ V3 로딩 상태 종료
+    window.v3WaitingDongList = false;
+    isDongListLoadingV3 = false;
+    isDongSelectedV3 = false;
 
-    setTimeout(() => {
-        if (dongLoading) {
-            dongLoading.style.display = "none";
-        }
-    }, 300);
-
-
-    dongSelect.innerHTML = '<option value="">동 선택</option>';
-
-    if (dongs.length === 0) {
-        dongSelect.innerHTML =
-        '<option value="">실거래 단지 없음</option>';
-
-        // ✅ 동/리 로딩 상태 종료
-        window.v3WaitingDongList = false;
-        isDongListLoadingV3 = false;
-
-        // ✅ 로딩 표시 제거
-        const grid = document.getElementById("regionGridV3");
-        if (grid) {
-            grid.innerHTML = `
-                <div style="
-                    grid-column:1 / -1;
-                    padding:28px 10px;
-                    text-align:center;
-                    color:#64748b;
-                    font-size:14px;
-                    font-weight:800;
-                    line-height:1.6;
-                ">
-                    조회 가능한 동/리 목록이 없습니다.<br>
-                    다른 시·군·구를 선택해 주세요.
-                </div>
-            `;
-        }
-
-        return;
-    }
-
-    dongs.forEach(dong => {
-        const option = document.createElement("option");
-        option.value = dong;
-        option.textContent = dong;
-        dongSelect.appendChild(option);
-    });
-
-    setTimeout(() => {
+    // ✅ dongSelect를 항상 현재 응답값으로 재구성
+    if (dongSelect) {
+        dongSelect.innerHTML = '<option value="">동 선택</option>';
         dongSelect.value = "";
-        dongSelect.selectedIndex = 0;
 
-        const aptList = document.getElementById("aptList");
-        if (aptList) {
-            aptList.innerHTML = "";
-            aptList.style.display = "none";
-        }
+        dongs.forEach(dong => {
+            const option = document.createElement("option");
+            option.value = dong;
+            option.textContent = dong;
+            dongSelect.appendChild(option);
+        });
+    }
 
-        const dongList = document.getElementById("dongList");
+    if (dongInput) {
+        dongInput.value = "";
+    }
 
-        if (dongList) {
-            dongList.innerHTML = "";
+    // ✅ V3 팝업 안에서 동/리 목록 또는 없음 메시지 표시
+    renderDongV3();
 
-            dongs.forEach(dong => {
-                const div = document.createElement("div");
-                div.className = "item";
-                div.innerText = dong;
-
-                div.onclick = () => {
-                    const dongInput = document.getElementById("dongInput");
-                    const dongItem = dongInput.closest(".region-select-item");
-
-                    dongAutoOpened = false;
-                    dongInput.value = dong;
-                    dongSelect.value = dong;
-
-                    dongList.style.display = "none";
-
-                    if (dongItem) {
-                        dongItem.classList.add("selected");
-                    }
-
-                    updateRegionSelectedState();
-                    setTimeout(updateRegionSelectedState, 0);
-
-                    dongSelect.dispatchEvent(new Event("change"));
-                    document.getElementById("aptInput").focus();
-                };
-
-                dongList.appendChild(div);
-            });
-
-            dongList.style.visibility = "hidden";
-            dongList.style.display = "none";
-
-            // V3 지역 선택 팝업에서 동/리 목록을 기다리는 상태라면
-            // 기존 dongList는 열지 않고, V3 팝업 안에 동/리 리스트를 표시한다.
-            if (window.v3WaitingDongList) {
-
-                 window.v3WaitingDongList = false;
-
-                dongList.style.display = "none";
-                dongList.style.visibility = "hidden";
-
-                renderDongV3();
-
-                window.v3WaitingDongList = false;
-                return;
-            }
-
-            dongClickLocked = true;
-
-            // ✅ V3 지역 선택 방식 사용 중이므로
-            // 기존 dongList 자동 표시 기능은 사용하지 않음
-            dongList.style.display = "none";
-            dongList.style.visibility = "hidden";
-
-            return;
-        }
-    }, 150);
-
+    return;
 }
 
 // ===============================
@@ -12906,15 +12843,15 @@ function fetchApts(region, keyword = "") {
     }
 
     // ✅ 캐시 있으면 서버 호출 없이 바로 필터
-    if (aptCache[cacheKey]) {
-        filterApts(aptCache[cacheKey], keyword || "");
-
-        listEl.style.display = "block";
-        listEl.style.visibility = "visible";
-        listEl.style.opacity = "1";
-
-        return;
-    }
+    //if (aptCache[cacheKey]) {
+    //    filterApts(aptCache[cacheKey], keyword || "");
+    //
+    //    listEl.style.display = "block";
+    //    listEl.style.visibility = "visible";
+    //    listEl.style.opacity = "1";
+    //
+    //    return;
+    //}
 
     listEl.innerHTML = "<div class='item loading-text'>🔍 아파트 검색중.</div>";
 
@@ -12922,12 +12859,29 @@ function fetchApts(region, keyword = "") {
     listEl.style.visibility = "visible";
     listEl.style.opacity = "1";
 
+    console.log("🏢 /apts 요청 직전");
+    console.log("region:", region);
+    console.log("selectedDong:", selectedDong);
+    console.log("type:", selectedPropertyType);
+    console.log(
+        "URL:",
+        "/apts?region=" +
+        encodeURIComponent(region) +
+        "&type=" +
+        encodeURIComponent(selectedPropertyType) +
+        "&keyword=" +
+        encodeURIComponent(keyword || "") +
+        "&dong=" +
+        encodeURIComponent(selectedDong || "")
+    );
+
     fetch(
         "/apts?region=" +
         encodeURIComponent(region)
         + "&type=" +
         encodeURIComponent(selectedPropertyType)
-        + "&keyword="
+        + "&keyword=" +
+        encodeURIComponent(keyword || "")
         + "&dong=" +
         encodeURIComponent(selectedDong || ""),
         {
@@ -12942,7 +12896,7 @@ function fetchApts(region, keyword = "") {
     })
     .then(data => {
         const result = data.검색결과 || [];
-        aptCache[cacheKey] = result;
+    //    aptCache[cacheKey] = result;
         filterApts(result, keyword || "");
 
         listEl.style.display = "block";
@@ -12957,63 +12911,55 @@ function fetchApts(region, keyword = "") {
 
 
 
-// 🔥 필터 (프론트에서 처리)
+// 🔥 단지 리스트 렌더링
 function filterApts(list, keyword) {
 
-    if (selectedPropertyType === "presale" && !keyword) {
-        keyword = "";
+    const listEl = document.getElementById("aptList");
+
+    if (!listEl) {
+        console.log("❌ aptList 없음");
+        return;
     }
 
-    const listEl = document.getElementById("aptList");
     listEl.innerHTML = "";
 
     const keywordNorm = (keyword || "").replace(/\s/g, "").toLowerCase();
-    const selectedDong = document.getElementById("dongSelect").value;
+    const selectedDong = document.getElementById("dongSelect")?.value || "";
 
     console.log("🟨 filterApts 실행");
-    console.log("원본 list 개수:", list.length);
+    console.log("원본 list 개수:", Array.isArray(list) ? list.length : 0);
     console.log("keyword:", keyword);
     console.log("selectedDong:", selectedDong);
-    console.log("isDongSelectedV3:", isDongSelectedV3);
+    console.log("selectedPropertyType:", selectedPropertyType);
 
-    let filtered = list;
+    let filtered = Array.isArray(list) ? list : [];
 
-    // 🔥 아파트만 프론트에서 동 필터 적용
-    // 분양권은 백엔드 응답 결과를 그대로 우선 렌더링
-    if (selectedDong) {
-        filtered = filtered.filter(apt => (apt.dong || "") === selectedDong);
-    }
+    // ✅ /apts API에서 이미 region + dong + type 기준으로 조회하므로
+    // 여기서 동 필터를 다시 하지 않는다.
 
-    
     if (keywordNorm) {
         filtered = filtered.filter(apt =>
-            (apt.name || "").replace(/\s/g, "").toLowerCase().includes(keywordNorm)
+            String(apt.name || apt.real_name || "")
+                .replace(/\s/g, "")
+                .toLowerCase()
+                .includes(keywordNorm)
         );
     }
 
     if (filtered.length === 0) {
-        console.log("🟥 단지 없음 표시 직전");
-        console.log("filtered.length:", filtered.length);
+        console.log("🟥 단지 없음 표시");
         console.log("selectedDong:", selectedDong);
-        console.log("isDongSelectedV3:", isDongSelectedV3);
 
-        // ✅ 동/리 로딩 중이면 단지 없음 표시 금지
-        if (isDongListLoadingV3 || !isDongSelectedV3) {
-            listEl.innerHTML = "";
-            listEl.style.display = "none";
-            return;
-        }
-
-        // ✅ 실제로 동을 선택한 뒤 단지가 없을 때만 표시
         listEl.innerHTML =
             "<div class='item'>최근 실거래 단지가 없습니다</div>";
 
         listEl.style.display = "block";
+        listEl.style.visibility = "visible";
+        listEl.style.opacity = "1";
 
         return;
     }
 
-    // ✅ 자동 펼침 단지 리스트 표시 개수 확대
     filtered.slice(0, 300).forEach(apt => {
         const aptName = apt.name || "";
         const realAptName = apt.real_name || apt.name || "";
@@ -13023,18 +12969,22 @@ function filterApts(list, keyword) {
         div.className = "item";
         div.innerText = aptDong ? `${aptName} (${aptDong})` : aptName;
 
-
-
         div.onclick = function () {
-            document.getElementById("aptInput").value = aptName;
-            document.getElementById("aptInput").dataset.realName = realAptName;
+            const aptInput = document.getElementById("aptInput");
+
+            if (aptInput) {
+                aptInput.value = aptName;
+                aptInput.dataset.realName = realAptName;
+            }
+
             listEl.innerHTML = "";
             listEl.style.display = "none";
-            listEl.style.visibility = "hidden";
+            listEl.style.visibility = "visible";
+            listEl.style.opacity = "1";
 
             resetAfterAptChange();
 
-            const region = document.getElementById("regionInput").value;
+            const region = document.getElementById("regionInput")?.value || "";
             const sizeSelect = document.getElementById("sizeSelect");
             const sizeList = document.getElementById("sizeList");
 
@@ -13045,6 +12995,8 @@ function filterApts(list, keyword) {
                     </div>
                 `;
                 sizeList.style.display = "block";
+                sizeList.style.visibility = "visible";
+                sizeList.style.opacity = "1";
             }
 
             if (sizeSelect) {
@@ -13070,13 +13022,27 @@ function filterApts(list, keyword) {
             })
             .catch(err => {
                 console.log("❌ 평형 조회 에러:", err);
+
                 if (sizeSelect) {
                     sizeSelect.innerHTML = '<option value="">평형 조회 오류</option>';
                 }
+
+                if (sizeList) {
+                    sizeList.innerHTML = "<div class='item'>평형 조회 오류</div>";
+                    sizeList.style.display = "block";
+                    sizeList.style.visibility = "visible";
+                    sizeList.style.opacity = "1";
+                }
             });
         };
+
         listEl.appendChild(div);
     });
+
+    // ✅ 단지 리스트 열기
+    listEl.style.display = "block";
+    listEl.style.visibility = "visible";
+    listEl.style.opacity = "1";
 }
 
 function openAptList() {
@@ -15415,6 +15381,19 @@ function renderSizeList() {
 
              // 가격 입력창으로 이동
             document.getElementById("userPriceInput").focus();
+            // ✅ 면적 선택 후 분석 버튼 영역으로 자동 이동
+            setTimeout(() => {
+                const target =
+                    document.getElementById("analyzeBtn") ||
+                    document.getElementById("futurePredictBtn");
+
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center"
+                    });
+                }
+            }, 250);
         };
 
         list.appendChild(div);
@@ -15983,24 +15962,7 @@ function renderDongV3() {
     let dongs = Array.from(dongSelect.options)
         .map(option => option.value)
         .filter(value => value && value.trim() !== "" && value !== "동 선택");
-
-    // dongSelect가 비어 있으면 기존 dongList에서 가져오기
-    if (dongs.length === 0) {
-        const oldDongList = document.getElementById("dongList");
-
-        if (oldDongList) {
-            dongs = Array.from(oldDongList.querySelectorAll(".item"))
-                .map(item => item.innerText.trim())
-                .filter(value =>
-                    value &&
-                    value !== "실거래 단지 없음" &&
-                    value !== "검색 단지 없음" &&
-                    !value.includes("단지 없음") &&
-                    !value.includes("검색중")
-                );
-        }
-    }
-
+    
     const oldDongList = document.getElementById("dongList");
     if (oldDongList) {
         oldDongList.style.display = "none";
@@ -16061,6 +16023,8 @@ function renderDongV3() {
 
                 
         btn.onclick = function () {
+            resetAptAndSizeOnRegionChange();
+
             isDongSelectedV3 = true;
             isDongListLoadingV3 = false;
             document.getElementById("pathDong").innerText = dong;
@@ -16086,17 +16050,36 @@ function renderDongV3() {
                 aptList.style.display = "none";
             }
 
-            const region = document.getElementById("regionInput")?.value || "";
+            const regionInput = document.getElementById("regionInput");
+            const region =
+                regionInput?.value ||
+                `${document.getElementById("sidoSelect")?.value || ""} ${document.getElementById("sigunguSelect")?.value || ""}`.trim();
+
+            if (regionInput && !regionInput.value && region) {
+                regionInput.value = region;
+            }
+
             console.log("✅ V3 동 선택:", dong);
             console.log("✅ dongSelect.value:", dongSelect.value);
-            console.log("✅ regionInput:", region);
+            console.log("✅ region:", region);
 
-            if (region && dongSelect.value) {
-                
+            if (region && dong) {
                 fetchApts(region, "");
             }
 
             closeRegionSheetV3();
+
+            // ✅ 동 선택 후 단지 선택 영역으로 자동 이동
+            setTimeout(() => {
+                const aptInput = document.getElementById("aptInput");
+
+                if (aptInput) {
+                    aptInput.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center"
+                    });
+                }
+            }, 250);
         };
 
         grid.appendChild(btn);
@@ -16152,6 +16135,37 @@ function resetRegionV3() {
 
     const regionGridV3 = document.getElementById("regionGridV3");
     if (regionGridV3) regionGridV3.innerHTML = "";
+}
+
+function resetAptAndSizeOnRegionChange() {
+    const aptInput = document.getElementById("aptInput");
+    const sizeInput = document.getElementById("sizeInput");
+    const aptList = document.getElementById("aptList");
+    const sizeList = document.getElementById("sizeList");
+    const sizeSelect = document.getElementById("sizeSelect");
+
+    if (aptInput) {
+        aptInput.value = "";
+        aptInput.dataset.realName = "";
+    }
+
+    if (sizeInput) {
+        sizeInput.value = "";
+    }
+
+    if (sizeSelect) {
+        sizeSelect.innerHTML = '<option value="">평형 선택</option>';
+        sizeSelect.value = "";
+    }
+
+    [aptList, sizeList].forEach(el => {
+        if (el) {
+            el.innerHTML = "";
+            el.style.display = "none";
+            el.style.visibility = "visible";
+            el.style.opacity = "1";
+        }
+    });
 }
 </script>
 
