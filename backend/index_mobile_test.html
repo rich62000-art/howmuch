@@ -10178,12 +10178,22 @@ body {
 
 <script>
 
+/* ==================================================
+   1. 전역 상태(Global State)
+================================================== */
+
 let lastResult = null;
 let lastFutureResult = null;
 
+// 현재 선택된 분석 유형: apt(아파트), rent(전월세), presale(분양권)
 let selectedPropertyType = "apt";
+
+/* ==================================================
+   2. 공통 상수(Constants)
+================================================== */
 let dongRequestSeq = 0;
 
+// ===== 지역검색 V3 상태 =====
 let isDongListLoadingV3 = false;
 let isDongSelectedV3 = false;
 
@@ -12780,6 +12790,14 @@ function showSizes(data) {
 }
 
 // 🔥 아파트 자동완성 (디바운싱)
+// TODO: 현재 UX는 동 선택 후 단지 리스트 자동 표시 방식.
+// 단지명 직접 입력 자동완성 기능 사용 여부 확인 후 유지/삭제 결정.
+
+/**
+ * 단지명 입력 시 디바운싱 후 단지 목록을 다시 조회한다.
+ * 호출 : aptInput input 이벤트
+ * 다음 : fetchApts()
+ */
 document.getElementById("aptInput").addEventListener("input", function () {
 
     resetAfterAptChange();
@@ -12814,8 +12832,14 @@ document.getElementById("aptInput").addEventListener("input", function () {
 });
 
 
-// 🔥 아파트 가져오기 (캐시 포함)
+/**
+ * 선택된 지역/동 기준으로 단지 목록을 조회한다.
+ * 호출 : renderDongV3(), renderDongList(), 단지 검색 입력
+ * 다음 : filterApts()
+ */
 function fetchApts(region, keyword = "") {
+
+    // ===== 동 선택값 확인 =====
     const dongSelect = document.getElementById("dongSelect");
 
     console.log("🚀 fetchApts 호출됨");
@@ -12826,6 +12850,7 @@ function fetchApts(region, keyword = "") {
         return;
     }
 
+    // ===== 이전 단지 조회 요청 취소 =====
     if (aptFetchController && !aptFetchController.signal.aborted) {
         aptFetchController.abort();
     }
@@ -12833,6 +12858,7 @@ function fetchApts(region, keyword = "") {
     aptFetchController = new AbortController();
     const currentController = aptFetchController;
 
+    // ===== DOM 및 조회 조건 준비 =====
     const listEl = document.getElementById("aptList");
     const selectedDong = document.getElementById("dongSelect").value;
     const cacheKey = selectedPropertyType + "_" + region + "_" + (selectedDong || "all");
@@ -12841,24 +12867,15 @@ function fetchApts(region, keyword = "") {
         listEl.innerHTML = "";
         return;
     }
-
-    // ✅ 캐시 있으면 서버 호출 없이 바로 필터
-    //if (aptCache[cacheKey]) {
-    //    filterApts(aptCache[cacheKey], keyword || "");
-    //
-    //    listEl.style.display = "block";
-    //    listEl.style.visibility = "visible";
-    //    listEl.style.opacity = "1";
-    //
-    //    return;
-    //}
-
+  
+    // ===== 로딩 표시 =====
     listEl.innerHTML = "<div class='item loading-text'>🔍 아파트 검색중.</div>";
 
     listEl.style.display = "block";
     listEl.style.visibility = "visible";
     listEl.style.opacity = "1";
 
+    // ===== 요청 로그 =====
     console.log("🏢 /apts 요청 직전");
     console.log("region:", region);
     console.log("selectedDong:", selectedDong);
@@ -12875,6 +12892,7 @@ function fetchApts(region, keyword = "") {
         encodeURIComponent(selectedDong || "")
     );
 
+    // ===== 단지 목록 API 요청 =====
     fetch(
         "/apts?region=" +
         encodeURIComponent(region)
@@ -12889,14 +12907,17 @@ function fetchApts(region, keyword = "") {
         }
     )
     .then(res => {
+
+        // ===== 응답 상태 확인 =====
         if (!res.ok) {
             throw new Error("서버 응답 오류: " + res.status);
         }
         return res.json();
     })
     .then(data => {
+
+        // ===== 검색 결과 렌더링 =====
         const result = data.검색결과 || [];
-    //    aptCache[cacheKey] = result;
         filterApts(result, keyword || "");
 
         listEl.style.display = "block";
@@ -12904,16 +12925,20 @@ function fetchApts(region, keyword = "") {
         listEl.style.opacity = "1";
     })
     .catch(err => {
+        // ===== 에러 처리 =====
         console.log("❌ 아파트 조회 에러:", err);
         listEl.innerHTML = "<div class='item'>아파트 조회 오류</div>";
     });
 }
 
-
-
-// 🔥 단지 리스트 렌더링
+/**
+ * 조회된 단지 목록을 필터링하고 aptList에 렌더링한다.
+ * 호출 : fetchApts()
+ * 다음 : 단지 선택 → showSizes()
+ */
 function filterApts(list, keyword) {
 
+    // ===== 단지 리스트 DOM 확인 =====
     const listEl = document.getElementById("aptList");
 
     if (!listEl) {
@@ -12921,8 +12946,10 @@ function filterApts(list, keyword) {
         return;
     }
 
+    // ===== 기존 단지 목록 초기화 =====
     listEl.innerHTML = "";
 
+    // ===== 검색 조건 준비 =====
     const keywordNorm = (keyword || "").replace(/\s/g, "").toLowerCase();
     const selectedDong = document.getElementById("dongSelect")?.value || "";
 
@@ -12932,11 +12959,13 @@ function filterApts(list, keyword) {
     console.log("selectedDong:", selectedDong);
     console.log("selectedPropertyType:", selectedPropertyType);
 
+    // ===== 단지 목록 배열 보정 =====
     let filtered = Array.isArray(list) ? list : [];
 
     // ✅ /apts API에서 이미 region + dong + type 기준으로 조회하므로
     // 여기서 동 필터를 다시 하지 않는다.
 
+    // ===== 키워드 필터링 =====
     if (keywordNorm) {
         filtered = filtered.filter(apt =>
             String(apt.name || apt.real_name || "")
@@ -12946,6 +12975,7 @@ function filterApts(list, keyword) {
         );
     }
 
+    // ===== 검색 결과 없음 처리 =====
     if (filtered.length === 0) {
         console.log("🟥 단지 없음 표시");
         console.log("selectedDong:", selectedDong);
@@ -12960,6 +12990,7 @@ function filterApts(list, keyword) {
         return;
     }
 
+    // ===== 단지 목록 렌더링 =====
     filtered.slice(0, 300).forEach(apt => {
         const aptName = apt.name || "";
         const realAptName = apt.real_name || apt.name || "";
@@ -12969,6 +13000,7 @@ function filterApts(list, keyword) {
         div.className = "item";
         div.innerText = aptDong ? `${aptName} (${aptDong})` : aptName;
 
+        // ===== 단지 선택 이벤트 =====
         div.onclick = function () {
             const aptInput = document.getElementById("aptInput");
 
@@ -12977,6 +13009,7 @@ function filterApts(list, keyword) {
                 aptInput.dataset.realName = realAptName;
             }
 
+            // ===== 단지 리스트 닫기 =====
             listEl.innerHTML = "";
             listEl.style.display = "none";
             listEl.style.visibility = "visible";
@@ -12984,10 +13017,12 @@ function filterApts(list, keyword) {
 
             resetAfterAptChange();
 
+            // ===== 평형 조회 조건 준비 =====
             const region = document.getElementById("regionInput")?.value || "";
             const sizeSelect = document.getElementById("sizeSelect");
             const sizeList = document.getElementById("sizeList");
 
+            // ===== 평형 로딩 표시 =====
             if (sizeList) {
                 sizeList.innerHTML = `
                     <div class="item loading-text">
@@ -13003,6 +13038,7 @@ function filterApts(list, keyword) {
                 sizeSelect.innerHTML = '<option value="">🔍 검색중...</option>';
             }
 
+            // ===== 평형 목록 API 요청 =====
             fetch(
                 "/sizes?region=" +
                 encodeURIComponent(region) +
@@ -13021,6 +13057,7 @@ function filterApts(list, keyword) {
                 showSizes(data);
             })
             .catch(err => {
+                // ===== 평형 조회 에러 처리 =====
                 console.log("❌ 평형 조회 에러:", err);
 
                 if (sizeSelect) {
@@ -13039,7 +13076,7 @@ function filterApts(list, keyword) {
         listEl.appendChild(div);
     });
 
-    // ✅ 단지 리스트 열기
+    // ===== 단지 리스트 열기 =====
     listEl.style.display = "block";
     listEl.style.visibility = "visible";
     listEl.style.opacity = "1";
@@ -15211,8 +15248,17 @@ setTimeout(() => {
     if (splash) splash.classList.add("hide");
 }, 3000);
 
+/* ==================================================
+   3. 동/리 리스트 공통
+================================================== */
+/**
+ * 동/리 리스트를 열고 닫는다.
+ * 호출 : dongInput onclick
+ * 다음 : renderDongList() → positionDongList()
+ */
 // 🔥 동 리스트 토글
 function toggleDongList() {
+    // 동/리 입력창 클릭 시 기존 dongList 레이어를 열고 닫는다.
     const list = document.getElementById("dongList");
     const sido = document.getElementById("sidoSelect").value;
     const sigungu = document.getElementById("sigunguSelect").value;
@@ -15248,17 +15294,7 @@ function toggleDongList() {
     }
 }
 
-function showDongListAfterPosition() {
-    const dongList = document.getElementById("dongList");
-    if (!dongList) return;
 
-    dongList.style.setProperty("visibility", "hidden", "important");
-    dongList.style.setProperty("display", "block", "important");
-
-    positionDongList();
-
-    dongList.style.setProperty("visibility", "visible", "important");
-}
 
 function openDongList() {
     const list = document.getElementById("dongList");
@@ -15294,12 +15330,25 @@ function openDongList() {
     });
 }
 
+/**
+ * dongList 레이어를 닫는다.
+ * 호출 : renderDongList()
+ * 다음 : 없음
+ */
 function closeDongList() {
     const list = document.getElementById("dongList");
     if (list) list.style.display = "none";
 }
 
-// 🔥 동 리스트 렌더링
+
+/* ==================================================
+   3. 동/리 리스트 공통
+================================================== */
+/**
+ * dongList 레이어에 동/리 목록을 출력하고 선택 이벤트를 연결한다.
+ * 호출 : toggleDongList()
+ * 다음 : closeDongList() → fetchApts()
+ */
 function renderDongList() {
     const list = document.getElementById("dongList");
     const select = document.getElementById("dongSelect");
@@ -15314,11 +15363,11 @@ function renderDongList() {
         div.innerText = opt.value;
 
         div.onclick = () => {
-            dongInput.dataset.locked = "0";
-            dongInput.style.pointerEvents = "auto";
             const dongInput = document.getElementById("dongInput");
             const dongItem = dongInput.closest(".region-select-item");
-
+            dongInput.dataset.locked = "0";
+            dongInput.style.pointerEvents = "auto";
+            
             dongInput.value = opt.value;
             select.value = opt.value;
 
@@ -15671,15 +15720,21 @@ document.addEventListener("input", function (e) {
     }
 });
 
-
+/**
+ * 동/리 리스트 위치를 입력창 기준으로 계산한다.
+ * 호출 : toggleDongList(), resize, scroll
+ * 다음 : 없음
+ */
 function positionDongList() {
 
+     // ===== DOM 요소 가져오기 =====
     const list = document.getElementById("dongList");
     const input = document.getElementById("dongInput");
 
     if (!list || !input) return;
 
-    // 카드 overflow 제한을 피하기 위해 body로 이동하되, 위치는 동 입력창 기준으로 잡음
+    // ===== 리스트를 body로 이동 =====
+    // 카드 overflow의 영향을 받지 않도록 body 아래로 이동
     if (list.parentElement !== document.body) {
         document.body.appendChild(list);
     }
@@ -15687,31 +15742,36 @@ function positionDongList() {
     list.classList.remove("dong-fixed-layer");
     list.classList.add("dong-floating-layer");
 
+    // ===== 입력창 위치 및 기본 값 계산 =====
     const rect = input.getBoundingClientRect();
+
+    // TODO: 공통 상수(Constants)로 이동 예정
     const gap = 4;
     const sidePadding = 12;
     const maxHeight = 292;
 
-    // 동 입력창 바로 아래에 붙이고, 폭은 입력창보다 작게 제한
+    // ===== 리스트 크기 계산 =====
     let width = Math.min(rect.width * 0.82, 240);
     width = Math.max(width, 170);
 
     let left = rect.left + (rect.width - width) / 2;
     let top = rect.bottom + gap;
 
-    // 화면 좌우를 넘지 않도록 보정
+    // ===== 화면 경계 보정 =====
     if (left < sidePadding) left = sidePadding;
     if (left + width > window.innerWidth - sidePadding) {
         left = window.innerWidth - sidePadding - width;
     }
 
-    // 아래 공간이 부족하면 높이만 줄이고, 위로 튀어 올라가지 않게 함
+    // ===== 리스트 높이 계산 =====
     const bottomSpace = window.innerHeight - top - sidePadding;
     const visibleHeight = Math.max(180, Math.min(maxHeight, bottomSpace));
 
+    // ===== 위치 및 스타일 적용 =====
     list.style.setProperty("position", "fixed", "important");
     list.style.setProperty("top", (rect.bottom - 1) + "px", "important");
 
+    // TODO: 공통 상수(Constants)로 이동 예정
     const listWidth = 100;
     const listLeft = rect.left + (rect.width - listWidth) / 2;
 
@@ -15723,9 +15783,12 @@ function positionDongList() {
     list.style.minHeight = visibleHeight + "px";
     list.style.maxHeight = visibleHeight + "px";
     list.style.overflowY = "auto";
+
+    // TODO: 공통 상수(Constants)로 이동 예정
     list.style.zIndex = "2147483647";
 }
 
+// 화면 크기 변경 및 스크롤 시 동/리 리스트 위치를 다시 계산
 window.addEventListener("resize", () => {
     const list = document.getElementById("dongList");
     if (list && list.style.display !== "none") {
@@ -15952,7 +16015,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 
+
+/* ==================================================
+   2. 지역검색 V3
+================================================== */
+
+/**
+ * V3 동/리 목록을 생성하고 선택 이벤트를 연결한다.
+ * 호출 : renderDongs()
+ * 다음 : fetchApts() → showSizes() → 분석
+ */
 function renderDongV3() {
+    // V3 지역 선택 시트에서 동/리 버튼 목록을 생성하고, 선택 시 단지 검색으로 연결한다.
     const grid = document.getElementById("regionGridV3");
     const dongSelect = document.getElementById("dongSelect");
     const dongInput = document.getElementById("dongInput");
