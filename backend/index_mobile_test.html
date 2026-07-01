@@ -13355,6 +13355,24 @@ function renderJeonseDepositChart(trades) {
     `;
 }
 
+/*************************************************
+ * AI 가격 분석 실행
+ *
+ * 호출 :
+ *   - 분석 버튼 클릭
+ *
+ * 기능 :
+ *   1. 입력값 검증
+ *   2. 분석 API 호출
+ *   3. 결과 렌더링
+ *   4. 공유 데이터 생성
+ *   5. 차트 출력
+ *
+ * 다음 :
+ *   renderRentReport()
+ *   renderRecentTradeChart()
+ *   renderJeonseDepositChart()
+ *************************************************/
 function analyzePrice() {
 
     console.log("분석 타입:", selectedPropertyType);
@@ -13362,6 +13380,10 @@ function analyzePrice() {
     console.log("단지:", document.getElementById("aptInput").value);
     console.log("면적:", document.getElementById("sizeInput").value);
     console.log("가격:", document.getElementById("userPriceInput").value);
+
+    // =================================================
+    // 1. 입력값 검증
+    // =================================================
 
     const analyzeBtn = document.getElementById("analyzeBtn");
 
@@ -13394,20 +13416,13 @@ function analyzePrice() {
         return;
     }
 
-    // ===== 여기부터 버튼 잠금 =====
+    // =================================================
+    // 2. 분석 시작 UI / 버튼 잠금 / 로딩 시작
+    // =================================================
 
-    analyzeBtn.disabled = true;
+    lockAnalysisUI(analyzeBtn);
 
-    document.getElementById("aptInput").disabled = true;
-    document.getElementById("sizeInput").disabled = true;
-    document.getElementById("dongInput").disabled = true;
-
-    analyzeBtn.innerText =
-        selectedPropertyType === "presale"
-        ? "분양권 분석중..."
-        : "아파트 분석중...";
-
-    // 🔥 로딩 시작
+    // ===== 분석 로딩 UI 시작 =====
     const loadingBox = document.getElementById("analysisLoadingBox");
     const progressFill = document.getElementById("analysisProgressFill");
     const progressText = document.getElementById("analysisProgressText");
@@ -13460,13 +13475,7 @@ function analyzePrice() {
     if (!region || !apt || !size) {
         resultBox.innerHTML = "지역, 아파트, 평형을 먼저 선택하세요.";
 
-        analyzeBtn.disabled = false;
-        analyzeBtn.innerText =
-            selectedPropertyType === "presale"
-                ? "✨ 분양권 AI 분석하기"
-                : selectedPropertyType === "rent"
-                    ? "✨ 전월세 AI 분석하기"
-                    : "✨ 아파트 AI 분석하기";
+        restoreAnalyzeButton();
         
         return;
     }
@@ -13474,27 +13483,25 @@ function analyzePrice() {
     if (!modal || !modalResult) {
         resultBox.innerHTML = "모달 요소를 찾지 못했습니다. reportModal / modalResult 위치를 확인하세요.";
 
-        analyzeBtn.disabled = false;
-        analyzeBtn.innerText =
-            selectedPropertyType === "presale"
-                ? "✨ 분양권 AI 분석하기"
-                : selectedPropertyType === "rent"
-                    ? "✨ 전월세 AI 분석하기"
-                    : "✨ 아파트 AI 분석하기";
+        restoreAnalyzeButton();
 
         return;
     }
 
-    let url = "/analyze_price?"
-        + "region=" + encodeURIComponent(region)
-        + "&apt_name=" + encodeURIComponent(apt)
-        + "&size=" + encodeURIComponent(size)
-        + "&type=" + encodeURIComponent(selectedPropertyType);
+    // =================================================
+    // 3. 분석 API 요청 준비
+    // =================================================
 
-    if (userPrice) url += "&user_price=" + encodeURIComponent(userPrice);
-    if (direction) url += "&direction=" + encodeURIComponent(direction);
-    if (floor) url += "&floor_level=" + encodeURIComponent(floor);
-    if (interior) url += "&interior=" + encodeURIComponent(interior);
+    const url = buildAnalyzeUrl({
+        region,
+        apt,
+        size,
+        type: selectedPropertyType,
+        userPrice,
+        direction,
+        floor,
+        interior
+    });
 
     analyzeBtn.disabled = true;
     
@@ -13506,6 +13513,9 @@ function analyzePrice() {
 
     analyzeFetchController = new AbortController();
 
+    // =================================================
+    // 4. 분석 API 호출
+    // =================================================
     fetch(url, {
         signal: analyzeFetchController.signal
     })
@@ -13522,7 +13532,9 @@ function analyzePrice() {
         .then(data => {
             console.log("===== 분석 결과 =====");
             console.log(data);
-            
+            // =================================================
+            // 5. 분석 결과 분기 처리
+            // =================================================
             if (data.결과 === "데이터 없음") {
                 showToast("해당 조건의 실거래 데이터가 없습니다.");
                 closeModal();
@@ -13571,6 +13583,8 @@ function analyzePrice() {
                     });
 
                     analyzeBtn.disabled = false;
+
+                    // TODO: 분석 버튼 원상복구 공통 함수로 분리 예정
                     analyzeBtn.innerText = "✨ 전월세 AI 분석하기";
 
                     return;
@@ -13578,13 +13592,7 @@ function analyzePrice() {
 
                 if (data.결과) {
                     resultBox.innerHTML = data.결과;
-                    analyzeBtn.disabled = false;
-                    analyzeBtn.innerText =
-                        selectedPropertyType === "presale"
-                            ? "✨ 분양권 AI 분석하기"
-                            : selectedPropertyType === "rent"
-                                ? "✨ 전월세 AI 분석하기"
-                                : "✨ 아파트 AI 분석하기";
+                    restoreAnalyzeButton();
                     return;
                 }
 
@@ -13648,24 +13656,16 @@ function analyzePrice() {
                 const shareUrl = "https://howmuch-xt70.onrender.com";
 
                 console.log("최종 shareUrl:", shareUrl);
-                //console.log("shareApt:", shareApt);
-                //console.log("shareSize:", shareSize);
-                //console.log("sharePrice:", sharePrice);
-                //console.log("공유링크:", shareUrl);
-
-                shareText = [
-                    "📊 아파트 AI 분석 결과",
-                    "",
-                    `📍 ${shareRegion}`,
-                    `🏢 ${shareApt}`,
-                    `📐 ${shareSize}㎡`,
-                    `💰 추천가: ${Number(data.추천매수가 || 0).toLocaleString()}만원`,
-                    `📌 결과: ${data.한줄결론 || data.가격판단 || "-"}`,
-                    "",
-                    "👉 AI 분석 전체 보기",
+                
+                shareText = buildAnalysisShareText({
+                    region: shareRegion,
+                    apt: shareApt,
+                    size: shareSize,
+                    recommendPrice: data.추천매수가,
+                    result: data.한줄결론 || data.가격판단,
                     shareUrl
-                ].join("\n");
-                //console.log("shareText:", shareText);
+                });
+               
 
                 const rate = data["상승률(%)"] ?? 0;
 
@@ -13823,6 +13823,9 @@ function analyzePrice() {
 
                 const gaugeNeedleDeg = -90 + (investmentScore / 100) * 180;
 
+                // =================================================
+                // 6. 결과 리포트 HTML 렌더링
+                // =================================================
                 modalResult.innerHTML = `
 
                                 
@@ -14389,6 +14392,9 @@ function analyzePrice() {
 
                 `;
 
+                // =================================================
+                // 7. 차트 렌더링 및 모달 표시
+                // =================================================
                 const tradeChartCard = document.querySelector(".trade-chart-card");
 
                 if (tradeChartCard) {
@@ -14411,41 +14417,25 @@ function analyzePrice() {
                 document.body.classList.add("modal-open");
 
                 resultBox.innerHTML = "";
-                analyzeBtn.disabled = false;
-             
+                restoreAnalyzeButton();
 
-                analyzeBtn.innerText =
-                    selectedPropertyType === "presale"
-                        ? "✨ 분양권 AI 분석하기"
-                        : selectedPropertyType === "rent"
-                            ? "✨ 전월세 AI 분석하기"
-                            : "✨ 아파트 AI 분석하기";
             } catch (e) {
                 console.error("렌더링 에러:", e);
                 resultBox.innerHTML = "렌더링 오류: " + e.message;
                 analyzeBtn.disabled = false;
-                document.getElementById("aptInput").disabled = false;
-                document.getElementById("sizeInput").disabled = false;
-                document.getElementById("dongInput").disabled = false;
-                analyzeBtn.innerText =
-                    selectedPropertyType === "presale"
-                        ? "✨ 분양권 AI 분석하기"
-                        : selectedPropertyType === "rent"
-                            ? "✨ 전월세 AI 분석하기"
-                            : "✨ 아파트 AI 분석하기";
+                unlockAnalysisInputs();
+
+                // TODO: 분석 버튼 원상복구 공통 함수로 분리 예정
+                analyzeBtn.innerText = getAnalyzeButtonText();
             }
 
-            // 🔥 로딩 종료
-            clearInterval(progressTimer);
-
-            progressFill.style.width = "100%";
-            progressText.innerText = "100%";
-
-            setTimeout(() => {
-                loadingBox.style.display = "none";
-            }, 300);
+            finishAnalysisLoading(progressTimer, progressFill, progressText, loadingBox);
 
         })
+
+        // =================================================
+        // 8. 분석 요청 에러 처리
+        // =================================================
         .catch(err => {
             if (err.name === "AbortError") {
                 return;
@@ -14455,24 +14445,19 @@ function analyzePrice() {
             showToast("분석 에러: " + err.message);
             resultBox.innerHTML = "분석 중 오류가 발생했습니다: " + err.message;
         })
+
+        // =================================================
+        // 9. 분석 종료 후 UI 복구
+        // =================================================
         .finally(() => {
             const analysisLoading = document.getElementById("analysisLoading");
 
             if (analysisLoading) {
                 analysisLoading.style.display = "none";
             }
-            analyzeBtn.disabled = false;
+            restoreAnalyzeButton();
 
-            analyzeBtn.innerText =
-                selectedPropertyType === "presale"
-                    ? "✨ 분양권 AI 분석하기"
-                    : selectedPropertyType === "rent"
-                        ? "✨ 전월세 AI 분석하기"
-                        : "✨ 아파트 AI 분석하기";
-
-            document.getElementById("aptInput").disabled = false;
-            document.getElementById("sizeInput").disabled = false;
-            document.getElementById("dongInput").disabled = false;
+            unlockAnalysisInputs();
         });
                            
 }
@@ -15402,12 +15387,21 @@ document.addEventListener("click", function (e) {
     }
 });
 
+/**
+ * 평형 목록을 커스텀 리스트로 렌더링한다.
+ * 호출 : showSizes()
+ * 다음 : 분석 버튼 활성화
+ */
 function renderSizeList() {
+
+    // ===== 평형 관련 DOM 가져오기 =====
     const list = document.getElementById("sizeList");
     const select = document.getElementById("sizeSelect");
 
+    // ===== 기존 리스트 초기화 =====
     list.innerHTML = "";
 
+    // ===== 평형 목록 생성 =====
     Array.from(select.options).forEach((opt, index) => {
         if (index === 0) return;
 
@@ -15415,22 +15409,25 @@ function renderSizeList() {
         div.className = "item";
         div.innerText = opt.value + "㎡";
 
+        // ===== 평형 선택 =====
         div.onclick = () => {
-             // 화면 표시
+
+            // ===== 화면 표시 =====
             document.getElementById("sizeInput").value = opt.value + "㎡";
 
-             // 실제 값 저장
+            // ===== 실제 값 저장 =====
             select.value = opt.value;
 
-             // 리스트 닫기
+            // ===== 리스트 닫기 =====
             list.style.display = "none";
 
-             // 기존 이벤트 유지
+            // ===== 기존 change 이벤트 유지 =====
             select.dispatchEvent(new Event("change"));
 
-             // 가격 입력창으로 이동
+            // ===== 가격 입력창 포커스 =====
             document.getElementById("userPriceInput").focus();
-            // ✅ 면적 선택 후 분석 버튼 영역으로 자동 이동
+
+            // ===== 분석 버튼 영역으로 이동 =====
             setTimeout(() => {
                 const target =
                     document.getElementById("analyzeBtn") ||
@@ -16240,6 +16237,151 @@ function resetAptAndSizeOnRegionChange() {
             el.style.opacity = "1";
         }
     });
+}
+
+/**
+ * 현재 분석 유형에 맞는 분석 버튼 문구를 반환한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function getAnalyzeButtonText() {
+    return selectedPropertyType === "presale"
+        ? "✨ 분양권 AI 분석하기"
+        : selectedPropertyType === "rent"
+            ? "✨ 전월세 AI 분석하기"
+            : "✨ 아파트 AI 분석하기";
+}
+
+/**
+ * 분석 버튼을 다시 활성화하고 기본 문구로 복구한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function restoreAnalyzeButton() {
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    if (!analyzeBtn) return;
+
+    analyzeBtn.disabled = false;
+    analyzeBtn.innerText = getAnalyzeButtonText();
+}
+
+/**
+ * 분석 중 잠근 입력창을 다시 활성화한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function unlockAnalysisInputs() {
+    document.getElementById("aptInput").disabled = false;
+    document.getElementById("sizeInput").disabled = false;
+    document.getElementById("dongInput").disabled = false;
+}
+
+/**
+ * 분석 로딩바를 완료 상태로 표시한 뒤 숨긴다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function finishAnalysisLoading(progressTimer, progressFill, progressText, loadingBox) {
+    clearInterval(progressTimer);
+
+    progressFill.style.width = "100%";
+    progressText.innerText = "100%";
+
+    setTimeout(() => {
+        loadingBox.style.display = "none";
+    }, 300);
+}
+
+/**
+ * 분석 시작 시 버튼과 입력창을 잠그고 분석중 문구로 변경한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function lockAnalysisUI(analyzeBtn) {
+    if (!analyzeBtn) return;
+
+    analyzeBtn.disabled = true;
+
+    document.getElementById("aptInput").disabled = true;
+    document.getElementById("sizeInput").disabled = true;
+    document.getElementById("dongInput").disabled = true;
+
+    analyzeBtn.innerText =
+        selectedPropertyType === "presale"
+            ? "분양권 분석중..."
+            : selectedPropertyType === "rent"
+                ? "전월세 분석중..."
+                : "아파트 분석중...";
+}
+
+/**
+ * 분석 API 요청 URL을 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : fetch()
+ */
+function buildAnalyzeUrl({
+    region,
+    apt,
+    size,
+    type,
+    userPrice,
+    direction,
+    floor,
+    interior
+}) {
+
+    let url =
+        "/analyze_price?"
+        + "region=" + encodeURIComponent(region)
+        + "&apt_name=" + encodeURIComponent(apt)
+        + "&size=" + encodeURIComponent(size)
+        + "&type=" + encodeURIComponent(type);
+
+    if (userPrice) {
+        url += "&user_price=" + encodeURIComponent(userPrice);
+    }
+
+    if (direction) {
+        url += "&direction=" + encodeURIComponent(direction);
+    }
+
+    if (floor) {
+        url += "&floor_level=" + encodeURIComponent(floor);
+    }
+
+    if (interior) {
+        url += "&interior=" + encodeURIComponent(interior);
+    }
+
+    return url;
+}
+
+/**
+ * 아파트 분석 결과 공유 문구를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : 카카오 공유, 링크 복사
+ */
+function buildAnalysisShareText({
+    region,
+    apt,
+    size,
+    recommendPrice,
+    result,
+    shareUrl
+}) {
+
+    return [
+        "📊 아파트 AI 분석 결과",
+        "",
+        `📍 ${region}`,
+        `🏢 ${apt}`,
+        `📐 ${size}㎡`,
+        `💰 추천가: ${Number(recommendPrice || 0).toLocaleString()}만원`,
+        `📌 결과: ${result || "-"}`,
+        "",
+        "👉 AI 분석 전체 보기",
+        shareUrl
+    ].join("\n");
 }
 </script>
 
