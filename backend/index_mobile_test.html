@@ -10506,50 +10506,56 @@ ${shareUrl}`;
     });
 }
 
-// ===============================
-// 🔮 미래예측 리포트 열기
-// ===============================
+/**
+ * 미래예측 리포트를 요청하고 결과 모달에 렌더링한다.
+ * 호출 : futurePredictBtn 클릭
+ * 다음 : /future_prediction API → 미래예측 리포트 렌더링
+ */
 function openFuturePrediction() {
     console.log("🔮 미래예측 버튼 클릭");
 
-    const regionInput = document.getElementById("regionInput");
-    const region = regionInput ? regionInput.value.trim() : "";
+    // =================================================
+    // 1. 미래예측 입력값 검증
+    // =================================================
 
-    if (!region) {
-        showToast("먼저 지역을 선택하세요.");
+    const analysisInput = getAnalysisInputValues();
 
-        if (regionInput) {
-            regionInput.focus();
-        }
-
+    if (!validateFuturePredictionInput(analysisInput)) {
         return;
     }
 
-    const modal = document.getElementById("reportModal");
-    const resultBox = document.getElementById("modalResult");
+    // =================================================
+    // 2. 모달 준비 및 로딩 표시
+    // =================================================
+    const modalInfo = openReportModal();
 
-    if (!modal || !resultBox) {
-        alert("결과 모달 영역을 찾을 수 없습니다.");
+    if (!modalInfo) {
         return;
     }
 
-    modal.style.display = "block";
+    const { modal, resultBox } = modalInfo;
 
-    resultBox.innerHTML = `
-        <div style="padding:30px; text-align:center; font-weight:800;">
-            🔮 예측 리포트를 불러오는 중입니다...
-        </div>
-    `;
+    showFuturePredictionLoading(resultBox);
 
+    // =================================================
+    // 3. 미래예측 API 요청
+    // =================================================
     fetch(
-        "/future_prediction?region=" + encodeURIComponent(region)
-        + "&apt_name=" + encodeURIComponent(document.getElementById("aptInput").value.trim())
-        + "&size=" + encodeURIComponent(document.getElementById("sizeInput").value.trim())
+        buildFuturePredictionUrl({
+            region: analysisInput.region,
+            apt: analysisInput.apt,
+            size: analysisInput.size
+        })
     )
     .then(res => res.json())
     .then(data => {
+        // ===== 미래예측 결과 상태 저장 =====
         lastFutureResult = data;
         isFutureReport = true;
+
+        // =================================================
+        // 4-1. 미래예측 결과 리포트 HTML 렌더링
+        // =================================================
 
         console.log("🔮 미래예측 데이터:", data);
 
@@ -10571,7 +10577,11 @@ function openFuturePrediction() {
         resultBox.innerHTML = renderFuturePredictionReport(data);
     })
    
+    // =================================================
+    // 5. 미래예측 에러 처리
+    // =================================================
     .catch(err => {
+        // ===== 미래예측 API 에러 처리 =====
         console.error("미래예측 오류:", err);
         showToast("미래예측 데이터를 불러오지 못했습니다.");
     });
@@ -13393,10 +13403,11 @@ function analyzePrice() {
 
     
 
+    const analysisInput = getAnalysisInputValues();
 
-    const checkRegion = document.getElementById("regionInput").value.trim();
-    const checkAptName = document.getElementById("aptInput").value.trim();
-    const checkSize = document.getElementById("sizeSelect").value;
+    const checkRegion = analysisInput.region;
+    const checkAptName = analysisInput.apt;
+    const checkSize = analysisInput.size;
 
     if (!checkRegion) {
         showToast("지역을 먼저 선택해 주세요.");
@@ -13451,7 +13462,7 @@ function analyzePrice() {
     
     console.log("🔥 analyzePrice 실행됨");
 
-        
+    // TODO: 위 입력값 검증 블록과 중복 여부 확인 후 통합 예정    
     const region = document.getElementById("regionInput").value;
     const apt = document.getElementById("aptInput").value;
     const size = document.getElementById("sizeSelect").value;
@@ -13548,7 +13559,7 @@ function analyzePrice() {
             }
             
             try {
-                
+                // ===== 분석 결과 상태 저장 =====
                 lastResult = data;
                 isFutureReport = false;
 
@@ -13702,28 +13713,6 @@ function analyzePrice() {
 
                             : "현재 시세 기준 적정 범위 가격입니다";
 
-                function formatKoreanPrice(value) {
-
-                    value = Number(value || 0);
-
-                    if (!value) return "0";
-
-                    const eok = Math.floor(value / 10000);
-                    const man = value % 10000;
-
-                    if (eok > 0 && man > 0) {
-                        return `${eok}억 ${man.toLocaleString()}`;
-                    }
-
-                    if (eok > 0) {
-                        return `${eok}억`;
-                    }
-
-                    return `${man.toLocaleString()}`;
-                }
-
-
-
                 const avgPrice =
                     Number(data["평균가격"] || data["평균가"] || 0);
 
@@ -13826,6 +13815,10 @@ function analyzePrice() {
                 // =================================================
                 // 6. 결과 리포트 HTML 렌더링
                 // =================================================
+
+                // =================================================
+                // 6-1. 리포트 HERO 카드
+                // =================================================
                 modalResult.innerHTML = `
 
                                 
@@ -13912,7 +13905,9 @@ function analyzePrice() {
                     </div>
 
 
-
+                    <!-- // =================================================
+                    // 6-2. 단지 요약 카드
+                    // ================================================= -->
 
                     <div class="report-summary-card">
 
@@ -14000,6 +13995,10 @@ function analyzePrice() {
                         </div>
                     </div>
 
+                    <!-- ==================================================
+                        6-3. 핵심 KPI 카드
+                    ================================================== -->
+
                     <div class="summary-grid">
 
                         <div class="summary-card kpi-blue">
@@ -14039,9 +14038,9 @@ function analyzePrice() {
                         </div>
                     </div>
 
-                    
-
-                    <!-- 🔥 실거래 시장 상태 -->
+                    <!-- ==================================================
+                        6-4. 실거래 시장 상태
+                    ================================================== -->
                     <div class="market-section">
 
                         <div class="market-title">
@@ -14167,25 +14166,12 @@ function analyzePrice() {
                     ` : ""}
 
                     ${selectedPropertyType === "rent" ? "" : `
-                        <!-- 🔥 최근 거래 흐름 그래프 -->
-                        <div class="trade-chart-card">
-
-                            <div class="trade-chart-title">
-                                📈 최근 거래 흐름
-                            </div>
-
-                            <div class="trade-chart-last-price">
-                                최근 거래가 ${Number(data.최근거래5건?.[0]?.price || 0).toLocaleString()}만원
-                            </div>
-
-                            <div id="recentTradeChart" class="trade-chart">
-                                그래프 준비중...
-                            </div>
-
-                        </div>
+                        ${renderRecentTradeChartCard(data)}
                     `}
                     ${selectedPropertyType === "rent" ? `
-                        <!-- ✅ 전월세 12개월 거래량 그래프 -->
+                        <!-- ==================================================
+                            6-6. 전월세 거래량 그래프
+                        ================================================== -->
                         <div class="rent-volume-card">
 
                             <div class="rent-volume-title">
@@ -14275,120 +14261,11 @@ function analyzePrice() {
                         </div>
                     ` : ""}
 
-                    <!-- 🔥 최근 거래 -->
-                    <div class="section-title">
-                        ${selectedPropertyType === "rent" ? "🏠 최근 전월세 거래" : "📈 최근 거래 내역"}
-                    </div>
+                    ${renderRecentTradeListCard(data)}
+                    ${renderVolumeChartCard(data)}
 
-                    <div class="trade-card-list">
-                        ${(() => {
-                            const recentPrices = (data.최근거래5건 || [])
-                                .map(t => Number(t.price || 0))
-                                .filter(v => v > 0);
-
-                            const recentHigh = recentPrices.length
-                                ? Math.max(...recentPrices)
-                                : 0;
-
-                            const recentLow = recentPrices.length
-                                ? Math.min(...recentPrices)
-                                : 0;
-
-                            const hasEnoughTrades = recentPrices.length >= 2;
-
-                            return (data.최근거래5건 || []).map(t => {
-
-                                const tradePrice = Number(t.price || 0);
-
-                                const isHigh = hasEnoughTrades && tradePrice === recentHigh;
-                                const isLow = hasEnoughTrades && tradePrice === recentLow;
-
-                                const tradeClass = isHigh ? "trade-high" : isLow ? "trade-low" : "";
-                                const tradeBadge = isHigh ? `<span class="trade-badge high">최고가</span>` :
-                                                isLow ? `<span class="trade-badge low">최저가</span>` : "";
-
-                                return `
-                                    <div class="trade-card ${selectedPropertyType !== "rent" ? "apt-trade-card" : ""} ${tradeClass} ${
-                                        selectedPropertyType === "rent"
-                                            ? Number(t.monthly_rent || 0) > 0
-                                                ? "rent-monthly-card"
-                                                : "rent-jeonse-card"
-                                            : ""
-                                    }">
-
-                                        
-                                        <div class="trade-info">
-                                            <span class="trade-date">
-                                                ${t.date || t.거래일 || t.contract_date || "-"}
-                                            </span>
-                                            <span class="trade-floor">
-                                                ${t.apt_dong ? (t.apt_dong.includes("동") ? t.apt_dong : t.apt_dong + "동") + " · " : ""}
-                                                ${t.floor !== null && t.floor !== undefined ? t.floor + "층" : "층수 -"}
-                                            </span>
-
-                                            <strong 
-                                                class="trade-price ${
-                                                    selectedPropertyType === "rent"
-                                                        ? ""
-                                                        : "apt-trade-price"
-                                                }"
-                                                style="${
-                                                    selectedPropertyType === "rent"
-                                                        ? ""
-                                                        : "font-size:14px !important; font-weight:700 !important; color:#0f172a !important;"
-                                                }"
-                                            >
-                                                ${
-                                                    selectedPropertyType === "rent"
-                                                        ? (
-                                                            Number(t.monthly_rent || 0) > 0
-                                                                ? `보증금 ${Number(t.deposit || 0).toLocaleString()}만원 / 월세 ${Number(t.monthly_rent || 0).toLocaleString()}만원`
-                                                                : `전세 ${Number(t.deposit || 0).toLocaleString()}만원`
-                                                        )
-                                                        : `${Number(t.price || 0).toLocaleString()}만원`
-                                                }
-                                            </strong>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join("");
-                        })()}
-                    </div>
-              
-                    <div class="section-title">📊 최근 12개월 거래량</div>
-
-                    <div class="volume-chart-box">
-                        ${(data.거래량월별 || []).map(v => {
-                            const maxCount = Math.max(...(data.거래량월별 || []).map(x => Number(x.count || 0)), 1);
-                            const width = Math.max((Number(v.count || 0) / maxCount) * 100, v.count > 0 ? 8 : 0);
-
-                            return `
-                                <div class="volume-row">
-                                    <div class="volume-month">${String(v.month || "").slice(2).replace("-", ".")}</div>
-                                    <div class="volume-track">
-                                        <div 
-                                            class="volume-bar ${Number(v.count || 0) === maxCount ? 'volume-bar-max' : ''}" 
-                                            style="width:${width}%">
-                                        </div>
-                                    </div>
-                                    <div class="volume-count">
-                                        ${v.count || 0}건
-                                        ${Number(v.count || 0) === maxCount ? '🔥' : ''}
-                                    </div>
-                                </div>
-                            `;
-                        }).join("")}
-                    </div>
-
-                    <div class="ai-explain-box">
-                        <div class="ai-explain-title">💡 AI 분석</div>
-                        <div class="ai-explain-text">
-                            ${data.AI설명 || ""}
-                        </div>
-                    </div>
-                    <div class="notice-box">
-                        ${data.실거래가기준안내 || ""}
-                    </div>
+                    ${renderAIExplainCard(data)}
+                    ${renderNoticeCard(data)}
 
                 `;
 
@@ -16382,6 +16259,341 @@ function buildAnalysisShareText({
         "👉 AI 분석 전체 보기",
         shareUrl
     ].join("\n");
+}
+
+/**
+ * 금액(만원)을 한국식(억/만원)으로 변환한다.
+ * 호출 : analyzePrice(), futurePrediction()
+ * 다음 : 없음
+ */
+function formatKoreanPrice(value) {
+
+    value = Number(value || 0);
+
+    if (!value) return "0";
+
+    const eok = Math.floor(value / 10000);
+    const man = value % 10000;
+
+    if (eok > 0 && man > 0) {
+        return `${eok}억 ${man.toLocaleString()}`;
+    }
+
+    if (eok > 0) {
+        return `${eok}억`;
+    }
+
+    return `${man.toLocaleString()}`;
+}
+
+/**
+ * 분석에 필요한 입력값을 한 번에 수집한다.
+ * 호출 : analyzePrice()
+ * 다음 : buildAnalyzeUrl()
+ */
+function getAnalysisInputValues() {
+    const region = document.getElementById("regionInput").value.trim();
+    const aptInput = document.getElementById("aptInput");
+    const sizeSelect = document.getElementById("sizeSelect");
+    const sizeInput = document.getElementById("sizeInput");
+
+    const apt = (aptInput?.dataset?.realName || aptInput?.value || "").trim();
+
+    const size =
+        (sizeSelect?.value || sizeInput?.value || "")
+            .replace("㎡", "")
+            .trim();
+
+    const userPrice = parseInt(
+        document.getElementById("userPriceInput").value.replace(/[^0-9]/g, "")
+    ) || 0;
+
+    const direction = document.getElementById("directionSelect").value;
+    const floor = document.getElementById("floorSelect").value;
+    const interior = document.getElementById("interiorSelect").value;
+
+    return {
+        region,
+        apt,
+        size,
+        userPrice,
+        direction,
+        floor,
+        interior
+    };
+}
+
+/**
+ * 미래예측 API 요청 URL을 생성한다.
+ * 호출 : openFuturePrediction()
+ * 다음 : fetch()
+ */
+function buildFuturePredictionUrl({ region, apt, size }) {
+    return "/future_prediction?region=" + encodeURIComponent(region)
+        + "&apt_name=" + encodeURIComponent(apt)
+        + "&size=" + encodeURIComponent(size);
+}
+
+/**
+ * 미래예측 실행 전 입력값을 검증한다.
+ * 호출 : openFuturePrediction()
+ * 다음 : buildFuturePredictionUrl()
+ */
+function validateFuturePredictionInput(input) {
+
+    if (!input.region) {
+        alert("지역을 먼저 선택해 주세요.");
+        document.getElementById("regionInput")?.focus();
+        return false;
+    }
+
+    if (!input.apt) {
+        alert("아파트를 선택해 주세요.");
+        document.getElementById("aptInput")?.focus();
+        return false;
+    }
+
+    if (!input.size) {
+        alert("전용면적을 선택해 주세요.");
+        document.getElementById("sizeInput")?.focus();
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * 미래예측 로딩 메시지를 결과 영역에 표시한다.
+ * 호출 : openFuturePrediction()
+ * 다음 : 미래예측 결과 렌더링
+ */
+function showFuturePredictionLoading(resultBox) {
+    if (!resultBox) return;
+
+    resultBox.innerHTML = `
+        <div style="padding:30px; text-align:center; font-weight:800;">
+            🔮 예측 리포트를 불러오는 중입니다...
+        </div>
+    `;
+}
+
+/**
+ * 리포트 모달을 열고 결과 영역을 반환한다.
+ * 호출 : openFuturePrediction(), analyzePrice()
+ * 다음 : 결과 렌더링
+ */
+function openReportModal() {
+
+    const modal = document.getElementById("reportModal");
+    const resultBox = document.getElementById("modalResult");
+
+    if (!modal || !resultBox) {
+        alert("결과 모달 영역을 찾을 수 없습니다.");
+        return null;
+    }
+
+    modal.style.display = "block";
+
+    return {
+        modal,
+        resultBox
+    };
+}
+
+/**
+ * 분석 기준 및 안내 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function renderNoticeCard(data) {
+    return `
+        <!-- ==================================================
+             6-10. 분석 기준 및 안내
+        ================================================== -->
+
+        <div class="notice-box">
+            ${data.실거래가기준안내 || ""}
+        </div>
+    `;
+}
+
+/**
+ * AI 분석 설명 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function renderAIExplainCard(data) {
+    return `
+        <!-- ==================================================
+             6-9. AI 분석 설명
+        ================================================== -->
+
+        <div class="ai-explain-box">
+            <div class="ai-explain-title">💡 AI 분석</div>
+            <div class="ai-explain-text">
+                ${data.AI설명 || ""}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * 최근 12개월 거래량 그래프 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function renderVolumeChartCard(data) {
+    return `
+        <!-- ==================================================
+             6-8. 최근 12개월 거래량 그래프
+        ================================================== -->
+
+        <div class="section-title">📊 최근 12개월 거래량</div>
+
+        <div class="volume-chart-box">
+            ${(data.거래량월별 || []).map(v => {
+                const maxCount = Math.max(...(data.거래량월별 || []).map(x => Number(x.count || 0)), 1);
+                const width = Math.max((Number(v.count || 0) / maxCount) * 100, v.count > 0 ? 8 : 0);
+
+                return `
+                    <div class="volume-row">
+                        <div class="volume-month">${String(v.month || "").slice(2).replace("-", ".")}</div>
+                        <div class="volume-track">
+                            <div 
+                                class="volume-bar ${Number(v.count || 0) === maxCount ? 'volume-bar-max' : ''}" 
+                                style="width:${width}%">
+                            </div>
+                        </div>
+                        <div class="volume-count">
+                            ${v.count || 0}건
+                            ${Number(v.count || 0) === maxCount ? '🔥' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
+/**
+ * 최근 거래 목록 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function renderRecentTradeListCard(data) {
+    return `
+        <!-- ==================================================
+             6-7. 최근 거래 목록
+        ================================================== -->
+
+        <div class="section-title">
+            ${selectedPropertyType === "rent" ? "🏠 최근 전월세 거래" : "📈 최근 거래 내역"}
+        </div>
+
+        <div class="trade-card-list">
+            ${(() => {
+                const recentPrices = (data.최근거래5건 || [])
+                    .map(t => Number(t.price || 0))
+                    .filter(v => v > 0);
+
+                const recentHigh = recentPrices.length
+                    ? Math.max(...recentPrices)
+                    : 0;
+
+                const recentLow = recentPrices.length
+                    ? Math.min(...recentPrices)
+                    : 0;
+
+                const hasEnoughTrades = recentPrices.length >= 2;
+
+                return (data.최근거래5건 || []).map(t => {
+
+                    const tradePrice = Number(t.price || 0);
+
+                    const isHigh = hasEnoughTrades && tradePrice === recentHigh;
+                    const isLow = hasEnoughTrades && tradePrice === recentLow;
+
+                    const tradeClass = isHigh ? "trade-high" : isLow ? "trade-low" : "";
+
+                    return `
+                        <div class="trade-card ${selectedPropertyType !== "rent" ? "apt-trade-card" : ""} ${tradeClass} ${
+                            selectedPropertyType === "rent"
+                                ? Number(t.monthly_rent || 0) > 0
+                                    ? "rent-monthly-card"
+                                    : "rent-jeonse-card"
+                                : ""
+                        }">
+                            <div class="trade-info">
+                                <span class="trade-date">
+                                    ${t.date || t.거래일 || t.contract_date || "-"}
+                                </span>
+                                <span class="trade-floor">
+                                    ${t.apt_dong ? (t.apt_dong.includes("동") ? t.apt_dong : t.apt_dong + "동") + " · " : ""}
+                                    ${t.floor !== null && t.floor !== undefined ? t.floor + "층" : "층수 -"}
+                                </span>
+
+                                <strong 
+                                    class="trade-price ${
+                                        selectedPropertyType === "rent"
+                                            ? ""
+                                            : "apt-trade-price"
+                                    }"
+                                    style="${
+                                        selectedPropertyType === "rent"
+                                            ? ""
+                                            : "font-size:14px !important; font-weight:700 !important; color:#0f172a !important;"
+                                    }"
+                                >
+                                    ${
+                                        selectedPropertyType === "rent"
+                                            ? (
+                                                Number(t.monthly_rent || 0) > 0
+                                                    ? `보증금 ${Number(t.deposit || 0).toLocaleString()}만원 / 월세 ${Number(t.monthly_rent || 0).toLocaleString()}만원`
+                                                    : `전세 ${Number(t.deposit || 0).toLocaleString()}만원`
+                                            )
+                                            : `${Number(t.price || 0).toLocaleString()}만원`
+                                    }
+                                </strong>
+                            </div>
+                        </div>
+                    `;
+                }).join("");
+            })()}
+        </div>
+    `;
+}
+
+/**
+ * 최근 거래 추이 그래프 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : renderRecentTradeChart()
+ */
+function renderRecentTradeChartCard(data) {
+    if (selectedPropertyType === "rent") {
+        return "";
+    }
+
+    return `
+        <!-- ==================================================
+             6-5. 최근 거래 추이 그래프
+        ================================================== -->
+
+        <div class="trade-chart-card">
+
+            <div class="trade-chart-title">
+                📈 최근 거래 흐름
+            </div>
+
+            <div class="trade-chart-last-price">
+                최근 거래가 ${Number(data.최근거래5건?.[0]?.price || 0).toLocaleString()}만원
+            </div>
+
+            <div id="recentTradeChart" class="trade-chart">
+                그래프 준비중...
+            </div>
+
+        </div>
+    `;
 }
 </script>
 
