@@ -3661,10 +3661,6 @@ body {
 
     border-radius: 18px !important;
 
-    background: rgba(37, 99, 235, 0.09) !important;
-
-    color: #1d4ed8 !important;
-
     font-size: 13px !important;
     font-weight: 800 !important;
 
@@ -10197,6 +10193,56 @@ let dongRequestSeq = 0;
 let isDongListLoadingV3 = false;
 let isDongSelectedV3 = false;
 
+// =================================================
+// UI 문구 상수
+// =================================================
+const UI_TEXT = {
+
+    SELECT_REGION: "지역을 먼저 선택해 주세요.",
+
+    SELECT_APT: "아파트를 선택해 주세요.",
+
+    SELECT_SIZE: "전용면적을 선택해 주세요.",
+
+    REPORT_MODAL_ERROR: "결과 모달 영역을 찾을 수 없습니다."
+
+};
+
+// =================================================
+// 색상 상수
+// =================================================
+const COLORS = {
+
+    BADGE_DEFAULT_BG: "#eef4ff",
+    BADGE_DEFAULT_TEXT: "#1f4fa3",
+
+    BADGE_HIGH_BG: "#ffecec",
+    BADGE_HIGH_TEXT: "#d93025",
+
+    BADGE_LOW_BG: "#e8f7ec",
+    BADGE_LOW_TEXT: "#188038"
+
+};
+
+// =================================================
+// 설정 상수
+// =================================================
+const CONFIG = {
+
+    // 애니메이션
+    SCROLL_DELAY: 250,
+    MODAL_CLOSE_DELAY: 300,
+    SPLASH_HIDE_DELAY: 300,
+
+    // 자동 실행
+    AUTO_ANALYZE_DELAY: 2500,
+
+    // 로딩
+    SPLASH_PROGRESS_INTERVAL: 120,
+    ANALYSIS_PROGRESS_INTERVAL: 300
+
+};
+
 function showToast(message) {
 
     const toast = document.getElementById("toastMessage");
@@ -12021,7 +12067,7 @@ window.addEventListener("load", function () {
 
             setTimeout(() => {
                 splash.classList.add("hide");
-            }, 300);
+            }, CONFIG.SPLASH_HIDE_DELAY);
         }
 
         if (progressFill) {
@@ -12043,7 +12089,7 @@ window.addEventListener("load", function () {
 
             progressText.innerText = `${loadingMessage} ${progress}%`;
         }
-    }, 120);
+    }, CONFIG.SPLASH_PROGRESS_INTERVAL);
 });
 
 
@@ -12662,112 +12708,6 @@ function renderDongs(dongs) {
     return;
 }
 
-// ===============================
-// 단지 검색
-// ===============================
-function searchApts() {
-
-    const region = document.getElementById("regionInput").value;
-    const keyword = document.getElementById("aptInput").value;
-    const dongValue = document.getElementById("dongSelect")?.value || "";
-
-    console.log("🏢 단지 검색 시작");
-    console.log("지역:", region);
-    console.log("동:", dongValue);
-    console.log("검색어:", keyword);
-    console.log("타입:", selectedPropertyType);
-
-    if (!region || !dongValue) {
-        console.log("⏸️ 지역 또는 동 미선택 상태라 단지 검색 중단");
-
-        const listEl = document.getElementById("aptList");
-        if (listEl) {
-            listEl.innerHTML = "";
-            listEl.style.display = "none";
-        }
-
-        return;
-    }
-
-    fetch("/apts?region="
-        + encodeURIComponent(region)
-        + "&keyword="
-        + encodeURIComponent(keyword || "")
-        + "&dong="
-        + encodeURIComponent(dongValue)
-        + "&type="
-        + encodeURIComponent(selectedPropertyType))
-    .then(res => res.json())
-    .then(data => {
-
-        console.log("✅ /apts 응답:", data);
-
-        const listEl = document.getElementById("aptList");
-
-        if (!listEl) {
-            console.log("❌ aptList 없음");
-            return;
-        }
-
-        listEl.innerHTML = "";
-
-        let aptItems = [];
-
-        if (Array.isArray(data)) {
-            aptItems = data;
-        } else if (Array.isArray(data.검색결과)) {
-            aptItems = data.검색결과;
-        } else if (Array.isArray(data.results)) {
-            aptItems = data.results;
-        } else if (Array.isArray(data.apts)) {
-            aptItems = data.apts;
-        } else {
-            console.log("❌ 예상하지 못한 단지 응답 구조:", data);
-            return;
-        }
-
-        console.log("📋 화면 표시 단지 수:", aptItems.length);
-
-        aptItems.forEach(item => {
-
-            const aptName = typeof item === "string"
-                ? item
-                : (item.name || item.real_name || item.apt_name || "");
-
-            if (!aptName) return;
-
-            const div = document.createElement("div");
-            div.className = "apt-item";
-            div.innerText = aptName;
-
-            div.onclick = function () {
-                console.log("✅ 단지 클릭:", item);
-
-                document.getElementById("aptInput").value = aptName;
-
-                if (listEl) {
-                    listEl.innerHTML = "";
-                    listEl.style.display = "none";
-                }
-
-                if (typeof loadSizes === "function") {
-                    loadSizes();
-                }
-            };
-
-            listEl.appendChild(div);
-        });
-
-        listEl.style.display = aptItems.length > 0 ? "block" : "none";
-
-    })
-    .catch(err => {
-        console.log("❌ 단지 검색 오류:", err);
-    });
-}
-
-
-
 function showSizes(data) {
     const select = document.getElementById("sizeSelect");
     const sizeInput = document.getElementById("sizeInput");
@@ -13113,70 +13053,6 @@ function openAptList() {
     fetchApts(region, "");
 }
 
-// 🔥 평형 로드
-function loadSizes() {
-
-    const region = document.getElementById("regionInput").value;
-    const apt = document.getElementById("aptInput").value;
-
-    if (!region || !apt) return;
-
-    const sizeList = document.getElementById("sizeList");
-    const sizeSelect = document.getElementById("sizeSelect");
-
-    if (sizeList) {
-        sizeList.innerHTML = `
-            <div style="
-                padding:30px;
-                text-align:center;
-                font-size:18px;
-                font-weight:bold;
-                color:red;
-            ">
-                🔥 면적 검색중...
-            </div>
-        `;
-        sizeList.style.display = "block";
-    }
-
-    if (sizeSelect) {
-        sizeSelect.innerHTML = '<option value="">🔍 검색중...</option>';
-    }
-
-    fetch(
-        "/sizes?region=" +
-        encodeURIComponent(region) +
-        "&apt_name=" +
-        encodeURIComponent(apt) +
-        "&type=" +
-        encodeURIComponent(selectedPropertyType)
-    )
-    .then(res => res.json())
-    .then(data => {
-
-        const select = document.getElementById("sizeSelect");
-        select.innerHTML = "";
-
-        const defaultOption = document.createElement("option");
-        defaultOption.text = "평형 선택";
-        defaultOption.value = "";
-        select.appendChild(defaultOption);
-
-        const sizes = data["평형목록"];
-
-        if (!sizes) return;
-
-        sizes.forEach(size => {
-            const option = document.createElement("option");
-            option.value = size;
-            option.text = size + "㎡";
-            select.appendChild(option);
-        });
-        renderSizeList();
-        document.getElementById("sizeList").style.display = "block";
-    });
-}
-
 function renderRecentTradeChart(trades) {
     const chart = document.getElementById("recentTradeChart");
 
@@ -13410,19 +13286,19 @@ function analyzePrice() {
     const checkSize = analysisInput.size;
 
     if (!checkRegion) {
-        showToast("지역을 먼저 선택해 주세요.");
+        showToast(UI_TEXT.SELECT_REGION);
         document.getElementById("regionInput").focus();
         return;
     }
 
     if (!checkAptName) {
-        showToast("아파트를 선택해 주세요.");
+        showToast(UI_TEXT.SELECT_APT);
         document.getElementById("aptInput").focus();
         return;
     }
 
     if (!checkSize) {
-        showToast("전용면적을 선택해 주세요.");
+        showToast(UI_TEXT.SELECT_SIZE);
         document.getElementById("sizeInput").focus();
         return;
     }
@@ -13458,7 +13334,7 @@ function analyzePrice() {
         if (progress > 85) message = "분석 리포트 생성 중...";
 
         progressText.innerText = message + " " + progress + "%";
-    }, 300);
+    }, CONFIG.ANALYSIS_PROGRESS_INTERVAL);
     
     console.log("🔥 analyzePrice 실행됨");
 
@@ -14603,20 +14479,13 @@ function fallbackCopy(text) {
 }
 
 function fillFromQuery() {
-    // console.log("fillFromQuery 실행됨");
-    // console.log("현재 URL:", window.location.href);
-    // console.log("쿼리스트링:", window.location.search);
-
+    
     const params = new URLSearchParams(window.location.search);
 
     const region = params.get("region") || "";
     const apt = params.get("apt") || "";
     const size = params.get("size") || "";
     const price = params.get("price") || "";
-
-    // console.log("apt 파라미터:", apt);
-    // console.log("size 파라미터:", size);
-    // console.log("price 파라미터:", price);
 
     const regionInput = document.getElementById("regionInput");
     const aptInput = 
@@ -14628,11 +14497,6 @@ function fillFromQuery() {
     const userPriceInput = 
         document.getElementById("userPriceInput") ||
         document.getElementById("price");
-
-    // console.log("regionInput 요소:", regionInput);
-    // console.log("aptInput 요소:", aptInput);
-    // console.log("sizeSelect 요소:", sizeSelect);
-    // console.log("userPriceInput 요소:", userPriceInput);
 
     if (regionInput && region) {
     regionInput.value = region;
@@ -14664,23 +14528,16 @@ function fillFromQuery() {
             const sizeSelect = document.getElementById("sizeSelect");
             const aptInput = document.getElementById("aptInput");
             const regionInput = document.getElementById("regionInput");
-
-            //console.log("자동분석 직전 region:", regionInput?.value);
-            //console.log("자동분석 직전 apt:", aptInput?.value);
-            //console.log("자동분석 직전 size:", sizeSelect?.value);
-
+            
             if (regionInput?.value && aptInput?.value && sizeSelect?.value) {
                 //console.log("자동 분석 실행됨");
                 analyzePrice();
             } else {
-                //console.log("자동 분석 보류 - 값 아직 미완성");
+                
             }
-        }, 2500);
+        }, CONFIG.AUTO_ANALYZE_DELAY);
     }
 
-    // console.log("최종 aptInput 값:", aptInput?.value);
-    // console.log("최종 sizeSelect 값:", sizeSelect?.value);
-    // console.log("최종 userPriceInput 값:", userPriceInput?.value);
 }
 
 setTimeout(() => {
@@ -14894,7 +14751,7 @@ function renderSizeList() {
                         block: "center"
                     });
                 }
-            }, 250);
+            }, CONFIG.SCROLL_DELAY);
         };
 
         list.appendChild(div);
@@ -15595,7 +15452,7 @@ function renderDongV3() {
                         block: "center"
                     });
                 }
-            }, 250);
+            }, CONFIG.SCROLL_DELAY);
         };
 
         grid.appendChild(btn);
@@ -15734,7 +15591,7 @@ function finishAnalysisLoading(progressTimer, progressFill, progressText, loadin
 
     setTimeout(() => {
         loadingBox.style.display = "none";
-    }, 300);
+    }, CONFIG.SPLASH_HIDE_DELAY);
 }
 
 /**
@@ -15910,19 +15767,19 @@ function buildFuturePredictionUrl({ region, apt, size }) {
 function validateFuturePredictionInput(input) {
 
     if (!input.region) {
-        alert("지역을 먼저 선택해 주세요.");
+        showToast(UI_TEXT.SELECT_REGION);
         document.getElementById("regionInput")?.focus();
         return false;
     }
 
     if (!input.apt) {
-        alert("아파트를 선택해 주세요.");
+        showToast(UI_TEXT.SELECT_APT);
         document.getElementById("aptInput")?.focus();
         return false;
     }
 
     if (!input.size) {
-        alert("전용면적을 선택해 주세요.");
+        showToast(UI_TEXT.SELECT_SIZE);
         document.getElementById("sizeInput")?.focus();
         return false;
     }
@@ -15956,7 +15813,7 @@ function openReportModal() {
     const resultBox = document.getElementById("modalResult");
 
     if (!modal || !resultBox) {
-        alert("결과 모달 영역을 찾을 수 없습니다.");
+        resultBox.innerHTML = UI_TEXT.REPORT_MODAL_ERROR;
         return null;
     }
 
@@ -16669,15 +16526,16 @@ function renderSummaryCard(data) {
             }
 
             ${(() => {
-                let badgeColor = "#eef4ff";
-                let textColor = "#1f4fa3";
+                console.log("가격판단 =", data.가격판단);
+                let badgeColor = COLORS.BADGE_DEFAULT_BG;
+                let textColor = COLORS.BADGE_DEFAULT_TEXT;
 
                 if (data.가격판단 === "고평가") {
-                    badgeColor = "#ffecec";
-                    textColor = "#d93025";
+                    badgeColor = COLORS.BADGE_HIGH_BG;
+                    textColor = COLORS.BADGE_HIGH_TEXT;
                 } else if (data.가격판단 === "저평가") {
-                    badgeColor = "#e8f7ec";
-                    textColor = "#188038";
+                    badgeColor = COLORS.BADGE_LOW_BG;
+                    textColor = COLORS.BADGE_LOW_TEXT;
                 }
 
                 return `
