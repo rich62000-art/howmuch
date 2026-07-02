@@ -11082,7 +11082,7 @@ function renderFuturePredictionReport(data) {
                                     margin-left:6px;
                                     vertical-align:middle;
                                 ">
-                                    ${data.면적 || "-"}
+                                    ${data.면적 || "-"}㎡
                                 </span>
 
                             </h2>
@@ -13816,450 +13816,42 @@ function analyzePrice() {
                 // 6. 결과 리포트 HTML 렌더링
                 // =================================================
 
-                // =================================================
-                // 6-1. 리포트 HERO 카드
-                // =================================================
                 modalResult.innerHTML = `
 
-                                
-                    <div class="result-hero-card">
-
-                        <div class="${selectedPropertyType === 'presale' ? 'hero-top-layout' : ''}">
-
-                            <div class="${selectedPropertyType === 'presale' ? 'hero-left' : ''}">
-
-                                <div class="hero-badge-red">
-                                    ${heroBadgeText}
-                                </div>
-
-                                <div class="hero-price ${selectedPropertyType === "presale" ? "presale-mode" : ""}">
-                                    ${heroMainText}
-                                    ${selectedPropertyType === "presale" ? "" : "<span>만원</span>"}
-                                </div>
-
-                                <div class="hero-desc">
-                                    ${heroDescText}
-                                </div>
-
-                            </div>
-
-                            <div class="hero-right">
-
-                                ${
-                                    selectedPropertyType === "presale"
-                                        ? `
-                                            <div class="investment-gauge ${investmentClass}">
-                                                <div class="gauge-label">투자 매력도</div>
-
-                                                <div class="gauge-arc" style="--needle-deg:${gaugeNeedleDeg}deg;">
-                                                    <div class="gauge-needle"></div>
-                                                    <div class="gauge-score">
-                                                        ${investmentScore}<span>/100</span>
-                                                    </div>
-                                                </div>
-
-                                                <div class="gauge-grade">
-                                                    ${investmentGrade} · ${investmentLabel}
-                                                </div>
-                                            </div>
-                                        `
-                                        : ""
-                                }
-
-                            </div>
-
-                        </div>
-                    
-                    
-                        ${
-                            selectedPropertyType === "presale"
-                                ? `
-                                    <div class="presale-price-summary">
-
-                                        <div class="presale-price-box price-blue">
-                                            <div class="presale-price-label">예상 총 매입가</div>
-                                            <div class="presale-price-value">
-                                                ${formatKoreanPrice(userInputPrice)}
-                                            </div>
-                                        </div>
-
-                                        <div class="presale-price-box price-green">
-                                            <div class="presale-price-label">최근 평균가</div>
-                                            <div class="presale-price-value">
-                                                ${formatKoreanPrice(avgPrice)}
-                                            </div>
-                                        </div>
-
-                                        <div class="presale-price-box price-orange">
-                                            <div class="presale-price-label">매입가와 차이</div>
-                                            <div class="presale-price-value ${priceDiffClass}">
-                                                ${priceDiffText}
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                `
-                                : ""
-                        }
-
-                    </div>
+                    ${renderHeroCard({
+                        heroBadgeText,
+                        heroMainText,
+                        heroDescText,
+                        investmentClass,
+                        gaugeNeedleDeg,
+                        investmentScore,
+                        investmentGrade,
+                        investmentLabel,
+                        userInputPrice,
+                        avgPrice,
+                        priceDiffClass,
+                        priceDiffText
+                    })}
 
 
                     <!-- // =================================================
                     // 6-2. 단지 요약 카드
                     // ================================================= -->
 
-                    <div class="report-summary-card">
+                    ${renderSummaryCard(data)}
 
-                        <div class="summary-top">
+                    ${renderKpiCards(data)}
 
-                            <div class="summary-icon">
-                                🏢
-                            </div>
+                    ${renderMarketStatusCard(data)}
 
-                            <div class="summary-top-text">
-                                <div class="summary-header-line">
-                                    <div class="summary-apt-name">
-                                        ${data.아파트}
-                                    </div>
-                                                 
-
-                                    <div class="summary-chip-row">
-                                        ${document.getElementById("directionSelect")?.value ? `
-                                            <span class="summary-chip">${document.getElementById("directionSelect").value}</span>
-                                        ` : ""}
-
-                                        ${document.getElementById("floorSelect")?.value ? `
-                                            <span class="summary-chip">${document.getElementById("floorSelect").value}</span>
-                                        ` : ""}
-
-                                        ${document.getElementById("interiorSelect")?.value ? `
-                                            <span class="summary-chip">${document.getElementById("interiorSelect").value}</span>
-                                        ` : ""}
-                                    </div>
-                                </div>
-                    
-                                <div class="summary-apt-info">
-                                    전용 ${data.평형}㎡ · 입력가 ${Number(data.사용자입력가격).toLocaleString()}만원
-                                </div>
-                            </div>
-                        </div>
-
-
-                    ${
-                        selectedPropertyType === "presale"
-                            ? ""
-                            : `
-                                <div class="result-section-head">
-
-                                    <div class="result-section-badge">
-                                        AI 분석 결과
-                                    </div>
-                                    
-                                </div>
-                            `
-                    }
-
-
-                        ${(() => {
-                            let badgeColor = "#eef4ff";
-                            let textColor = "#1f4fa3";
-
-                            if (data.가격판단 === "고평가") {
-                                badgeColor = "#ffecec";
-                                textColor = "#d93025";
-                            } else if (data.가격판단 === "저평가") {
-                                badgeColor = "#e8f7ec";
-                                textColor = "#188038";
-                            }
-
-                            return `
-                            <div class="price-comment" style="background:${badgeColor}; color:${textColor}">
-                                ${
-                                    data.사용자입력가격
-                                        ? `입력하신 <span class="price-strong">${Number(data.사용자입력가격).toLocaleString()}만원</span>은 현재 기준 ${data.가격판단}된 거래 가격 입니다.`
-                                        : `${data.가격판단 || "-"}`
-                                }
-                            </div>`;
-                        })()}
-
-                    <div class="top-conclusion">
-                        <div class="top-conclusion-head">
-                            <span class="top-conclusion-badge">
-                                📈 AI 가격 판단
-                            </span>
-                        </div>
-
-                        <div class="top-conclusion-text">
-                            ${data.한줄결론 || ""}
-                        </div>
-                    </div>
-
-                    <!-- ==================================================
-                        6-3. 핵심 KPI 카드
-                    ================================================== -->
-
-                    <div class="summary-grid">
-
-                        <div class="summary-card kpi-blue">
-                            <div class="summary-label">추천 매수가</div>
-                            <div class="summary-value">
-                                ${Number(data.추천매수가 || 0).toLocaleString()} <span>만원</span>
-                            </div>
-                        </div>
-
-                        <div class="summary-card kpi-red">
-                            <div class="summary-label">보정 추천가</div>
-                            <div class="summary-value">
-                                ${Number(data.보정추천가 || 0).toLocaleString()} <span>만원</span>
-                            </div>
-                        </div>
-
-                        <div class="summary-card kpi-blue">
-                            <div class="summary-label">평균가</div>
-                            <div class="summary-value">
-                                ${Number(data.평균가격 || 0).toLocaleString()} <span>만원</span>
-                            </div>
-                        </div>
-
-                        <div class="summary-card kpi-red">
-                            <div class="summary-label">최고가 / 최저가</div>
-                            <div class="summary-value high-low-value">
-                                <div class="high-row">
-                                    <span class="high-price">${Number(data.최고가 || 0).toLocaleString()}</span>
-                                    <span class="mini-label red">최고</span>
-                                </div>
-
-                                <div class="low-row">
-                                    <span class="low-price">${Number(data.최저가 || 0).toLocaleString()}</span>
-                                    <span class="mini-label blue">최저</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ==================================================
-                        6-4. 실거래 시장 상태
-                    ================================================== -->
-                    <div class="market-section">
-
-                        <div class="market-title">
-                            <div class="market-title-icon">📊</div>
-                            실거래 시장 상태
-                        </div>
-
-                        <div class="market-grid">
-
-                            <!-- 거래 건수 -->
-                            <div class="market-card">
-                                <div class="market-card-label">연간 거래량</div>
-
-                                <div class="market-card-value">
-                                    ${data.거래건수 || 0}건
-                                </div>
-
-                                <div class="market-card-sub">
-                                    실거래가 기준
-                                </div>
-                            </div>
-
-                            <!-- 최근 3개월 -->
-                            <div class="market-card">
-                                <div class="market-card-label">최근 3개월</div>
-
-                                <div class="market-card-value">
-                                    ${data.최근3개월거래건수 || 0}건
-                                </div>
-
-                                <div class="market-card-sub">
-                                    ${data.거래활발도 || "-"}
-                                </div>
-                            </div>
-
-                            <!-- 시장 추세 / 분양권 거래 분위기 -->
-                            <div class="market-card">
-                                <div class="market-card-label">
-                                    ${selectedPropertyType === "presale" ? "거래 분위기" : "시장 추세"}
-                                </div>
-
-                                <div class="market-card-value">
-                                    ${data.추세 || "-"}
-                                </div>
-
-                                ${
-                                    selectedPropertyType === "presale"
-                                        ? ""
-                                        : `
-                                            <div class="market-card-sub">
-                                                신뢰도 ${data.추세신뢰도 || "-"}
-                                            </div>
-
-                                            <div class="market-sub trend-rate-${
-                                                Number(data["상승률(%)"] || 0) > 0
-                                                    ? 'up'
-                                                    : Number(data["상승률(%)"] || 0) < 0
-                                                        ? 'down'
-                                                        : 'neutral'
-                                            }">
-                                                ${
-                                                    data["상승률텍스트"]
-                                                        ? data["상승률텍스트"]
-                                                        : (
-                                                            Number(data["상승률(%)"] || 0) > 0
-                                                                ? '+' + Number(data["상승률(%)"] || 0) + '%'
-                                                                : Number(data["상승률(%)"] || 0) + '%'
-                                                        )
-                                                }
-                                            </div>
-                                        `
-                                }
-                            </div>
-
-                        </div>
-
-                    </div>
-                    ${
-                        selectedPropertyType === "presale"
-                            ? ""
-                            : `
-                                <div class="notice-box">
-                                    ${data.추세해석 || ""}
-                                </div>
-                            `
-                    }
-
-                    ${selectedPropertyType === "rent" ? `
-                        <div class="rent-ai-card">
-                            <div class="rent-ai-title">🤖 AI 전월세 해설</div>
-                            <div class="rent-ai-text">
-                                ${data.AI설명 || "최근 전월세 실거래 기준으로 임대 수준을 분석했습니다."}
-                            </div>
-                        </div>
-                        <!-- ✅ 전월세 거래 구성 카드 -->
-                        <div class="rent-summary-grid">
-                            
-                            <div class="rent-summary-card">
-                                <div class="rent-summary-label">전세 평균보증금</div>
-                                <div class="rent-summary-value">
-                                    ${Number(data.평균전세보증금 || 0).toLocaleString()}만
-                                </div>
-                                <div class="rent-summary-count">전세 ${data.전세거래건수 || 0}건</div>
-                            </div>
-
-                            <div class="rent-summary-card">
-                                <div class="rent-summary-label">월세 평균보증금</div>
-                                <div class="rent-summary-value">
-                                    ${Number(data.평균월세보증금 || 0).toLocaleString()}만
-                                </div>
-                                <div class="rent-summary-count">월세 ${data.월세거래건수 || 0}건</div>
-                            </div>
-
-                            <div class="rent-summary-card">
-                                <div class="rent-summary-label">평균 월세</div>
-                                <div class="rent-summary-value">
-                                    ${Number(data.평균월세 || 0).toLocaleString()}만
-                                </div>
-                                <!-- <div class="rent-summary-count">월세 ${data.월세거래건수 || 0}건</div> -->
-                            </div>
-
-                        </div>
-                    ` : ""}
+                    ${renderRentSummaryCards(data)}
 
                     ${selectedPropertyType === "rent" ? "" : `
                         ${renderRecentTradeChartCard(data)}
                     `}
-                    ${selectedPropertyType === "rent" ? `
-                        <!-- ==================================================
-                            6-6. 전월세 거래량 그래프
-                        ================================================== -->
-                        <div class="rent-volume-card">
+                    ${renderRentVolumeChartCard(data)}
 
-                            <div class="rent-volume-title">
-                                📊 최근 12개월 전월세 거래량
-                            </div>
-
-                            <div class="rent-volume-chart">
-                                ${(data.전월세월별거래량 || []).map(v => `
-                                    <div class="rent-volume-row">
-                                        <div class="rent-volume-month">${String(v.month || "").slice(5)}월</div>
-
-                                        <div class="rent-volume-bar-wrap">
-
-                                            <div class="rent-volume-bar jeonse-bar"
-                                                style="width:${Math.min((Number(v.jeonse || 0) / Math.max(...(data.전월세월별거래량 || []).map(x => Number(x.count || 0)), 1)) * 100, 100)}%">
-                                            </div>
-
-                                            <div class="rent-volume-bar monthly-bar"
-                                                style="width:${Math.min((Number(v.monthly || 0) / Math.max(...(data.전월세월별거래량 || []).map(x => Number(x.count || 0)), 1)) * 100, 100)}%">
-                                            </div>
-
-                                        </div>
-
-                                        <div class="rent-volume-count">${v.count || 0}건</div>
-                                    </div>
-                                `).join("")}
-                            </div>
-
-                        </div>
-                    ` : ""}
-
-                    ${selectedPropertyType === "rent" ? `
-                        <!-- ✅ 최근 전세 5건 보증금 선그래프 -->
-                        <div class="rent-volume-card">
-
-                            <div class="rent-volume-title">
-                                📈 최근 전세 보증금 추세
-                            </div>
-
-                            <div class="jeonse-trend-box">
-                                <div class="jeonse-trend-rate ${
-                                    data.전세상승률 > 0
-                                        ? "trend-up"
-                                        : data.전세상승률 < 0
-                                            ? "trend-down"
-                                            : "trend-flat"
-                                }">
-                                    ${
-                                        data.전세상승률 !== null && data.전세상승률 !== undefined
-                                            ? `최근 전세 상승률 ${data.전세상승률 > 0 ? "+" : ""}${data.전세상승률}%`
-                                            : "전세 상승률 산정 불가"
-                                    }
-                                </div>
-
-                                <div class="jeonse-market-status ${
-                                    data.전세시장상태 === "상승세"
-                                        ? "up"
-                                        : data.전세시장상태 === "하락세"
-                                            ? "down"
-                                            : "flat"
-                                }">
-                                    ${data.전세시장상태 || "거래 부족"}
-                                </div>
-
-                                <div class="jeonse-trend-sub">
-                                    <span class="jeonse-reliability-badge ${
-                                        data.전세신뢰도 === "높음"
-                                            ? "high"
-                                            : data.전세신뢰도 === "보통"
-                                                ? "mid"
-                                                : "low"
-                                    }">
-                                        신뢰도 ${data.전세신뢰도 || "산정 불가"}
-                                    </span>
-
-                                    <span class="jeonse-trend-standard">
-                                        최근 3건 vs 이전 3건
-                                    </span>
-                                </div>
-                            </div>
-
-
-                            <div id="jeonseDepositChart" class="trade-chart">
-                                전세 그래프 준비중...
-                            </div>
-
-                        </div>
-                    ` : ""}
+                    ${renderJeonseTrendCard(data)}
 
                     ${renderRecentTradeListCard(data)}
                     ${renderVolumeChartCard(data)}
@@ -14272,22 +13864,8 @@ function analyzePrice() {
                 // =================================================
                 // 7. 차트 렌더링 및 모달 표시
                 // =================================================
-                const tradeChartCard = document.querySelector(".trade-chart-card");
-
-                if (tradeChartCard) {
-                    tradeChartCard.style.display = "block";
-                }
-
-                // ✅ 전월세 전세 보증금 그래프
-                if (selectedPropertyType === "rent") {
-
-                    renderJeonseDepositChart(data.최근전세5건 || []);
-
-                } else {
-
-                    renderRecentTradeChart(data.최근거래5건);
-
-                }
+                // ===== 차트 카드 표시 및 그래프 렌더링 =====
+                renderAnalysisCharts(data);
 
                 modal.style.display = "flex";
                 document.body.style.overflow = "hidden";
@@ -15529,17 +15107,7 @@ async function copyShareLink() {
     }
 }
 
-function copyShareUrl() {
-    const shareUrl = buildShareUrl();
 
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(shareUrl)
-            .then(() => showToast("분석 결과 링크가 복사되었습니다."))
-            .catch(() => fallbackCopy(shareUrl));
-    } else {
-        fallbackCopy(shareUrl);
-    }
-}
 
 function updateRegionSelectedState() {
     document.querySelectorAll(".region-select-item").forEach(item => {
@@ -16590,6 +16158,549 @@ function renderRecentTradeChartCard(data) {
 
             <div id="recentTradeChart" class="trade-chart">
                 그래프 준비중...
+            </div>
+
+        </div>
+    `;
+}
+
+/**
+ * 실거래 시장 상태 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function renderMarketStatusCard(data) {
+    return `
+        <!-- ==================================================
+             6-4. 실거래 시장 상태
+        ================================================== -->
+
+        <div class="market-section">
+
+            <div class="market-title">
+                <div class="market-title-icon">📊</div>
+                실거래 시장 상태
+            </div>
+
+            <div class="market-grid">
+
+                <!-- 거래 건수 -->
+                <div class="market-card">
+                    <div class="market-card-label">연간 거래량</div>
+
+                    <div class="market-card-value">
+                        ${data.거래건수 || 0}건
+                    </div>
+
+                    <div class="market-card-sub">
+                        실거래가 기준
+                    </div>
+                </div>
+
+                <!-- 최근 3개월 -->
+                <div class="market-card">
+                    <div class="market-card-label">최근 3개월</div>
+
+                    <div class="market-card-value">
+                        ${data.최근3개월거래건수 || 0}건
+                    </div>
+
+                    <div class="market-card-sub">
+                        ${data.거래활발도 || "-"}
+                    </div>
+                </div>
+
+                <!-- 시장 추세 / 분양권 거래 분위기 -->
+                <div class="market-card">
+                    <div class="market-card-label">
+                        ${selectedPropertyType === "presale" ? "거래 분위기" : "시장 추세"}
+                    </div>
+
+                    <div class="market-card-value">
+                        ${data.추세 || "-"}
+                    </div>
+
+                    ${
+                        selectedPropertyType === "presale"
+                            ? ""
+                            : `
+                                <div class="market-card-sub">
+                                    신뢰도 ${data.추세신뢰도 || "-"}
+                                </div>
+
+                                <div class="market-sub trend-rate-${
+                                    Number(data["상승률(%)"] || 0) > 0
+                                        ? 'up'
+                                        : Number(data["상승률(%)"] || 0) < 0
+                                            ? 'down'
+                                            : 'neutral'
+                                }">
+                                    ${
+                                        data["상승률텍스트"]
+                                            ? data["상승률텍스트"]
+                                            : (
+                                                Number(data["상승률(%)"] || 0) > 0
+                                                    ? '+' + Number(data["상승률(%)"] || 0) + '%'
+                                                    : Number(data["상승률(%)"] || 0) + '%'
+                                            )
+                                    }
+                                </div>
+                            `
+                    }
+                </div>
+
+            </div>
+
+        </div>
+
+        ${
+            selectedPropertyType === "presale"
+                ? ""
+                : `
+                    <div class="notice-box">
+                        ${data.추세해석 || ""}
+                    </div>
+                `
+        }
+    `;
+}
+
+/**
+ * 핵심 KPI 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : renderMarketStatusCard()
+ */
+function renderKpiCards(data) {
+    return `
+        <!-- ==================================================
+             6-3. 핵심 KPI 카드
+        ================================================== -->
+
+        <div class="summary-grid">
+
+            <div class="summary-card kpi-blue">
+                <div class="summary-label">추천 매수가</div>
+                <div class="summary-value">
+                    ${Number(data.추천매수가 || 0).toLocaleString()} <span>만원</span>
+                </div>
+            </div>
+
+            <div class="summary-card kpi-red">
+                <div class="summary-label">보정 추천가</div>
+                <div class="summary-value">
+                    ${Number(data.보정추천가 || 0).toLocaleString()} <span>만원</span>
+                </div>
+            </div>
+
+            <div class="summary-card kpi-blue">
+                <div class="summary-label">평균가</div>
+                <div class="summary-value">
+                    ${Number(data.평균가격 || 0).toLocaleString()} <span>만원</span>
+                </div>
+            </div>
+
+            <div class="summary-card kpi-red">
+                <div class="summary-label">최고가 / 최저가</div>
+                <div class="summary-value high-low-value">
+                    <div class="high-row">
+                        <span class="high-price">${Number(data.최고가 || 0).toLocaleString()}</span>
+                        <span class="mini-label red">최고</span>
+                    </div>
+
+                    <div class="low-row">
+                        <span class="low-price">${Number(data.최저가 || 0).toLocaleString()}</span>
+                        <span class="mini-label blue">최저</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * 전월세 전용 요약 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : 전월세 거래량/전세 추세 그래프
+ */
+function renderRentSummaryCards(data) {
+    if (selectedPropertyType !== "rent") {
+        return "";
+    }
+
+    return `
+        <div class="rent-ai-card">
+            <div class="rent-ai-title">🤖 AI 전월세 해설</div>
+            <div class="rent-ai-text">
+                ${data.AI설명 || "최근 전월세 실거래 기준으로 임대 수준을 분석했습니다."}
+            </div>
+        </div>
+
+        <!-- ✅ 전월세 거래 구성 카드 -->
+        <div class="rent-summary-grid">
+            
+            <div class="rent-summary-card">
+                <div class="rent-summary-label">전세 평균보증금</div>
+                <div class="rent-summary-value">
+                    ${Number(data.평균전세보증금 || 0).toLocaleString()}만
+                </div>
+                <div class="rent-summary-count">전세 ${data.전세거래건수 || 0}건</div>
+            </div>
+
+            <div class="rent-summary-card">
+                <div class="rent-summary-label">월세 평균보증금</div>
+                <div class="rent-summary-value">
+                    ${Number(data.평균월세보증금 || 0).toLocaleString()}만
+                </div>
+                <div class="rent-summary-count">월세 ${data.월세거래건수 || 0}건</div>
+            </div>
+
+            <div class="rent-summary-card">
+                <div class="rent-summary-label">평균 월세</div>
+                <div class="rent-summary-value">
+                    ${Number(data.평균월세 || 0).toLocaleString()}만
+                </div>
+                <!-- <div class="rent-summary-count">월세 ${data.월세거래건수 || 0}건</div> -->
+            </div>
+
+        </div>
+    `;
+}
+
+/**
+ * 전월세 12개월 거래량 그래프 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : 없음
+ */
+function renderRentVolumeChartCard(data) {
+    if (selectedPropertyType !== "rent") {
+        return "";
+    }
+
+    return `
+        <!-- ==================================================
+             6-6. 전월세 거래량 그래프
+        ================================================== -->
+
+        <div class="rent-volume-card">
+
+            <div class="rent-volume-title">
+                📊 최근 12개월 전월세 거래량
+            </div>
+
+            <div class="rent-volume-chart">
+                ${(data.전월세월별거래량 || []).map(v => `
+                    <div class="rent-volume-row">
+                        <div class="rent-volume-month">${String(v.month || "").slice(5)}월</div>
+
+                        <div class="rent-volume-bar-wrap">
+
+                            <div class="rent-volume-bar jeonse-bar"
+                                style="width:${Math.min((Number(v.jeonse || 0) / Math.max(...(data.전월세월별거래량 || []).map(x => Number(x.count || 0)), 1)) * 100, 100)}%">
+                            </div>
+
+                            <div class="rent-volume-bar monthly-bar"
+                                style="width:${Math.min((Number(v.monthly || 0) / Math.max(...(data.전월세월별거래량 || []).map(x => Number(x.count || 0)), 1)) * 100, 100)}%">
+                            </div>
+
+                        </div>
+
+                        <div class="rent-volume-count">${v.count || 0}건</div>
+                    </div>
+                `).join("")}
+            </div>
+
+        </div>
+    `;
+}
+
+/**
+ * 최근 전세 보증금 추세 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : renderJeonseDepositChart()
+ */
+function renderJeonseTrendCard(data) {
+    if (selectedPropertyType !== "rent") {
+        return "";
+    }
+
+    return `
+        <!-- ==================================================
+             6-6-1. 최근 전세 보증금 추세
+        ================================================== -->
+
+        <div class="rent-volume-card">
+
+            <div class="rent-volume-title">
+                📈 최근 전세 보증금 추세
+            </div>
+
+            <div class="jeonse-trend-box">
+                <div class="jeonse-trend-rate ${
+                    data.전세상승률 > 0
+                        ? "trend-up"
+                        : data.전세상승률 < 0
+                            ? "trend-down"
+                            : "trend-flat"
+                }">
+                    ${
+                        data.전세상승률 !== null && data.전세상승률 !== undefined
+                            ? `최근 전세 상승률 ${data.전세상승률 > 0 ? "+" : ""}${data.전세상승률}%`
+                            : "전세 상승률 산정 불가"
+                    }
+                </div>
+
+                <div class="jeonse-market-status ${
+                    data.전세시장상태 === "상승세"
+                        ? "up"
+                        : data.전세시장상태 === "하락세"
+                            ? "down"
+                            : "flat"
+                }">
+                    ${data.전세시장상태 || "거래 부족"}
+                </div>
+
+                <div class="jeonse-trend-sub">
+                    <span class="jeonse-reliability-badge ${
+                        data.전세신뢰도 === "높음"
+                            ? "high"
+                            : data.전세신뢰도 === "보통"
+                                ? "mid"
+                                : "low"
+                    }">
+                        신뢰도 ${data.전세신뢰도 || "산정 불가"}
+                    </span>
+
+                    <span class="jeonse-trend-standard">
+                        최근 3건 vs 이전 3건
+                    </span>
+                </div>
+            </div>
+
+            <div id="jeonseDepositChart" class="trade-chart">
+                전세 그래프 준비중...
+            </div>
+
+        </div>
+    `;
+}
+
+/**
+ * 리포트 상단 HERO 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : renderKpiCards()
+ */
+function renderHeroCard({
+    heroBadgeText,
+    heroMainText,
+    heroDescText,
+    investmentClass,
+    gaugeNeedleDeg,
+    investmentScore,
+    investmentGrade,
+    investmentLabel,
+    userInputPrice,
+    avgPrice,
+    priceDiffClass,
+    priceDiffText
+}) {
+    return `
+        <!-- ==================================================
+             6-1. 리포트 HERO 카드
+        ================================================== -->
+
+        <div class="result-hero-card">
+
+            <div class="${selectedPropertyType === 'presale' ? 'hero-top-layout' : ''}">
+
+                <div class="${selectedPropertyType === 'presale' ? 'hero-left' : ''}">
+
+                    <div class="hero-badge-red">
+                        ${heroBadgeText}
+                    </div>
+
+                    <div class="hero-price ${selectedPropertyType === "presale" ? "presale-mode" : ""}">
+                        ${heroMainText}
+                        ${selectedPropertyType === "presale" ? "" : "<span>만원</span>"}
+                    </div>
+
+                    <div class="hero-desc">
+                        ${heroDescText}
+                    </div>
+
+                </div>
+
+                <div class="hero-right">
+
+                    ${
+                        selectedPropertyType === "presale"
+                            ? `
+                                <div class="investment-gauge ${investmentClass}">
+                                    <div class="gauge-label">투자 매력도</div>
+
+                                    <div class="gauge-arc" style="--needle-deg:${gaugeNeedleDeg}deg;">
+                                        <div class="gauge-needle"></div>
+                                        <div class="gauge-score">
+                                            ${investmentScore}<span>/100</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="gauge-grade">
+                                        ${investmentGrade} · ${investmentLabel}
+                                    </div>
+                                </div>
+                            `
+                            : ""
+                    }
+
+                </div>
+
+            </div>
+
+            ${
+                selectedPropertyType === "presale"
+                    ? `
+                        <div class="presale-price-summary">
+
+                            <div class="presale-price-box price-blue">
+                                <div class="presale-price-label">예상 총 매입가</div>
+                                <div class="presale-price-value">
+                                    ${formatKoreanPrice(userInputPrice)}
+                                </div>
+                            </div>
+
+                            <div class="presale-price-box price-green">
+                                <div class="presale-price-label">최근 평균가</div>
+                                <div class="presale-price-value">
+                                    ${formatKoreanPrice(avgPrice)}
+                                </div>
+                            </div>
+
+                            <div class="presale-price-box price-orange">
+                                <div class="presale-price-label">매입가와 차이</div>
+                                <div class="presale-price-value ${priceDiffClass}">
+                                    ${priceDiffText}
+                                </div>
+                            </div>
+
+                        </div>
+                    `
+                    : ""
+            }
+
+        </div>
+    `;
+}
+
+/**
+ * 분석 결과 차트를 렌더링한다.
+ * 호출 : analyzePrice()
+ * 다음 : 모달 표시
+ */
+function renderAnalysisCharts(data) {
+    const tradeChartCard = document.querySelector(".trade-chart-card");
+
+    if (tradeChartCard) {
+        tradeChartCard.style.display = "block";
+    }
+
+    if (selectedPropertyType === "rent") {
+        renderJeonseDepositChart(data.최근전세5건 || []);
+    } else {
+        renderRecentTradeChart(data.최근거래5건);
+    }
+}
+
+/**
+ * 단지 요약 및 AI 가격 판단 카드를 생성한다.
+ * 호출 : analyzePrice()
+ * 다음 : renderKpiCards()
+ */
+function renderSummaryCard(data) {
+    return `
+        <!-- ==================================================
+             6-2. 단지 요약 카드
+        ================================================== -->
+
+        <div class="report-summary-card">
+
+            <div class="summary-top">
+
+                <div class="summary-icon">
+                    🏢
+                </div>
+
+                <div class="summary-top-text">
+                    <div class="summary-header-line">
+                        <div class="summary-apt-name">
+                            ${data.아파트}
+                        </div>
+
+                        <div class="summary-chip-row">
+                            ${document.getElementById("directionSelect")?.value ? `
+                                <span class="summary-chip">${document.getElementById("directionSelect").value}</span>
+                            ` : ""}
+
+                            ${document.getElementById("floorSelect")?.value ? `
+                                <span class="summary-chip">${document.getElementById("floorSelect").value}</span>
+                            ` : ""}
+
+                            ${document.getElementById("interiorSelect")?.value ? `
+                                <span class="summary-chip">${document.getElementById("interiorSelect").value}</span>
+                            ` : ""}
+                        </div>
+                    </div>
+
+                    <div class="summary-apt-info">
+                        전용 ${data.평형}㎡ · 입력가 ${Number(data.사용자입력가격).toLocaleString()}만원
+                    </div>
+                </div>
+            </div>
+
+            ${
+                selectedPropertyType === "presale"
+                    ? ""
+                    : `
+                        <div class="result-section-head">
+                            <div class="result-section-badge">
+                                AI 분석 결과
+                            </div>
+                        </div>
+                    `
+            }
+
+            ${(() => {
+                let badgeColor = "#eef4ff";
+                let textColor = "#1f4fa3";
+
+                if (data.가격판단 === "고평가") {
+                    badgeColor = "#ffecec";
+                    textColor = "#d93025";
+                } else if (data.가격판단 === "저평가") {
+                    badgeColor = "#e8f7ec";
+                    textColor = "#188038";
+                }
+
+                return `
+                    <div class="price-comment" style="background:${badgeColor}; color:${textColor}">
+                        ${
+                            data.사용자입력가격
+                                ? `입력하신 <span class="price-strong">${Number(data.사용자입력가격).toLocaleString()}만원</span>은 현재 기준 ${data.가격판단}된 거래 가격 입니다.`
+                                : `${data.가격판단 || "-"}`
+                        }
+                    </div>
+                `;
+            })()}
+
+            <div class="top-conclusion">
+                <div class="top-conclusion-head">
+                    <span class="top-conclusion-badge">
+                        📈 AI 가격 판단
+                    </span>
+                </div>
+
+                <div class="top-conclusion-text">
+                    ${data.한줄결론 || ""}
+                </div>
             </div>
 
         </div>
