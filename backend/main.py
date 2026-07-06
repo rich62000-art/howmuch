@@ -22,7 +22,11 @@ from db import (
     get_analysis_cache_from_db, save_analysis_cache_to_db,
 
     get_rent_dongs_from_db, get_rent_apts_from_db,
-    get_rent_sizes_from_db, get_rent_trades, get_pg_connection
+    get_rent_sizes_from_db, get_rent_trades, 
+    # get_pg_connection,
+
+    get_apt_sigungu_list_from_db, get_presale_sigungu_list_from_db,
+    get_rent_sigungu_list_from_db
 )
 from fastapi.staticfiles import StaticFiles
 from difflib import SequenceMatcher
@@ -753,6 +757,44 @@ def get_dongs(region: str, type: str = "apt"):
         db_region = parts[0]
         db_sigungu = " ".join(parts[1:])
 
+        print("✅ /dongs 요청 region:", region, "type:", type)
+        print("✅ db_region:", db_region)
+        print("✅ db_sigungu:", db_sigungu)
+        # ✅ 부천시 행정구역 예외 처리
+        if db_region == "경기도" and db_sigungu == "부천시":
+            print("✅ 부천시 예외 처리 진입")
+            print("✅ 부천 동 목록 개수:", len(db_dongs))
+            print("✅ 부천 동 목록:", db_dongs[:20])
+            bucheon_sigungu_list = [
+                "부천시 원미구",
+                "부천시 소사구",
+                "부천시 오정구"
+            ]
+
+            all_dongs = []
+
+            for sigungu_name in bucheon_sigungu_list:
+                if type == "presale":
+                    all_dongs.extend(get_presale_dongs_from_db(db_region, sigungu_name))
+                elif type == "rent":
+                    all_dongs.extend(get_rent_dongs_from_db(db_region, sigungu_name))
+                else:
+                    all_dongs.extend(get_dongs_from_db(db_region, sigungu_name))
+
+            db_dongs = sorted(list(set(all_dongs)))
+
+            insert_search_log(
+                search_type="dong",
+                region=db_region,
+                sigungu=db_sigungu
+            )
+
+            return {
+                "동목록": db_dongs,
+                "dongs": db_dongs,
+                "동리목록": db_dongs
+            }
+
         # ✅ 거래 유형별 동 목록 DB 조회
         # apt      : 아파트 매매
         # presale  : 분양권
@@ -815,56 +857,33 @@ def search_region(keyword: str):
     return {"검색결과": results[:20]}
 
 @app.get("/sigungu")
-def get_sigungu(sido: str):
+def get_sigungu(sido: str, type: str = "apt"):
 
-    result = []
+    try:
+        print("✅ /sigungu 요청:", sido, type)
 
-    for name, code in lawd_map.items():
+        if type == "presale":
+            result = get_presale_sigungu_list_from_db(sido)
 
-        if not name.startswith(sido):
-            continue
+        elif type == "rent":
+            result = get_rent_sigungu_list_from_db(sido)
 
-        parts = name.split()
+        else:
+            result = get_apt_sigungu_list_from_db(sido)
 
-        if len(parts) >= 2:
+        print("✅ 시군구 개수:", len(result))
+        print("✅ 시군구 목록:", result[:20])
 
-            # 경기도 안양시 동안구
-            if len(parts) >= 3 and parts[1].endswith("시"):
-                sigungu = parts[1] + " " + parts[2]
-            else:
-                sigungu = parts[1]
+        return {
+            "검색결과": result
+        }
 
-            if sigungu not in result:
-                result.append(sigungu)
+    except Exception as e:
+        print("❌ /sigungu 오류:", e)
 
-    result.sort()
-
-
-    # ===== 구가 있는 시 제거 =====
-
-    filtered = []
-
-    for item in result:
-
-        # 안양시 같은 단독 시
-        if item.endswith("시"):
-
-            has_sub_gu = any(
-                x.startswith(item + " ")
-                for x in result
-            )
-
-            # 안양시 동안구 같은 게 있으면 제거
-            if has_sub_gu:
-                continue
-
-        filtered.append(item)
-
-    result = filtered
-
-    return {
-        "검색결과": result
-    }
+        return {
+            "검색결과": []
+        }
 
 @app.get("/apts")
 def search_apts(

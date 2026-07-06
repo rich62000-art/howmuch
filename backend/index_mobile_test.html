@@ -24,6 +24,46 @@
 <title>실거래가 AI분석</title>
 
 <style>
+
+/* ==================================================
+   CSS STRUCTURE
+
+   1. Base / Reset
+   2. Layout
+   3. Form / Input
+   4. Region Search V3
+   5. Apt / Size List
+   6. Analysis Modal
+   7. Report Cards
+   8. Future Prediction
+   9. Share / Buttons
+   10. Mobile Responsive
+================================================== */ 
+
+/* ==================================================
+   분석 결과 HERO 카드 보정
+================================================== */
+.result-hero-card .hero-badge-red {
+    height: 24px !important;
+    margin-bottom: 6px !important;
+    font-size: 11px !important;
+}
+
+.result-hero-card .hero-price {
+    font-size: 32px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+}
+
+.result-hero-card .hero-desc {
+    margin-top: 6px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+}
+
+
+
+
 body {
     font-family: Arial, sans-serif;
     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
@@ -1667,21 +1707,11 @@ body {
 
 /* 상단 배지 */
 .hero-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    height: 36px;
+     height: 36px;
     padding: 0 16px;
-
-    border-radius: 999px;
 
     background: rgba(37, 99, 235, 0.10);
     color: #2563eb;
-
-    font-size: 13px;
-    font-weight: 900;
-    letter-spacing: -0.2px;
 
     margin-bottom: 18px;
 
@@ -1701,7 +1731,7 @@ body {
     color: #0f172a;
 }
 
-/* 설명 */
+/* 메인화면 hero 설명 */
 .hero-desc {
     margin-top: 16px;
 
@@ -2105,7 +2135,7 @@ body {
 
 /* ===== 추천가 HERO 카드 ===== */
 
-.result-hero-card {
+/* .result-hero-card {
 
     padding: 22px 18px;
 
@@ -2122,26 +2152,17 @@ body {
     text-align: center;
 
     margin-bottom: 18px;
-}
+} */
 
-/* 상단 배지 */
+/* 상단 빨간 배지 */
 .hero-badge-red {
-
-    display: inline-flex;
-
-    align-items: center;
-    justify-content: center;
 
     height: 34px;
     padding: 0 14px;
 
-    border-radius: 999px;
-
     background: rgba(239,68,68,0.12);
-
     color: #ef4444;
 
-    font-size: 13px;
     font-weight: 800;
 
     margin-bottom: 14px;
@@ -2175,17 +2196,6 @@ body {
     margin-left: 4px;
 
     color: #b91c1c;
-}
-
-/* 설명 */
-.hero-desc {
-
-    margin-top: 12px;
-
-    font-size: 14px;
-    font-weight: 700;
-
-    color: #7f1d1d;
 }
 
 @media (max-width: 768px) {
@@ -2248,19 +2258,6 @@ body {
         height: 65px;
         opacity: 0.18;
     }
-}
-
-/* ===== HERO HEADER 고급화 3단계: 문구/간격 정리 ===== */
-
-.hero-desc {
-    margin-top: 14px !important;
-
-    font-size: 15px !important;
-    line-height: 1.65 !important;
-
-    color: #475569 !important;
-    font-weight: 600 !important;
-    letter-spacing: -0.3px !important;
 }
 
 /* 상단 탭 위치 정리 */
@@ -3042,16 +3039,6 @@ body {
     color: #475569 !important;
 }
 
-.result-hero-card .hero-desc,
-.result-hero-desc {
-    margin-top: 10px !important;
-
-    font-size: 14px !important;
-    font-weight: 700 !important;
-
-    color: #475569 !important;
-}
-
 /* ===== 모달 닫기 버튼 클릭 복구 ===== */
 
 .close-btn {
@@ -3316,8 +3303,8 @@ body {
 
     display: block !important;
 
-    margin-top: 4px !important;
-    margin-bottom: 14px !important;
+    /*margin-top: 4px !important;
+    margin-bottom: 14px !important; */
 }
 
 /* 상단 카드들 흐름 */
@@ -7414,26 +7401,8 @@ body {
     margin-bottom: 8px !important;
 }
 
-.result-hero-card .hero-badge-red {
-    height: 24px !important;
-    margin-bottom: 6px !important;
-    font-size: 11px !important;
-}
-
-.result-hero-card .hero-price {
-    font-size: 32px !important;
-    line-height: 1 !important;
-    margin: 0 !important;
-}
-
 .result-hero-card .hero-price span {
     font-size: 13px !important;
-}
-
-.result-hero-card .hero-desc {
-    margin-top: 6px !important;
-    font-size: 12px !important;
-    line-height: 1.25 !important;
 }
 
 .result-hero-card {
@@ -9662,6 +9631,8 @@ body {
 #regionGridV3 {
     padding-bottom: 90px !important;
 }
+
+
 </style>
 </head>
 
@@ -12184,7 +12155,9 @@ if (sidoSelect && sigunguSelect) {
             return;
         }
 
-        fetch(`/sigungu?sido=${encodeURIComponent(selectedSido)}`)
+        fetch(
+            `/sigungu?sido=${encodeURIComponent(selectedSido)}&type=${encodeURIComponent(selectedPropertyType)}`
+        )
             .then(res => res.json())
             .then(data => {
 

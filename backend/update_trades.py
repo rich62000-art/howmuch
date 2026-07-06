@@ -1,6 +1,8 @@
 import csv
 import time
 import requests
+import zipfile
+import io
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
@@ -11,6 +13,7 @@ from db import (
     insert_region_code,
     create_tables,
     get_all_region_codes,
+    rebuild_apt_sale_list,
     clear_region_codes
 )
 
@@ -96,7 +99,11 @@ def save_month_trades(lawd_cd, region, sigungu, deal_ymd):
             "source_month": deal_ymd
         }
 
+        print("➡️ insert 호출 직전:", sigungu, dong, apt_name)
+
         insert_apt_sale_trade(trade)
+
+        print("⬅️ insert 호출 직후:", sigungu, dong, apt_name)
 
 
 # ✅ 분양권 월별 수집
@@ -330,7 +337,9 @@ def update_region_codes():
         ("경기도", "안양시 만안구", "41171"),
         ("경기도", "안양시 동안구", "41173"),
 
-        ("경기도", "부천시", "41190"),
+        ("경기도", "부천시 원미구", "41192"),
+        ("경기도", "부천시 소사구", "41194"),
+        ("경기도", "부천시 오정구", "41196"),
         ("경기도", "광명시", "41210"),
         ("경기도", "평택시", "41220"),
         ("경기도", "동두천시", "41250"),
@@ -353,7 +362,7 @@ def update_region_codes():
         ("경기도", "용인시 기흥구", "41463"),
         ("경기도", "용인시 수지구", "41465"),
         ("경기도", "파주시", "41480"),
-                ("경기도", "이천시", "41500"),
+        ("경기도", "이천시", "41500"),
         ("경기도", "안성시", "41550"),
         ("경기도", "김포시", "41570"),
         ("경기도", "화성시", "41590"),
@@ -642,7 +651,72 @@ def update_all_presale_trades(start_index=1):
 
     print("전국 분양권 12개월 거래 저장 완료")
 
+def update_region_codes_from_file():
+    print("법정동 코드 자동 갱신 시작")
+
+    response = requests.get(REGION_CODE_URL)
+    print("법정동 코드 다운로드 응답:", response.status_code)
+
+    if response.status_code != 200:
+        print("❌ 법정동 코드 다운로드 실패")
+        return
+
+    clear_region_codes()
+
+    zip_file = zipfile.ZipFile(io.BytesIO(response.content))
+
+    txt_name = None
+    for name in zip_file.namelist():
+        if name.endswith(".txt"):
+            txt_name = name
+            break
+
+    if not txt_name:
+        print("❌ txt 파일을 찾지 못함")
+        return
+
+    content = zip_file.read(txt_name).decode("cp949")
+
+    count = 0
+
+    for line in content.splitlines():
+        parts = line.split("\t")
+
+        if len(parts) < 3:
+            continue
+
+        code = parts[0].strip()
+        full_name = parts[1].strip()
+        status = parts[2].strip()
+
+        if status != "존재":
+            continue
+
+        # 시군구 대표 코드만 사용: 뒤 5자리가 00000
+        if not code.endswith("00000"):
+            continue
+
+        lawd_cd = code[:5]
+        name_parts = full_name.split()
+
+        if len(name_parts) < 2:
+            continue
+
+        sido = name_parts[0]
+
+        if sido == "세종특별자치시":
+            sigungu = "세종시"
+        else:
+            sigungu = " ".join(name_parts[1:])
+
+        insert_region_code(sido, sigungu, lawd_cd)
+        count += 1
+
+    print("법정동 코드 자동 갱신 완료:", count)
+
 if __name__ == "__main__":
     create_tables()
-    update_all_presale_trades(start_index=136)
-    
+
+    update_region_codes_from_file()
+
+    print("✅ region_codes 자동 갱신 후 전체 지역 수:", len(get_all_region_codes()))

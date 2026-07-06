@@ -306,16 +306,17 @@ def create_tables():
 
 
 def insert_apt_sale_trade(trade):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     try:
         cur.execute("""
-        INSERT INTO apt_sale_trades (
-            region, sigungu, dong, apt_name, size,
-            contract_date, price, floor, source_month
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO apt_sale_trades (
+                region, sigungu, dong, apt_name, size,
+                contract_date, price, floor, source_month
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
         """, (
             trade["region"],
             trade["sigungu"],
@@ -329,26 +330,39 @@ def insert_apt_sale_trade(trade):
         ))
 
         conn.commit()
-        print("저장 성공")
 
-    except sqlite3.IntegrityError:
-        print("중복 데이터라 저장 안함")
+        print(
+            "✅ Supabase 매매 저장:",
+            trade["sigungu"],
+            trade["dong"],
+            trade["apt_name"]
+        )
+
+    except Exception as e:
+        conn.rollback()
+        print("❌ 매매 저장 오류:", e)
+        print("❌ 데이터:", trade)
 
     finally:
-        conn.close()
+        cur.close()
+        release_pg_connection(conn)
+
+def release_pg_connection(conn):
+    conn.close()
 
 # ✅ 아파트 전월세 거래 저장
 def insert_apt_rent_trade(trade):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     try:
         cur.execute("""
-        INSERT INTO apt_rent_trades (
-            region, sigungu, dong, apt_name, size,
-            contract_date, deposit, monthly_rent, floor, source_month
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO apt_rent_trades (
+                region, sigungu, dong, apt_name, size,
+                contract_date, deposit, monthly_rent, floor, source_month
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
         """, (
             trade["region"],
             trade["sigungu"],
@@ -363,26 +377,36 @@ def insert_apt_rent_trade(trade):
         ))
 
         conn.commit()
-        print("전월세 저장 성공")
 
-    except sqlite3.IntegrityError:
-        print("전월세 중복 데이터라 저장 안함")
+        print(
+            "✅ Supabase 전월세 저장:",
+            trade["sigungu"],
+            trade["dong"],
+            trade["apt_name"]
+        )
+
+    except Exception as e:
+        conn.rollback()
+        print("❌ 전월세 저장 오류:", e)
+        print("❌ 데이터:", trade)
 
     finally:
-        conn.close()
+        cur.close()
+        release_pg_connection(conn)
 
 # ✅ 분양권 거래 저장
 def insert_presale_trade(trade):
-    conn = get_connection()
+    conn = get_pg_connection()
     cur = conn.cursor()
 
     try:
         cur.execute("""
-        INSERT INTO presale_trades (
-            region, sigungu, dong, apt_name, size,
-            contract_date, price, floor, source_month
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO presale_trades (
+                region, sigungu, dong, apt_name, size,
+                contract_date, price, floor, source_month
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
         """, (
             trade["region"],
             trade["sigungu"],
@@ -396,13 +420,22 @@ def insert_presale_trade(trade):
         ))
 
         conn.commit()
-        print("분양권 저장 성공")
 
-    except sqlite3.IntegrityError:
-        print("분양권 중복 데이터라 저장 안함")
+        print(
+            "✅ Supabase 분양권 저장:",
+            trade["sigungu"],
+            trade["dong"],
+            trade["apt_name"]
+        )
+
+    except Exception as e:
+        conn.rollback()
+        print("❌ 분양권 저장 오류:", e)
+        print("❌ 데이터:", trade)
 
     finally:
-        conn.close()
+        cur.close()
+        release_pg_connection(conn)
 
 
 def get_apt_sale_trades(apt_name, size):
@@ -1252,6 +1285,129 @@ def check_db_status():
     print("조회 로그 수:", search_count)
     print("분석 로그 수:", analysis_count)
     print("시군구 코드 수:", region_count)
+
+def get_apt_sigungu_list_from_db(region):
+    cache_key = f"sale_sigungu:{region}"
+
+    if cache_key in DB_CACHE:
+        cached = DB_CACHE[cache_key]
+        if time.time() - cached["time"] < CACHE_TTL:
+            return cached["data"]
+
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT DISTINCT sigungu
+        FROM apt_sale_list
+        WHERE region = %s
+        AND sigungu IS NOT NULL
+        AND sigungu <> ''
+        ORDER BY sigungu
+    """, (region,))
+
+    rows = cur.fetchall()
+
+    cur.close()
+    release_pg_connection(conn)
+
+    result = [row[0] for row in rows]
+
+    DB_CACHE[cache_key] = {
+        "time": time.time(),
+        "data": result
+    }
+
+    return result
+    
+def get_presale_sigungu_list_from_db(region):
+    try:
+        res = supabase.table("presale_list") \
+            .select("sigungu") \
+            .eq("region", region) \
+            .execute()
+
+        rows = res.data or []
+
+        result = sorted(list(set(
+            row.get("sigungu")
+            for row in rows
+            if row.get("sigungu")
+        )))
+
+        return result
+
+    except Exception as e:
+        print("❌ get_presale_sigungu_list_from_db 오류:", e)
+        return []
+    
+def get_rent_sigungu_list_from_db(region):
+    try:
+        res = supabase.table("rent_list") \
+            .select("sigungu") \
+            .eq("region", region) \
+            .execute()
+
+        rows = res.data or []
+
+        result = sorted(list(set(
+            row.get("sigungu")
+            for row in rows
+            if row.get("sigungu")
+        )))
+
+        return result
+
+    except Exception as e:
+        print("❌ get_rent_sigungu_list_from_db 오류:", e)
+        return []
+    
+def rebuild_apt_sale_list():
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        print("✅ apt_sale_list 재생성 시작")
+
+        cur.execute("DELETE FROM apt_sale_list")
+
+        cur.execute("""
+            INSERT INTO apt_sale_list (
+                region,
+                sigungu,
+                dong,
+                apt_name,
+                size
+            )
+            SELECT DISTINCT
+                region,
+                sigungu,
+                dong,
+                apt_name,
+                size
+            FROM apt_sale_trades
+            WHERE region IS NOT NULL
+              AND sigungu IS NOT NULL
+              AND dong IS NOT NULL
+              AND apt_name IS NOT NULL
+              AND size IS NOT NULL
+              AND region <> ''
+              AND sigungu <> ''
+              AND dong <> ''
+              AND apt_name <> ''
+        """)
+
+        conn.commit()
+
+        print("✅ apt_sale_list 재생성 완료")
+
+    except Exception as e:
+        conn.rollback()
+        print("❌ apt_sale_list 재생성 오류:", e)
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)    
 
 if __name__ == "__main__":
     create_tables()
