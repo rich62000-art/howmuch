@@ -23,7 +23,7 @@ def get_pg_connection():
     if pg_pool is None:
         pg_pool = SimpleConnectionPool(
             1,
-            20,
+            50,
             **PG_CONFIG
         )
 
@@ -32,8 +32,18 @@ def get_pg_connection():
 def release_pg_connection(conn):
     global pg_pool
 
+    if not conn:
+        return
+
     if pg_pool:
-        pg_pool.putconn(conn)
+        try:
+            pg_pool.putconn(conn)
+        except Exception as e:
+            print("❌ DB 연결 반환 오류:", e)
+            try:
+                conn.close()
+            except:
+                pass
     else:
         conn.close()
 
@@ -347,9 +357,6 @@ def insert_apt_sale_trade(trade):
     finally:
         cur.close()
         release_pg_connection(conn)
-
-def release_pg_connection(conn):
-    conn.close()
 
 # ✅ 아파트 전월세 거래 저장
 def insert_apt_rent_trade(trade):
@@ -907,21 +914,32 @@ def get_rent_sizes_from_db(region, sigungu, apt_name):
 
 # 🔍 조회 로그 저장
 def insert_search_log(search_type, region=None, sigungu=None, dong=None, apt_name=None, size=None):
-    conn = get_pg_connection()
-    cur = conn.cursor()
+    conn = None
+    cur = None
 
-    cur.execute("""
-        INSERT INTO search_logs (
+    try:
+        conn = get_pg_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            INSERT INTO search_logs (
+                search_type, region, sigungu, dong, apt_name, size
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
             search_type, region, sigungu, dong, apt_name, size
-        ) VALUES (%s, %s, %s, %s, %s, %s)
-    """, (
-        search_type, region, sigungu, dong, apt_name, size
-    ))
+        ))
 
-    conn.commit()
+        conn.commit()
 
-    cur.close()
-    conn.close()
+    except Exception as e:
+        print("❌ 검색로그 저장 실패:", e)
+
+    finally:
+        if cur:
+            cur.close()
+
+        if conn:
+            release_pg_connection(conn)
 
 def get_analysis_cache_from_db(cache_key):
     conn = get_pg_connection()
