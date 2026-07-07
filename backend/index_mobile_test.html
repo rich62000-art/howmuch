@@ -12107,6 +12107,10 @@ if (sidoSelect && sigunguSelect) {
 
     // 시군구 변경
     sidoSelect.addEventListener("change", function () {
+
+        const sigunguTotalStart = performance.now();
+        console.log("⏱️ [FRONT] /sigungu 시작");
+
         sidoSelect.classList.toggle(
             "valid",
             sidoSelect.value !== ""
@@ -12155,10 +12159,29 @@ if (sidoSelect && sigunguSelect) {
             return;
         }
 
+        const sigunguFetchStart = performance.now();
+
         fetch(
             `/sigungu?sido=${encodeURIComponent(selectedSido)}&type=${encodeURIComponent(selectedPropertyType)}`
         )
-            .then(res => res.json())
+            .then(res => {
+                console.log(
+                    "⏱️ [FRONT] /sigungu fetch 응답:",
+                    Math.round(performance.now() - sigunguFetchStart),
+                    "ms"
+                );
+
+                const sigunguJsonStart = performance.now();
+
+                return res.json().then(data => {
+                    console.log(
+                        "⏱️ [FRONT] /sigungu JSON 파싱:",
+                        Math.round(performance.now() - sigunguJsonStart),
+                        "ms"
+                    );
+                    return data;
+                });
+            })
             .then(data => {
 
                 sigunguSelect.innerHTML =
@@ -12291,6 +12314,11 @@ if (sidoSelect && sigunguSelect) {
                     });
 
                 }
+                console.log(
+                    "⏱️ [FRONT] /sigungu 전체:",
+                    Math.round(performance.now() - sigunguTotalStart),
+                    "ms"
+                );
 
             })
 
