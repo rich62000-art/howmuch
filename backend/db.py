@@ -17,9 +17,8 @@ DB_CACHE = {}
 CACHE_TTL = 3600
 pg_pool = None
 
-
 def get_pg_connection():
-    return psycopg2.connect(**PG_CONFIG)
+    global pg_pool
 
     if pg_pool is None:
         pg_pool = SimpleConnectionPool(
@@ -31,10 +30,12 @@ def get_pg_connection():
     return pg_pool.getconn()
 
 def release_pg_connection(conn):
-    conn.close()
+    global pg_pool
 
     if pg_pool:
         pg_pool.putconn(conn)
+    else:
+        conn.close()
 
 
 def get_connection():
