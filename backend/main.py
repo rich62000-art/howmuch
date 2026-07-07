@@ -751,50 +751,16 @@ def fetch_presale_items(region: str, months_count: int = 6):
 @app.get("/dongs")
 def get_dongs(region: str, type: str = "apt"):
 
+    start_time = time.time()
+    print("⏱️ /dongs 시작:", region, type)
+
     parts = region.split()
 
     if len(parts) >= 2:
         db_region = parts[0]
         db_sigungu = " ".join(parts[1:])
 
-        print("✅ /dongs 요청 region:", region, "type:", type)
-        print("✅ db_region:", db_region)
-        print("✅ db_sigungu:", db_sigungu)
-        # ✅ 부천시 행정구역 예외 처리
-        if db_region == "경기도" and db_sigungu == "부천시":
-            print("✅ 부천시 예외 처리 진입")
-            print("✅ 부천 동 목록 개수:", len(db_dongs))
-            print("✅ 부천 동 목록:", db_dongs[:20])
-            bucheon_sigungu_list = [
-                "부천시 원미구",
-                "부천시 소사구",
-                "부천시 오정구"
-            ]
-
-            all_dongs = []
-
-            for sigungu_name in bucheon_sigungu_list:
-                if type == "presale":
-                    all_dongs.extend(get_presale_dongs_from_db(db_region, sigungu_name))
-                elif type == "rent":
-                    all_dongs.extend(get_rent_dongs_from_db(db_region, sigungu_name))
-                else:
-                    all_dongs.extend(get_dongs_from_db(db_region, sigungu_name))
-
-            db_dongs = sorted(list(set(all_dongs)))
-
-            insert_search_log(
-                search_type="dong",
-                region=db_region,
-                sigungu=db_sigungu
-            )
-
-            return {
-                "동목록": db_dongs,
-                "dongs": db_dongs,
-                "동리목록": db_dongs
-            }
-
+        
         # ✅ 거래 유형별 동 목록 DB 조회
         # apt      : 아파트 매매
         # presale  : 분양권
@@ -814,12 +780,14 @@ def get_dongs(region: str, type: str = "apt"):
             sigungu=db_sigungu
         )
 
+        print("⏱️ /dongs 완료:", round(time.time() - start_time, 3), "초", "개수:", len(db_dongs))
         return {
             "동목록": db_dongs,
             "dongs": db_dongs,
             "동리목록": db_dongs
         }
-
+    
+    
     return {
         "동목록": [],
         "dongs": [],

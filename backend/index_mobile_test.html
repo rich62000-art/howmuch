@@ -12494,6 +12494,9 @@ document.getElementById("dongSelect").addEventListener("change", function () {
 // 동 조회 함수
 async function loadDongs(region) {
 
+    const dongTotalStart = performance.now();
+    console.log("⏱️ [FRONT] loadDongs 시작:", region, selectedPropertyType);
+
     if (!region) {
         dongSelect.innerHTML = '<option value="">동을 선택 하세요</option>';
         return;
@@ -12504,7 +12507,22 @@ async function loadDongs(region) {
 
     if (dongCache[dongCacheKey]) {
         const cachedDongs = dongCache[dongCacheKey];
+
+        const cacheRenderStart = performance.now();
         renderDongs(cachedDongs);
+
+        console.log(
+            "⚡ [FRONT] /dongs 캐시 렌더:",
+            Math.round(performance.now() - cacheRenderStart),
+            "ms"
+        );
+
+        console.log(
+            "⏱️ [FRONT] loadDongs 전체(캐시):",
+            Math.round(performance.now() - dongTotalStart),
+            "ms"
+        );
+
         return;
     }
 
@@ -12540,6 +12558,10 @@ async function loadDongs(region) {
     dongFetchController = new AbortController();
     
     try {
+
+        const fetchStart = performance.now();
+        console.log("⏱️ [FRONT] /dongs fetch 시작");
+
         const res = await fetch(
             `/dongs?region=${encodeURIComponent(region)}&type=${encodeURIComponent(selectedPropertyType)}`,
             {
@@ -12547,11 +12569,25 @@ async function loadDongs(region) {
             }
         );
 
+        console.log(
+            "⏱️ [FRONT] /dongs fetch 응답:",
+            Math.round(performance.now() - fetchStart),
+            "ms"
+        );
+
         if (!res.ok) {
             throw new Error("동 조회 서버 오류: " + res.status);
         }
 
+        const jsonStart = performance.now()
         const data = await res.json();
+
+        console.log(
+            "⏱️ [FRONT] /dongs JSON 파싱:",
+            Math.round(performance.now() - jsonStart),
+            "ms"
+        );
+
         if (requestSeq !== dongRequestSeq) {
             console.log("⛔ 오래된 동/리 응답 무시:", region);
             return;
@@ -12602,8 +12638,22 @@ async function loadDongs(region) {
         isDongListLoadingV3 = false;
         isDongSelectedV3 = false;
 
-        renderDongs(dongs);
+        const renderStart = performance.now();
 
+        renderDongs(dongs);
+        renderDongV3();
+
+        console.log(
+            "⏱️ [FRONT] 동 목록 renderDongs:",
+            Math.round(performance.now() - renderStart),
+            "ms"
+        );
+
+        console.log(
+            "⏱️ [FRONT] loadDongs 전체:",
+            Math.round(performance.now() - dongTotalStart),
+            "ms"
+        );
         
     } catch (e) {
         if (e.name === "AbortError") {
@@ -12762,6 +12812,9 @@ document.getElementById("aptInput").addEventListener("input", function () {
  */
 function fetchApts(region, keyword = "") {
 
+    const aptTotalStart = performance.now();
+    console.log("⏱️ [FRONT] fetchApts 시작:", region, keyword, selectedPropertyType);
+
     // ===== 동 선택값 확인 =====
     const dongSelect = document.getElementById("dongSelect");
 
@@ -12816,6 +12869,10 @@ function fetchApts(region, keyword = "") {
     );
 
     // ===== 단지 목록 API 요청 =====
+
+    const aptFetchStart = performance.now();
+    console.log("⏱️ [FRONT] /apts fetch 시작");
+
     fetch(
         "/apts?region=" +
         encodeURIComponent(region)
@@ -12831,19 +12888,56 @@ function fetchApts(region, keyword = "") {
     )
     .then(res => {
 
+        console.log(
+            "⏱️ [FRONT] /apts fetch 응답:",
+            Math.round(performance.now() - aptFetchStart),
+            "ms"
+        );
+
         // ===== 응답 상태 확인 =====
         if (!res.ok) {
             throw new Error("서버 응답 오류: " + res.status);
         }
-        return res.json();
+
+        const aptJsonStart = performance.now();
+
+        return res.json().then(data => {
+            console.log(
+                "⏱️ [FRONT] /apts JSON 파싱:",
+                Math.round(performance.now() - aptJsonStart),
+                "ms"
+            );
+
+            return data;
+        });
     })
     .then(data => {
 
         // ===== 검색 결과 렌더링 =====
+                
         const result = data.검색결과 || [];
+
+        const aptRenderStart = performance.now();
+
         filterApts(result, keyword || "");
 
+        console.log(
+            "⏱️ [FRONT] 아파트 filterApts 렌더:",
+            Math.round(performance.now() - aptRenderStart),
+            "ms",
+            "개수:",
+            result.length
+        );
+
+        console.log(
+            "⏱️ [FRONT] fetchApts 전체:",
+            Math.round(performance.now() - aptTotalStart),
+            "ms"
+        );
+
         listEl.style.display = "block";
+
+
         listEl.style.visibility = "visible";
         listEl.style.opacity = "1";
     })
