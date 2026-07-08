@@ -26,7 +26,9 @@ from db import (
     # get_pg_connection,
 
     get_apt_sigungu_list_from_db, get_presale_sigungu_list_from_db,
-    get_rent_sigungu_list_from_db
+    get_rent_sigungu_list_from_db,
+
+    get_pg_connection, release_pg_connection
 )
 from fastapi.staticfiles import StaticFiles
 from difflib import SequenceMatcher
@@ -2584,6 +2586,52 @@ def admin_recent_analysis(pw: str = ""):
         "최근분석": get_recent_analysis()
     }
 
+def get_latest_collect_log():
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                status,
+                started_at,
+                ended_at,
+                success_count,
+                fail_count,
+                last_sido,
+                last_sigungu,
+                last_lawd_cd,
+                error_message
+            FROM collect_logs
+            ORDER BY id DESC
+            LIMIT 1
+        """)
+
+        row = cur.fetchone()
+
+        if not row:
+            return None
+
+        return {
+            "status": row[0],
+            "started_at": row[1],
+            "ended_at": row[2],
+            "success_count": row[3],
+            "fail_count": row[4],
+            "last_sido": row[5],
+            "last_sigungu": row[6],
+            "last_lawd_cd": row[7],
+            "error_message": row[8],
+        }
+
+    except Exception as e:
+        print("자동수집 로그 조회 실패:", e)
+        return None
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
+
 @app.get("/admin", response_class=HTMLResponse)
 def admin_page(pw: str = ""):
 
@@ -2600,6 +2648,46 @@ def admin_page(pw: str = ""):
     popular_apts = get_popular_apts()
     recent_analysis = get_recent_analysis()
     popular_regions = get_popular_regions()
+    latest_collect_log = get_latest_collect_log()
+
+    if latest_collect_log:
+        collect_status = latest_collect_log["status"]
+
+        if collect_status == "success":
+            collect_status_text = "성공 ✅"
+        elif collect_status == "failed":
+            collect_status_text = "실패 ❌"
+        elif collect_status == "running":
+            collect_status_text = "진행중 🔄"
+        else:
+            collect_status_text = collect_status
+    else:
+        collect_status_text = "-"
+
+    if latest_collect_log:
+        collect_started_at = latest_collect_log["started_at"].strftime("%Y-%m-%d %H:%M") if latest_collect_log["started_at"] else "-"
+        collect_ended_at = latest_collect_log["ended_at"].strftime("%Y-%m-%d %H:%M") if latest_collect_log["ended_at"] else "진행 중"
+
+        if latest_collect_log["started_at"] and latest_collect_log["ended_at"]:
+            elapsed = latest_collect_log["ended_at"] - latest_collect_log["started_at"]
+            total_seconds = int(elapsed.total_seconds())
+            minutes = total_seconds // 60
+            seconds = total_seconds % 60
+            collect_elapsed_time = f"{minutes}분 {seconds}초"
+        else:
+            collect_elapsed_time = "-"
+
+        collect_last_region = (
+            f'{latest_collect_log["last_sido"]} {latest_collect_log["last_sigungu"]}'
+            if latest_collect_log["last_sido"] and latest_collect_log["last_sigungu"]
+            else "-"
+        )
+        collect_error = latest_collect_log["error_message"] if latest_collect_log["error_message"] else "-"
+    else:
+        collect_started_at = "-"
+        collect_ended_at = "-"
+        collect_last_region = "-"
+        collect_error = "-"
 
     return f"""
     <html>
@@ -2643,6 +2731,27 @@ def admin_page(pw: str = ""):
     </head>
     <body>
         <h1>📊 얼마일까 관리자</h1>
+
+        <div class="card">
+            <h2>🤖 자동수집 현황</h2>
+
+            <p><b>상태 :</b> {collect_status_text}</p>
+
+            <p><b>시작 :</b> {collect_started_at}</p>
+
+            <p><b>종료 :</b> {collect_ended_at}</p>
+
+            <p><b>소요시간 :</b> {collect_elapsed_time}</p>
+
+            <p><b>완료 지역 :</b> {latest_collect_log["success_count"] if latest_collect_log else 0}</p>
+
+            <p><b>실패 건수:</b> {latest_collect_log["fail_count"] if latest_collect_log else 0}</p>
+
+            <p><b>마지막 지역 :</b> {collect_last_region}</p>
+
+            <p><b>오류 :</b> {collect_error}</p>
+
+        </div>
 
         <div class="card">
             <h2>오늘 현황</h2>

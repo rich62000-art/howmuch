@@ -1340,46 +1340,52 @@ def get_apt_sigungu_list_from_db(region):
     return result
     
 def get_presale_sigungu_list_from_db(region):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
     try:
-        res = supabase.table("presale_list") \
-            .select("sigungu") \
-            .eq("region", region) \
-            .execute()
+        cur.execute("""
+            SELECT DISTINCT sigungu
+            FROM presale_list
+            WHERE region = %s
+              AND sigungu IS NOT NULL
+            ORDER BY sigungu
+        """, (region,))
 
-        rows = res.data or []
-
-        result = sorted(list(set(
-            row.get("sigungu")
-            for row in rows
-            if row.get("sigungu")
-        )))
-
-        return result
+        rows = cur.fetchall()
+        return [row[0] for row in rows]
 
     except Exception as e:
         print("❌ get_presale_sigungu_list_from_db 오류:", e)
         return []
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
     
 def get_rent_sigungu_list_from_db(region):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
     try:
-        res = supabase.table("rent_list") \
-            .select("sigungu") \
-            .eq("region", region) \
-            .execute()
+        cur.execute("""
+            SELECT DISTINCT sigungu
+            FROM rent_list
+            WHERE region = %s
+              AND sigungu IS NOT NULL
+            ORDER BY sigungu
+        """, (region,))
 
-        rows = res.data or []
-
-        result = sorted(list(set(
-            row.get("sigungu")
-            for row in rows
-            if row.get("sigungu")
-        )))
-
-        return result
+        rows = cur.fetchall()
+        return [row[0] for row in rows]
 
     except Exception as e:
         print("❌ get_rent_sigungu_list_from_db 오류:", e)
         return []
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
     
 def rebuild_apt_sale_list():
     conn = get_pg_connection()
