@@ -10214,6 +10214,14 @@ const CONFIG = {
 
 };
 
+const DEBUG = false;
+
+function debugLog(...args) {
+    if (DEBUG) {
+        console.log(...args);
+    }
+}
+
 function showToast(message) {
 
     const toast = document.getElementById("toastMessage");
@@ -12345,6 +12353,7 @@ sigunguSelect.addEventListener("change", function () {
 // 🔥 캐시
 let sigunguCache = {};
 let aptCache = {};
+let sizeCache = {};
 let aptTimer = null;
 let aptFetchController = null;
 let dongCache = {};
@@ -12809,14 +12818,14 @@ document.getElementById("aptInput").addEventListener("input", function () {
 function fetchApts(region, keyword = "") {
 
     const aptTotalStart = performance.now();
-    console.log("⏱️ [FRONT] fetchApts 시작:", region, keyword, selectedPropertyType);
+    debugLog("⏱️ [FRONT] fetchApts 시작:", region, keyword, selectedPropertyType);
 
     // ===== 동 선택값 확인 =====
     const dongSelect = document.getElementById("dongSelect");
 
-    console.log("🚀 fetchApts 호출됨");
-    console.log("region:", region);
-    console.log("dong:", dongSelect?.value);
+    debugLog("🚀 fetchApts 호출됨");
+    debugLog("region:", region);
+    debugLog("dong:", dongSelect?.value);
 
     if (!dongSelect || !dongSelect.value) {
         return;
@@ -13075,6 +13084,15 @@ function filterApts(list, keyword) {
                 sizeSelect.innerHTML = '<option value="">🔍 검색중...</option>';
             }
 
+            // ===== 평형 캐시 확인 =====
+            const sizeCacheKey = `${selectedPropertyType}:${region}:${realAptName}`;
+
+            if (sizeCache[sizeCacheKey]) {
+                console.log("✅ 면적 캐시 사용:", sizeCacheKey);
+                showSizes(sizeCache[sizeCacheKey]);
+                return;
+            }
+
             // ===== 평형 목록 API 요청 =====
             fetch(
                 "/sizes?region=" +
@@ -13091,6 +13109,7 @@ function filterApts(list, keyword) {
                 return res.json();
             })
             .then(data => {
+                sizeCache[sizeCacheKey] = data;
                 showSizes(data);
             })
             .catch(err => {
