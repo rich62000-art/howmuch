@@ -12126,7 +12126,7 @@ if (sidoSelect && sigunguSelect) {
 
         if (!selectedSido) {
             sigunguSelect.innerHTML =
-                '<option value="">🏙️ 시/군/구 선택</option>';
+                '<option value="">시/군/구 선택</option>';
             sigunguSelect.style.color = "#6b7280";
             return;
         }
@@ -12159,6 +12159,14 @@ if (sidoSelect && sigunguSelect) {
             return;
         }
 
+        const sigunguCacheKey = `${selectedPropertyType}:${selectedSido}`;
+
+        if (sigunguCache[sigunguCacheKey]) {
+            console.log("✅ 시군구 캐시 사용:", sigunguCacheKey);
+            renderSigunguList(sigunguCache[sigunguCacheKey], sigunguTotalStart);
+            return;
+        }
+
         const sigunguFetchStart = performance.now();
 
         fetch(
@@ -12184,141 +12192,9 @@ if (sidoSelect && sigunguSelect) {
             })
             .then(data => {
 
-                sigunguSelect.innerHTML =
-                    '<option value="">🏙️ 시/군/구 선택</option>';
+                sigunguCache[sigunguCacheKey] = data;
 
-                const sigunguList = document.getElementById("sigunguList");
-
-                if (!sigunguList) {
-                    console.log("❌ sigunguList 없음");
-                    return;
-                }
-
-                // ✅ 카드 안에 있는 리스트를 body로 이동시켜 02, 03번 카드 위에 뜨게 함
-                if (sigunguList.parentElement !== document.body) {
-                    document.body.appendChild(sigunguList);
-                }
-
-                sigunguList.innerHTML = "";
-
-                (data.검색결과 || []).forEach(sigungu => {
-
-                    const option = document.createElement("option");
-                    option.value = sigungu;
-                    option.textContent = sigungu;
-                    sigunguSelect.appendChild(option);
-
-                    const div = document.createElement("div");
-                    div.className = "item";
-                    div.innerText = sigungu;
-
-                    div.onclick = function () {
-                        sigunguSelect.value = sigungu;
-
-                        if (sigunguList) {
-                            sigunguList.innerHTML = "";
-                            sigunguList.style.display = "none";
-                        }
-
-                        sigunguSelect.dispatchEvent(new Event("change"));
-                    };
-
-                    if (sigunguList) {
-                        sigunguList.appendChild(div);
-                    }
-            
-                });
-
-                if (sigunguList) {
-                    const rect = sigunguSelect.getBoundingClientRect();
-
-                    sigunguList.style.left = (rect.left + window.scrollX) + "px";
-                    sigunguList.style.top = (rect.bottom + window.scrollY + 4) + "px";
-                    sigunguList.style.width = rect.width + "px";
-
-                    sigunguList.style.display = "none";
-                    sigunguList.style.visibility = "hidden";
-                    sigunguList.style.opacity = "0";
-                }
-                // ===== V3 UI =====
-                const grid = document.getElementById("regionGridV3");
-
-                if (grid) {
-
-                    // 기존 리스트 대신 새 UI로 교체
-                    grid.innerHTML = "";
-
-                    (data.검색결과 || []).forEach(sigungu => {
-
-                        const btn = document.createElement("div");
-
-                        btn.className = "region-option-v3";
-                        btn.innerText = sigungu;
-
-                        btn.style.cssText = `
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            height:42px;
-                            margin:0 0 8px 0;
-                            padding:0 10px;
-                            background:#eef6ff;
-                            border:1px solid #bfdbfe;
-                            border-radius:10px;
-                            color:#0f172a;
-                            font-size:14px;
-                            font-weight:800;
-                            cursor:pointer;
-                            user-select:none;
-                        `;
-                        btn.onclick = function () {
-                            resetAptAndSizeOnRegionChange();
-
-                            document.getElementById("pathSigungu").innerText = sigungu;
-                            document.getElementById("pathDong").innerText = "읍·면·동 선택";
-
-                            document.getElementById("pathSigunguMain").innerText = sigungu;
-                            document.getElementById("pathDongMain").innerText = "읍·면·동 선택";
-
-                            // ✅ 이전 동/리 상태 초기화
-                            dongSelect.innerHTML = '<option value="">동 선택</option>';
-                            dongSelect.value = "";
-
-                            const dongInput = document.getElementById("dongInput");
-                            if (dongInput) dongInput.value = "";
-
-                            const grid = document.getElementById("regionGridV3");
-                            if (grid) {
-                                grid.innerHTML = "";
-                            }
-
-                            sigunguSelect.value = sigungu;
-
-                            const regionInput = document.getElementById("regionInput");
-                            if (regionInput) {
-                                regionInput.value = `${sidoSelect.value} ${sigungu}`;
-                            }
-
-                            window.v3WaitingDongList = true;
-                            isDongListLoadingV3 = true;
-                            isDongSelectedV3 = false;
-
-                            showRegionLoadingV3("동/리 불러오는 중...");
-
-                            // ✅ change 이벤트 의존하지 말고 직접 호출
-                            loadDongs(sidoSelect.value + " " + sigungu);
-                        };
-
-                        grid.appendChild(btn);
-
-                    });
-
-                }
-                console.log(
-                    "⏱️ [FRONT] /sigungu 전체:",
-                    Math.round(performance.now() - sigunguTotalStart),
-                    "ms"
-                );
+                renderSigunguList(data, sigunguTotalStart);
 
             })
 
@@ -12334,7 +12210,97 @@ if (sidoSelect && sigunguSelect) {
     });
 }
 
+function renderSigunguList(data, sigunguTotalStart) {
 
+    sigunguSelect.innerHTML =
+        '<option value="">시/군/구 선택</option>';
+
+    const sigunguArray = Array.isArray(data)
+        ? data
+        : (data.검색결과 || []);
+
+    console.log("✅ 시군구 렌더링 데이터:", sigunguArray);
+
+    sigunguArray.forEach(sigungu => {
+        const option = document.createElement("option");
+        option.value = sigungu;
+        option.textContent = sigungu;
+        sigunguSelect.appendChild(option);
+    });
+
+    // ===== V3 UI =====
+    const grid = document.getElementById("regionGridV3");
+
+    if (grid) {
+        grid.innerHTML = "";
+
+        sigunguArray.forEach(sigungu => {
+
+            const btn = document.createElement("div");
+
+            btn.className = "region-option-v3";
+            btn.innerText = sigungu;
+
+            btn.style.cssText = `
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                height:42px;
+                margin:0 0 8px 0;
+                padding:0 10px;
+                background:#eef6ff;
+                border:1px solid #bfdbfe;
+                border-radius:10px;
+                color:#0f172a;
+                font-size:14px;
+                font-weight:800;
+                cursor:pointer;
+                user-select:none;
+            `;
+
+            btn.onclick = function () {
+                resetAptAndSizeOnRegionChange();
+
+                document.getElementById("pathSigungu").innerText = sigungu;
+                document.getElementById("pathDong").innerText = "읍·면·동 선택";
+
+                document.getElementById("pathSigunguMain").innerText = sigungu;
+                document.getElementById("pathDongMain").innerText = "읍·면·동 선택";
+
+                dongSelect.innerHTML = '<option value="">동 선택</option>';
+                dongSelect.value = "";
+
+                const dongInput = document.getElementById("dongInput");
+                if (dongInput) dongInput.value = "";
+
+                grid.innerHTML = "";
+
+                sigunguSelect.value = sigungu;
+
+                const regionInput = document.getElementById("regionInput");
+                if (regionInput) {
+                    regionInput.value = `${sidoSelect.value} ${sigungu}`;
+                }
+
+                window.v3WaitingDongList = true;
+                isDongListLoadingV3 = true;
+                isDongSelectedV3 = false;
+
+                showRegionLoadingV3("동/리 불러오는 중...");
+
+                loadDongs(sidoSelect.value + " " + sigungu);
+            };
+
+            grid.appendChild(btn);
+        });
+    }
+
+    console.log(
+        "🚀 시군구 전체 처리:",
+        Math.round(performance.now() - sigunguTotalStart),
+        "ms"
+    );
+}
 
 sigunguSelect.addEventListener("change", function () {
     
@@ -12377,6 +12343,7 @@ sigunguSelect.addEventListener("change", function () {
 });
 
 // 🔥 캐시
+let sigunguCache = {};
 let aptCache = {};
 let aptTimer = null;
 let aptFetchController = null;
@@ -12538,6 +12505,7 @@ async function loadDongs(region) {
 
         const cacheRenderStart = performance.now();
         renderDongs(cachedDongs);
+        renderDongV3();
 
         console.log(
             "⚡ [FRONT] /dongs 캐시 렌더:",
@@ -12871,6 +12839,28 @@ function fetchApts(region, keyword = "") {
         listEl.innerHTML = "";
         return;
     }
+
+    if (aptCache[cacheKey]) {
+        console.log("✅ 단지 캐시 사용:", cacheKey);
+
+        const aptRenderStart = performance.now();
+
+        filterApts(aptCache[cacheKey], keyword || "");
+
+        console.log(
+            "⚡ [FRONT] /apts 캐시 렌더:",
+            Math.round(performance.now() - aptRenderStart),
+            "ms",
+            "개수:",
+            aptCache[cacheKey].length
+        );
+
+        listEl.style.display = "block";
+        listEl.style.visibility = "visible";
+        listEl.style.opacity = "1";
+
+        return;
+    }
   
     // ===== 로딩 표시 =====
     listEl.innerHTML = "<div class='item loading-text'>🔍 아파트 검색중.</div>";
@@ -12944,6 +12934,8 @@ function fetchApts(region, keyword = "") {
         // ===== 검색 결과 렌더링 =====
                 
         const result = data.검색결과 || [];
+
+        aptCache[cacheKey] = result;
 
         const aptRenderStart = performance.now();
 
