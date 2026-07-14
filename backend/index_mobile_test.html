@@ -91,7 +91,7 @@ h2 {
     background:
         linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,251,255,0.92) 100%);
 
-    border: 1px solid rgba(219,234,254,0.9);
+    border: 1px solid rgba(253, 147, 133, 0.781);
 
     border-radius: 30px;
 
@@ -1622,7 +1622,7 @@ body {
 
 /* 상단 배지 */
 .hero-badge {
-    height: 36px;
+     height: 36px;
     padding: 0 16px;
 
     background: rgba(37, 99, 235, 0.10);
@@ -1631,13 +1631,6 @@ body {
     margin-bottom: 18px;
 
     box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
-
-     /* 글자 상하·좌우 중앙 정렬 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    line-height: 1;
 }
 
 /* 메인 타이틀 */
@@ -9384,34 +9377,33 @@ body {
 
 /* ===== 메인 지역 경로: 네이버식 텍스트 버튼 ===== */
 .region-path-main-v3 {
-    margin-top: 12px;
+    margin-top: 10px;
     padding: 0;
     background: transparent;
     border: none;
 
     display: flex;
+    justify-content: center;
     align-items: center;
-    justify-content: center;   /* ⭐ 추가 */
-    width: 100%;               /* ⭐ 추가 */
     gap: 6px;
 
     font-size: 16px;
     font-weight: 800;
-    color: #2563eb;
+    color: #7db8ff;
 }
 
 .region-path-click-v3 {
     cursor: pointer !important;
     user-select: none !important;
-    color: #2563eb;
+    color: #7db8ff;
 }
 
 .region-path-click-v3:active {
-    color: #1d4ed8;
+    color: #2563eb;
 }
 
 .path-arrow-v3 {
-    color: #60a5fa;
+    color: #a5d8ff;
     font-weight: 700;
 }
 
@@ -9454,6 +9446,8 @@ body {
 .region-path-v3 {
     display: none !important;
 }
+
+
 
 #regionGridV3 .region-option-v3 {
 
@@ -9528,6 +9522,15 @@ body {
     padding-bottom: 90px !important;
 }
 
+#pathSidoMain,
+#pathSigunguMain,
+#pathDongMain {
+    color: #7db8ff !important;
+}
+
+#regionPathMainV3 .path-arrow-v3 {
+    color: #a5d8ff !important;
+}
 </style>
 
 </head>
@@ -9691,7 +9694,7 @@ body {
 
         </div>
 
-        <div class="region-select-list region-select-row-3" style="display:none; !important; flex-direction:row !important; flex-wrap:nowrap !important; gap:6px !important; width:100% !important;">
+        <div class="region-select-list region-select-row-3" style="display:none !important; flex-direction:row !important; flex-wrap:nowrap !important; gap:6px !important; width:100% !important;">
 
             <div class="region-select-item inline-region-item" style="flex:1 1 0 !important; width:0 !important; min-width:0 !important;">
                 <div class="region-select-box">
