@@ -1622,7 +1622,7 @@ body {
 
 /* 상단 배지 */
 .hero-badge {
-     height: 36px;
+    height: 36px;
     padding: 0 16px;
 
     background: rgba(37, 99, 235, 0.10);
@@ -1631,6 +1631,13 @@ body {
     margin-bottom: 18px;
 
     box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+
+     /* 글자 상하·좌우 중앙 정렬 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    line-height: 1;
 }
 
 /* 메인 타이틀 */
@@ -9673,13 +9680,13 @@ body {
             <span class="path-arrow-v3">›</span>
 
             <span id="pathSigunguMain" class="region-path-click-v3" onclick="openRegionSheetV3('sigungu')">
-                시·군·구
+                시/군/구
             </span>
 
             <span class="path-arrow-v3">›</span>
 
             <span id="pathDongMain" class="region-path-click-v3" onclick="openRegionSheetV3('dong')">
-                읍·면·동 선택
+                읍/면/동 선택
             </span>
 
         </div>
