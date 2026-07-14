@@ -8,12 +8,16 @@ from datetime import datetime
 
 from db import (
     insert_apt_sale_trade,
+    replace_apt_sale_trades_for_month,
+    replace_apt_rent_trades_for_month,
+    replace_presale_trades_for_month,
     insert_presale_trade,
     insert_apt_rent_trade,
     insert_region_code,
     create_tables,
     get_all_region_codes,
     rebuild_apt_sale_list,
+    replace_apt_rent_trades_for_month,
     clear_region_codes
 )
 
@@ -26,6 +30,110 @@ presale_url = "https://apis.data.go.kr/1613000/RTMSDataSvcSilvTrade/getRTMSDataS
 rent_url = "https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent"
 
 REGION_CODE_URL = "https://www.code.go.kr/etc/codeFullDown.do?codeseId=00002"
+
+# ==========================================================
+# ✅ 공공데이터 API 요청 공통 재시도 함수
+#
+# 목적
+#   - 일시적인 연결 지연, 타임아웃, 서버 오류 때문에
+#     전국 수집 전체가 즉시 중단되는 것을 방지
+#
+# 처리 방식
+#   1. 요청 실패 시 최대 3회까지 재시도
+#   2. 재시도할수록 대기 시간을 늘림
+#   3. 3회 모두 실패하면 예외를 발생시켜 수집을 중단
+#
+# 주의
+#   - 실패한 응답으로 기존 DB를 교체하지 않음
+#   - collect_progress를 통해 재실행 시 해당 지역부터 재개
+# ==========================================================
+def request_with_retry(
+    request_url,
+    params,
+    description,
+    timeout=30,
+    max_retries=3
+):
+    last_error = None
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.get(
+                request_url,
+                params=params,
+                timeout=timeout
+            )
+
+            # 정상 응답
+            if response.status_code == 200:
+                return response
+
+            last_error = RuntimeError(
+                f"{description} HTTP 오류: "
+                f"{response.status_code}"
+            )
+
+        except requests.exceptions.RequestException as e:
+            last_error = e
+
+        if attempt < max_retries:
+            wait_seconds = attempt * 2
+
+            print(
+                f"⚠️ {description} 요청 실패 "
+                f"({attempt}/{max_retries}) "
+                f"- {wait_seconds}초 후 재시도"
+            )
+
+            time.sleep(wait_seconds)
+
+    raise RuntimeError(
+        f"{description} 요청이 "
+        f"{max_retries}회 모두 실패했습니다: {last_error}"
+    )
+
+# ==========================================================
+# ✅ 공공데이터 XML 응답 공통 파싱
+#
+# 목적
+#   - 매매·전월세·분양권 함수에 반복되는
+#     XML 파싱과 totalCount 추출 코드를 공통화
+#
+# 반환값
+#   - root        : XML 루트 객체
+#   - page_items  : 현재 페이지의 거래 항목 목록
+#   - total_count : API가 알려준 전체 거래 건수
+#
+# 안전장치
+#   - XML 파싱 실패 시 예외 발생
+#   - totalCount 누락 또는 숫자 변환 실패 시 예외 발생
+# ==========================================================
+def parse_trade_xml(response_text, description):
+    try:
+        root = ET.fromstring(response_text)
+    except ET.ParseError as e:
+        raise RuntimeError(
+            f"{description} XML 파싱 실패: {e}"
+        ) from e
+
+    total_count_text = root.findtext(".//totalCount")
+
+    if total_count_text is None:
+        raise RuntimeError(
+            f"{description} API 응답에 totalCount가 없습니다."
+        )
+
+    try:
+        total_count = int(total_count_text)
+    except (TypeError, ValueError) as e:
+        raise RuntimeError(
+            f"{description} totalCount 변환 실패: "
+            f"{total_count_text}"
+        ) from e
+
+    page_items = root.findall(".//item")
+
+    return root, page_items, total_count
 
 # ✅ 법정동 코드 파일 다운로드
 def download_region_code_file():
@@ -56,179 +164,570 @@ def get_recent_months(count=12):
     return months
 
 
-def save_month_trades(lawd_cd, region, sigungu, deal_ymd):
-    params = {
-        "serviceKey": SERVICE_KEY,
-        "LAWD_CD": lawd_cd,
-        "DEAL_YMD": deal_ymd,
-        "numOfRows": 500,
-        "pageNo": 1
-    }
+# ==========================================================
+# ✅ 아파트 매매 월별 전체 페이지 수집 및 교체 저장
+#
+# 목적
+#   - 거래량이 500건을 초과하는 지역·월도 전부 수집
+#   - 모든 페이지를 정상 수집한 뒤 DB를 월 단위로 교체
+#
+# 처리 순서
+#   1. 첫 페이지에서 totalCount 확인
+#   2. 마지막 페이지까지 순차 수집
+#   3. 전체 거래 항목 파싱 및 검증
+#   4. 기존 지역·월 데이터를 최신 전체 응답으로 교체
+#
+# 안전장치
+#   - API 요청 또는 XML 파싱 실패 시 DB를 건드리지 않음
+#   - totalCount와 실제 수집 건수가 다르면 교체 중단
+#   - 삭제와 저장은 하나의 트랜잭션으로 처리
+# ==========================================================
+def save_month_trades(
+    lawd_cd,
+    region,
+    sigungu,
+    deal_ymd
+):
+    page_size = 500
+    page_no = 1
 
-    response = requests.get(url, params=params)
+    all_items = []
+    total_count = None
 
-    print(f"{sigungu} {deal_ymd} 응답:", response.status_code)
+    # ======================================================
+    # ① 매매 API 전체 페이지 수집
+    # ======================================================
+    while True:
+        params = {
+            "serviceKey": SERVICE_KEY,
+            "LAWD_CD": lawd_cd,
+            "DEAL_YMD": deal_ymd,
+            "numOfRows": page_size,
+            "pageNo": page_no
+        }
 
-    root = ET.fromstring(response.text)
-    items = root.findall(".//item")
+        response = request_with_retry(
+            request_url=url,
+            params=params,
+            description=(
+                f"{sigungu} 매매 {deal_ymd} "
+                f"{page_no}페이지"
+            ),
+            timeout=30,
+            max_retries=3
+        )
 
-    print(f"{sigungu} {deal_ymd} 거래 건수:", len(items))
+        print(
+            f"{sigungu} 매매 {deal_ymd} "
+            f"{page_no}페이지 응답:",
+            response.status_code
+        )
 
-    for item in items:
+        description = (
+            f"{sigungu} 매매 {deal_ymd} "
+            f"{page_no}페이지"
+        )
+
+        root, page_items, parsed_total_count = parse_trade_xml(
+            response.text,
+            description
+        )
+
+        if total_count is None:
+            total_count = parsed_total_count
+
+        all_items.extend(page_items)
+
+        print(
+            f"{sigungu} 매매 {deal_ymd} 수집 진행: "
+            f"{len(all_items)}/{total_count}건"
+        )
+
+        try:
+            root = ET.fromstring(response.text)
+        except ET.ParseError as e:
+            raise RuntimeError(
+                f"{sigungu} 매매 {deal_ymd} "
+                f"{page_no}페이지 XML 파싱 실패: {e}"
+            ) from e
+
+        if total_count is None:
+            total_count_text = root.findtext(".//totalCount")
+
+            if total_count_text is None:
+                raise RuntimeError(
+                    f"{sigungu} 매매 {deal_ymd} "
+                    "API 응답에 totalCount가 없습니다."
+                )
+
+            try:
+                total_count = int(total_count_text)
+            except (TypeError, ValueError) as e:
+                raise RuntimeError(
+                    f"{sigungu} 매매 {deal_ymd} "
+                    f"totalCount 변환 실패: {total_count_text}"
+                ) from e
+
+        
+        if len(all_items) >= total_count:
+            break
+
+        if not page_items:
+            raise RuntimeError(
+                f"{sigungu} 매매 {deal_ymd} "
+                f"{page_no}페이지가 비어 있어 "
+                f"전체 {total_count}건을 수집하지 못했습니다."
+            )
+
+        page_no += 1
+        time.sleep(0.1)
+
+    if len(all_items) != total_count:
+        raise RuntimeError(
+            f"{sigungu} 매매 {deal_ymd} 전체 건수 불일치: "
+            f"API {total_count}건 / 수집 {len(all_items)}건"
+        )
+
+    print(
+        f"{sigungu} 매매 {deal_ymd} "
+        f"전체 거래 건수: {total_count}"
+    )
+
+    # ======================================================
+    # ② 전체 응답을 DB 저장 형식으로 변환
+    # ======================================================
+    trades = []
+
+    for item in all_items:
         apt_name = item.findtext("aptNm", "").strip()
         dong = item.findtext("umdNm", "").strip()
 
-        exclu_use_ar = item.findtext("excluUseAr", "0").strip()
-        deal_amount = item.findtext("dealAmount", "0").replace(",", "").strip()
+        exclu_use_ar = item.findtext(
+            "excluUseAr",
+            "0"
+        ).strip()
 
-        deal_year = item.findtext("dealYear", "").strip()
-        deal_month = item.findtext("dealMonth", "").strip().zfill(2)
-        deal_day = item.findtext("dealDay", "").strip().zfill(2)
+        deal_amount = item.findtext(
+            "dealAmount",
+            "0"
+        ).replace(",", "").strip()
+
+        deal_year = item.findtext(
+            "dealYear",
+            ""
+        ).strip()
+
+        deal_month = item.findtext(
+            "dealMonth",
+            ""
+        ).strip().zfill(2)
+
+        deal_day = item.findtext(
+            "dealDay",
+            ""
+        ).strip().zfill(2)
 
         floor = item.findtext("floor", "0").strip()
 
-        trade = {
-            "region": region,
-            "sigungu": sigungu,
-            "dong": dong,
-            "apt_name": apt_name,
-            "size": float(exclu_use_ar),
-            "contract_date": f"{deal_year}-{deal_month}-{deal_day}",
-            "price": int(deal_amount),
-            "floor": int(floor),
-            "source_month": deal_ymd
-        }
+        if not apt_name or not deal_year or not deal_month or not deal_day:
+            raise RuntimeError(
+                f"{sigungu} 매매 {deal_ymd} "
+                "필수값이 없는 거래 항목이 발견됐습니다."
+            )
 
-        print("➡️ insert 호출 직전:", sigungu, dong, apt_name)
+        try:
+            trade = {
+                "region": region,
+                "sigungu": sigungu,
+                "dong": dong,
+                "apt_name": apt_name,
+                "size": float(exclu_use_ar or 0),
+                "contract_date": (
+                    f"{deal_year}-{deal_month}-{deal_day}"
+                ),
+                "price": int(deal_amount or 0),
+                "floor": int(floor or 0),
+                "source_month": deal_ymd
+            }
+        except (TypeError, ValueError) as e:
+            raise RuntimeError(
+                f"{sigungu} 매매 {deal_ymd} "
+                f"거래 항목 변환 실패: {apt_name}"
+            ) from e
 
-        insert_apt_sale_trade(trade)
+        trades.append(trade)
 
-        print("⬅️ insert 호출 직후:", sigungu, dong, apt_name)
+    # ======================================================
+    # ③ 전체 페이지 수집·검증 후 월 데이터 한 번만 교체
+    # ======================================================
+    replace_apt_sale_trades_for_month(
+        region=region,
+        sigungu=sigungu,
+        source_month=deal_ymd,
+        trades=trades
+    )
 
-
-# ✅ 분양권 월별 수집
+# ==========================================================
+# ✅ 분양권 월별 전체 페이지 수집 및 교체 저장
+#
+# 목적
+#   - 거래량이 1,000건을 초과하는 지역·월도 전부 수집
+#   - 모든 페이지를 정상 수집한 뒤 DB를 월 단위로 교체
+#
+# 처리 순서
+#   1. 첫 페이지에서 totalCount 확인
+#   2. 마지막 페이지까지 순차 수집
+#   3. 전체 거래 항목 파싱 및 검증
+#   4. 기존 지역·월 데이터를 최신 전체 응답으로 교체
+#
+# 안전장치
+#   - API 요청 또는 XML 파싱 실패 시 DB를 건드리지 않음
+#   - totalCount와 실제 수집 건수가 다르면 교체 중단
+#   - 삭제와 저장은 하나의 트랜잭션으로 처리
+# ==========================================================
 def save_month_presale_trades(
     lawd_cd,
     region,
     sigungu,
     deal_ymd
 ):
-    params = {
-        "serviceKey": SERVICE_KEY,
-        "LAWD_CD": lawd_cd,
-        "DEAL_YMD": deal_ymd,
-        "pageNo": 1,
-        "numOfRows": 1000
-    }
+    page_size = 1000
+    page_no = 1
 
-    response = requests.get(
-        presale_url,
-        params=params
-    )
+    all_items = []
+    total_count = None
+
+    # ======================================================
+    # ① 분양권 API 전체 페이지 수집
+    # ======================================================
+    while True:
+        params = {
+            "serviceKey": SERVICE_KEY,
+            "LAWD_CD": lawd_cd,
+            "DEAL_YMD": deal_ymd,
+            "pageNo": page_no,
+            "numOfRows": page_size
+        }
+
+        response = request_with_retry(
+            request_url=presale_url,
+            params=params,
+            description=(
+                f"{sigungu} 분양권 {deal_ymd} "
+                f"{page_no}페이지"
+            ),
+            timeout=30,
+            max_retries=3
+        )
+
+        print(
+            f"{sigungu} 분양권 {deal_ymd} "
+            f"{page_no}페이지 응답:",
+            response.status_code
+        )
+
+        description = (
+            f"{sigungu} 분양권 {deal_ymd} "
+            f"{page_no}페이지"
+        )
+
+        root, page_items, parsed_total_count = parse_trade_xml(
+            response.text,
+            description
+        )
+
+        if total_count is None:
+            total_count = parsed_total_count
+
+        all_items.extend(page_items)
+
+        print(
+            f"{sigungu} 분양권 {deal_ymd} 수집 진행: "
+            f"{len(all_items)}/{total_count}건"
+        )
+
+        if len(all_items) >= total_count:
+            break
+
+        if not page_items:
+            raise RuntimeError(
+                f"{sigungu} 분양권 {deal_ymd} "
+                f"{page_no}페이지가 비어 있어 "
+                f"전체 {total_count}건을 수집하지 못했습니다."
+            )
+
+        page_no += 1
+        time.sleep(0.1)
+
+    if len(all_items) != total_count:
+        raise RuntimeError(
+            f"{sigungu} 분양권 {deal_ymd} 전체 건수 불일치: "
+            f"API {total_count}건 / 수집 {len(all_items)}건"
+        )
 
     print(
-        f"{sigungu} 분양권 {deal_ymd} 응답:",
-        response.status_code
+        f"{sigungu} 분양권 {deal_ymd} "
+        f"전체 거래 건수: {total_count}"
     )
 
-    if response.status_code != 200:
-        return
-    
-    root = ET.fromstring(response.text)
-    items = root.findall(".//item")
+    # ======================================================
+    # ② 전체 응답을 DB 저장 형식으로 변환
+    # ======================================================
+    trades = []
 
-    print(f"{sigungu} 분양권 {deal_ymd} 거래 건수:", len(items))
-
-    for item in items:
+    for item in all_items:
         apt_name = item.findtext("aptNm", "").strip()
         dong = item.findtext("umdNm", "").strip()
 
-        exclu_use_ar = item.findtext("excluUseAr", "0").strip()
-        deal_amount = item.findtext("dealAmount", "0").replace(",", "").strip()
+        exclu_use_ar = item.findtext(
+            "excluUseAr",
+            "0"
+        ).strip()
 
-        deal_year = item.findtext("dealYear", "").strip()
-        deal_month = item.findtext("dealMonth", "").strip().zfill(2)
-        deal_day = item.findtext("dealDay", "").strip().zfill(2)
+        deal_amount = item.findtext(
+            "dealAmount",
+            "0"
+        ).replace(",", "").strip()
+
+        deal_year = item.findtext(
+            "dealYear",
+            ""
+        ).strip()
+
+        deal_month = item.findtext(
+            "dealMonth",
+            ""
+        ).strip().zfill(2)
+
+        deal_day = item.findtext(
+            "dealDay",
+            ""
+        ).strip().zfill(2)
 
         floor = item.findtext("floor", "0").strip()
 
-        trade = {
-            "region": region,
-            "sigungu": sigungu,
-            "dong": dong,
-            "apt_name": apt_name,
-            "size": float(exclu_use_ar),
-            "contract_date": f"{deal_year}-{deal_month}-{deal_day}",
-            "price": int(deal_amount),
-            "floor": int(floor),
-            "source_month": deal_ymd
-        }
+        if not apt_name or not deal_year or not deal_month or not deal_day:
+            raise RuntimeError(
+                f"{sigungu} 분양권 {deal_ymd} "
+                "필수값이 없는 거래 항목이 발견됐습니다."
+            )
 
-        insert_presale_trade(trade)
+        try:
+            trade = {
+                "region": region,
+                "sigungu": sigungu,
+                "dong": dong,
+                "apt_name": apt_name,
+                "size": float(exclu_use_ar or 0),
+                "contract_date": (
+                    f"{deal_year}-{deal_month}-{deal_day}"
+                ),
+                "price": int(deal_amount or 0),
+                "floor": int(floor or 0),
+                "source_month": deal_ymd
+            }
+        except (TypeError, ValueError) as e:
+            raise RuntimeError(
+                f"{sigungu} 분양권 {deal_ymd} "
+                f"거래 항목 변환 실패: {apt_name}"
+            ) from e
 
-# ✅ 아파트 전월세 월별 수집
+        trades.append(trade)
+
+    # ======================================================
+    # ③ 전체 페이지 수집·검증 후 월 데이터 한 번만 교체
+    # ======================================================
+    replace_presale_trades_for_month(
+        region=region,
+        sigungu=sigungu,
+        source_month=deal_ymd,
+        trades=trades
+    )
+
+# ==========================================================
+# ✅ 아파트 전월세 월별 전체 페이지 수집 및 교체 저장
+#
+# 목적
+#   - 거래량이 1,000건을 초과하는 지역·월도 전부 수집
+#   - 모든 페이지를 정상적으로 받은 뒤에만 DB 교체
+#
+# 처리 순서
+#   1. 첫 페이지에서 totalCount 확인
+#   2. 마지막 페이지까지 순차 수집
+#   3. 전체 항목 파싱 및 검증
+#   4. 기존 지역·월 데이터와 최신 전체 데이터를 트랜잭션으로 교체
+#
+# 안전장치
+#   - 페이지 요청·XML 파싱 실패 시 DB를 교체하지 않음
+#   - 전체 건수보다 적게 수집되면 오류로 중단
+# ==========================================================
 def save_month_rent_trades(
     lawd_cd,
     region,
     sigungu,
     deal_ymd
 ):
-    params = {
-        "serviceKey": SERVICE_KEY,
-        "LAWD_CD": lawd_cd,
-        "DEAL_YMD": deal_ymd,
-        "pageNo": 1,
-        "numOfRows": 1000
-    }
+    page_size = 1000
+    page_no = 1
 
-    try:
-        response = requests.get(
-            rent_url,
+    all_items = []
+    total_count = None
+
+    # ======================================================
+    # ① API 전체 페이지 수집
+    # ======================================================
+    while True:
+        params = {
+            "serviceKey": SERVICE_KEY,
+            "LAWD_CD": lawd_cd,
+            "DEAL_YMD": deal_ymd,
+            "pageNo": page_no,
+            "numOfRows": page_size
+        }
+
+        response = request_with_retry(
+            request_url=rent_url,
             params=params,
-            timeout=20
+            description=(
+                f"{sigungu} 전월세 {deal_ymd} "
+                f"{page_no}페이지"
+            ),
+            timeout=30,
+            max_retries=3
         )
-    except requests.exceptions.RequestException as e:
-        print(f"{sigungu} 전월세 {deal_ymd} 요청 실패:", e)
-        return
 
-    print(f"{sigungu} 전월세 {deal_ymd} 응답:", response.status_code)
+        print(
+            f"{sigungu} 전월세 {deal_ymd} "
+            f"{page_no}페이지 응답:",
+            response.status_code
+        )
 
-    if response.status_code != 200:
-        return
-    
-    root = ET.fromstring(response.text)
-    items = root.findall(".//item")
+        description = (
+            f"{sigungu} 전월세 {deal_ymd} "
+            f"{page_no}페이지"
+        )
 
-    print(f"{sigungu} 전월세 {deal_ymd} 거래 건수:", len(items))
+        root, page_items, parsed_total_count = parse_trade_xml(
+            response.text,
+            description
+        )
 
-    for item in items:
+        if total_count is None:
+            total_count = parsed_total_count
+
+        all_items.extend(page_items)
+
+        print(
+            f"{sigungu} 전월세 {deal_ymd} 수집 진행: "
+            f"{len(all_items)}/{total_count}건"
+        )
+
+        # 전체 데이터를 모두 받았으면 종료
+        if len(all_items) >= total_count:
+            break
+
+        # 전체 건수는 남았는데 페이지가 비어 있으면 불완전 응답
+        if not page_items:
+            raise RuntimeError(
+                f"{sigungu} 전월세 {deal_ymd} "
+                f"{page_no}페이지가 비어 있어 "
+                f"전체 {total_count}건을 수집하지 못했습니다."
+            )
+
+        page_no += 1
+        time.sleep(0.1)
+
+    # API 표시 건수와 실제 수집 건수가 다르면 DB를 건드리지 않음
+    if len(all_items) != total_count:
+        raise RuntimeError(
+            f"{sigungu} 전월세 {deal_ymd} 전체 건수 불일치: "
+            f"API {total_count}건 / 수집 {len(all_items)}건"
+        )
+
+    print(
+        f"{sigungu} 전월세 {deal_ymd} "
+        f"전체 거래 건수: {total_count}"
+    )
+
+    # ======================================================
+    # ② 전체 응답을 DB 저장 형식으로 변환
+    # ======================================================
+    trades = []
+
+    for item in all_items:
         apt_name = item.findtext("aptNm", "").strip()
         dong = item.findtext("umdNm", "").strip()
 
-        exclu_use_ar = item.findtext("excluUseAr", "0").strip()
-        deposit = item.findtext("deposit", "0").replace(",", "").strip()
-        monthly_rent = item.findtext("monthlyRent", "0").replace(",", "").strip()
+        exclu_use_ar = item.findtext(
+            "excluUseAr",
+            "0"
+        ).strip()
 
-        deal_year = item.findtext("dealYear", "").strip()
-        deal_month = item.findtext("dealMonth", "").strip().zfill(2)
-        deal_day = item.findtext("dealDay", "").strip().zfill(2)
+        deposit = item.findtext(
+            "deposit",
+            "0"
+        ).replace(",", "").strip()
+
+        monthly_rent = item.findtext(
+            "monthlyRent",
+            "0"
+        ).replace(",", "").strip()
+
+        deal_year = item.findtext(
+            "dealYear",
+            ""
+        ).strip()
+
+        deal_month = item.findtext(
+            "dealMonth",
+            ""
+        ).strip().zfill(2)
+
+        deal_day = item.findtext(
+            "dealDay",
+            ""
+        ).strip().zfill(2)
 
         floor = item.findtext("floor", "0").strip()
 
-        trade = {
-            "region": region,
-            "sigungu": sigungu,
-            "dong": dong,
-            "apt_name": apt_name,
-            "size": float(exclu_use_ar),
-            "contract_date": f"{deal_year}-{deal_month}-{deal_day}",
-            "deposit": int(deposit),
-            "monthly_rent": int(monthly_rent),
-            "floor": int(floor),
-            "source_month": deal_ymd
-        }
+        if not apt_name or not deal_year or not deal_month or not deal_day:
+            raise RuntimeError(
+                f"{sigungu} 전월세 {deal_ymd} "
+                "필수값이 없는 거래 항목이 발견됐습니다."
+            )
 
-        insert_apt_rent_trade(trade)
+        try:
+            trade = {
+                "region": region,
+                "sigungu": sigungu,
+                "dong": dong,
+                "apt_name": apt_name,
+                "size": float(exclu_use_ar or 0),
+                "contract_date": (
+                    f"{deal_year}-{deal_month}-{deal_day}"
+                ),
+                "deposit": int(deposit or 0),
+                "monthly_rent": int(monthly_rent or 0),
+                "floor": int(floor or 0),
+                "source_month": deal_ymd
+            }
+        except (TypeError, ValueError) as e:
+            raise RuntimeError(
+                f"{sigungu} 전월세 {deal_ymd} "
+                f"거래 항목 변환 실패: {apt_name}"
+            ) from e
+
+        trades.append(trade)
+
+    # ======================================================
+    # ③ 모든 페이지 수집·검증 완료 후 한 번만 DB 교체
+    # ======================================================
+    replace_apt_rent_trades_for_month(
+        region=region,
+        sigungu=sigungu,
+        source_month=deal_ymd,
+        trades=trades
+    )
 
 
 # ✅ 전국 시군구 코드 기본 저장
@@ -719,4 +1218,7 @@ if __name__ == "__main__":
 
     update_region_codes_from_file()
 
-    print("✅ region_codes 자동 갱신 후 전체 지역 수:", len(get_all_region_codes()))
+    print(
+        "✅ region_codes 자동 갱신 후 전체 지역 수:",
+        len(get_all_region_codes())
+    )

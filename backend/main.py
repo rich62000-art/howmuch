@@ -55,7 +55,7 @@ def favicon():
         media_type="image/png"
     )
 
-app.mount("/static", StaticFiles(directory="."), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # CORS
 
@@ -90,7 +90,13 @@ DEBUG = False
 ADMIN_PASSWORD = "리치1234"
 
 def normalize_region(text: str) -> str:
-    text = text.replace(" ", "")
+    """
+    지역명을 문자열 비교와 캐시 키에 사용하기 위한 정규화 함수.
+    region_alias 기반 DB 보정 함수와는 역할이 다르다.
+    """
+    text = (text or "").strip().replace(" ", "")
+
+    # 긴 명칭부터 먼저 제거해야 한다.
     text = text.replace("특별시", "")
     text = text.replace("광역시", "")
     text = text.replace("자치시", "")
@@ -112,6 +118,33 @@ def normalize_region(text: str) -> str:
         text = text.replace(full, short)
 
     return text
+
+def normalize_region_for_db(region):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT db_region
+            FROM region_alias
+            WHERE input_region = %s
+            LIMIT 1
+        """, (region,))
+
+        row = cur.fetchone()
+
+        if row and row[0]:
+            return row[0]
+
+        return region
+
+    except Exception as e:
+        print("지역 보정 조회 실패:", e)
+        return region
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
 
 # ✅ 아파트 매매 분석 엔진
 def analyze_apt_sale_engine(
@@ -1051,12 +1084,6 @@ def analyze_price(
     interior: str | None = None,
     type: str = "apt"
 ):
-    # ✅ 전월세 분석 분기
-    # type=rent 인 경우 매매/분양권 분석 로직을 타지 않고
-    # 전월세 전용 분석 엔진으로 바로 보낸다.
-    if type == "rent":
-        return analyze_rent_engine(region, apt_name, size)
-    
     def presale_fallback():
         fallback_price = user_price or 0
 
@@ -1108,7 +1135,6 @@ def analyze_price(
 
                 if isinstance(cached_data, dict) and cached_data:
                     return cached_data
-
             del analysis_cache[cache_key]
 
         else:
@@ -1121,8 +1147,13 @@ def analyze_price(
 
     if isinstance(db_cached_result, dict) and db_cached_result:
         return db_cached_result
+    
+    # ✅ 지역 처리 시스템 V3
+    # 행정구역 변경/별칭 지역을 DB 기준 지역명으로 보정
+    region = normalize_region_for_db(region)
         
     LAWD_CD = find_lawd_cd(region)
+    
     if not LAWD_CD:
         return {"결과": "지역 오류"}
 
@@ -1741,6 +1772,8 @@ def future_prediction(
     apt_name: str,
     size: str = ""
 ):
+    region = normalize_region_for_db(region)
+    
     try:
         parts = region.split()
 

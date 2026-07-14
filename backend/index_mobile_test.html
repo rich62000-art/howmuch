@@ -61,9 +61,6 @@
     line-height: 1.25 !important;
 }
 
-
-
-
 body {
     font-family: Arial, sans-serif;
     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
@@ -144,23 +141,6 @@ button {
 
 button:hover {
     background: #1558b0;
-}
-
-.list {
-    border: 1px solid #ccc;
-    background: white;
-    width: 100%;
-    max-width: 400px;
-    max-height: 180px;
-    overflow-y: auto;
-    margin-bottom: 10px;
-    border-radius: 8px;
-}
-
-.item {
-    padding: 8px 10px;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
 }
 
 .item:hover {
@@ -273,30 +253,6 @@ button:hover {
     body {
         padding: 12px;
         font-size: 16px;
-    }
-
-    .card {
-        width: 100%;
-
-        background:
-            linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,251,255,0.92) 100%);
-
-        border: 1px solid rgba(219,234,254,0.9);
-
-        border-radius: 30px;
-
-        padding: 24px 20px;
-
-        box-shadow:
-            0 24px 50px rgba(15,23,42,0.10),
-            0 10px 24px rgba(37,99,235,0.10);
-
-        backdrop-filter: blur(14px);
-
-        margin-bottom: 20px;
-
-        position: relative;
-        overflow: hidden;
     }
 
     input, select, button, .list {
@@ -440,22 +396,6 @@ button:hover {
     max-width: 100%;
 }
 
-@media (max-width: 768px) {
-    .row {
-        flex-wrap: wrap !important;
-    }
-
-    .half {
-        flex: 1 1 100% !important;
-    }
-}
-
-.row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: nowrap;
-}
-
 .col {
     display: flex;
     flex-direction: column;
@@ -478,17 +418,6 @@ button:hover {
 .half .list {
     width: 100%;
     max-width: 100%;
-}
-
-/* 모바일 */
-@media (max-width: 768px) {
-    .row {
-        flex-wrap: wrap !important;
-    }
-
-    .half {
-        flex: 1 1 100% !important;
-    }
 }
 
 .third {
@@ -535,17 +464,6 @@ button {
     border-radius: 10px;
     border: 1px solid #ccc;
     font-size: 15px;
-}
-
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
 }
 
 .modal-content {
@@ -601,17 +519,6 @@ body {
     margin: 0 auto;
 }
 
-/* ===== 카드형 입력 UI ===== */
-/*.card {
-    width: 100%;
-    background: linear-gradient(180deg, #ffffff 0%, #fff7f7 100%);
-    border: 2px solid #fecaca;
-    border-radius: 24px;
-    padding: 12px 18px;
-    box-shadow: 0 18px 40px rgba(37, 99, 235, 0.12);
-    margin-bottom: 16px;
-} 
-*/
 /* ===== input / select / button 가로 넘침 방지 ===== */
 input, select, button, textarea {
     width: 100%;
@@ -1636,17 +1543,21 @@ body {
 
 /* ===== 자동완성 리스트 ===== */
 .list {
+    width: 100%;
+    max-width: 400px;
+
     margin-top: 8px;
+    margin-bottom: 10px;
     padding: 6px;
 
     border: 1px solid #dbeafe;
     border-radius: 18px;
 
-    background: rgba(255,255,255,0.96);
+    background: rgba(255, 255, 255, 0.96);
 
     box-shadow:
-        0 14px 28px rgba(15,23,42,0.10),
-        0 6px 14px rgba(37,99,235,0.08);
+        0 14px 28px rgba(15, 23, 42, 0.10),
+        0 6px 14px rgba(37, 99, 235, 0.08);
 
     backdrop-filter: blur(10px);
 
@@ -1656,7 +1567,11 @@ body {
 
 /* 리스트 아이템 */
 .item {
-    padding: 12px 14px;
+     padding: 12px 14px;
+
+    cursor: pointer;
+
+    border-bottom: 1px solid #f0f0f0;
     border-radius: 14px;
 
     font-size: 13px;
@@ -2083,10 +1998,10 @@ body {
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
 
     box-shadow:
-        0 30px 80px rgba(15, 23, 42, 0.35),
-        0 10px 30px rgba(37, 99, 235, 0.15) !important;
+        0 30px 80px rgba(15,23,42,.35),
+        0 10px 30px rgba(37,99,235,.15) !important;
 
-    overflow: hidden !important;
+    overflow:hidden !important;
 }
 
 /* ===== 모바일 모달 헤더 ===== */
@@ -2132,27 +2047,6 @@ body {
         padding: 14px !important;
     }
 }
-
-/* ===== 추천가 HERO 카드 ===== */
-
-/* .result-hero-card {
-
-    padding: 22px 18px;
-
-    border-radius: 24px;
-
-    background:
-        linear-gradient(180deg, #fff5f5 0%, #fff1f2 100%);
-
-    border: 1.5px solid #fca5a5;
-
-    box-shadow:
-        0 12px 28px rgba(239,68,68,0.10);
-
-    text-align: center;
-
-    margin-bottom: 18px;
-} */
 
 /* 상단 빨간 배지 */
 .hero-badge-red {
@@ -7859,12 +7753,7 @@ body {
     cursor: pointer !important;
 }
 
-.card {
-    overflow: visible !important;
-}
-
-.step-card,
-.card {
+.step-card, {
     position: relative !important;
 }
 
@@ -9632,8 +9521,8 @@ body {
     padding-bottom: 90px !important;
 }
 
-
 </style>
+
 </head>
 
 <body>
@@ -10143,6 +10032,8 @@ body {
     </div>
 </div>
 
+<script src="/static/js/debug.js"></script>
+
 <script>
 
 /* ==================================================
@@ -10213,14 +10104,6 @@ const CONFIG = {
     ANALYSIS_PROGRESS_INTERVAL: 300
 
 };
-
-const DEBUG = false;
-
-function debugLog(...args) {
-    if (DEBUG) {
-        console.log(...args);
-    }
-}
 
 function showToast(message) {
 
@@ -12117,7 +12000,7 @@ if (sidoSelect && sigunguSelect) {
     sidoSelect.addEventListener("change", function () {
 
         const sigunguTotalStart = performance.now();
-        console.log("⏱️ [FRONT] /sigungu 시작");
+        debugLog("⏱️ [FRONT] /sigungu 시작");
 
         sidoSelect.classList.toggle(
             "valid",
@@ -12170,7 +12053,7 @@ if (sidoSelect && sigunguSelect) {
         const sigunguCacheKey = `${selectedPropertyType}:${selectedSido}`;
 
         if (sigunguCache[sigunguCacheKey]) {
-            console.log("✅ 시군구 캐시 사용:", sigunguCacheKey);
+            debugLog("✅ 시군구 캐시 사용:", sigunguCacheKey);
             renderSigunguList(sigunguCache[sigunguCacheKey], sigunguTotalStart);
             return;
         }
@@ -12181,7 +12064,7 @@ if (sidoSelect && sigunguSelect) {
             `/sigungu?sido=${encodeURIComponent(selectedSido)}&type=${encodeURIComponent(selectedPropertyType)}`
         )
             .then(res => {
-                console.log(
+                debugLog(
                     "⏱️ [FRONT] /sigungu fetch 응답:",
                     Math.round(performance.now() - sigunguFetchStart),
                     "ms"
@@ -12190,7 +12073,7 @@ if (sidoSelect && sigunguSelect) {
                 const sigunguJsonStart = performance.now();
 
                 return res.json().then(data => {
-                    console.log(
+                    debugLog(
                         "⏱️ [FRONT] /sigungu JSON 파싱:",
                         Math.round(performance.now() - sigunguJsonStart),
                         "ms"
@@ -12227,7 +12110,7 @@ function renderSigunguList(data, sigunguTotalStart) {
         ? data
         : (data.검색결과 || []);
 
-    console.log("✅ 시군구 렌더링 데이터:", sigunguArray);
+    debugLog("✅ 시군구 렌더링 데이터:", sigunguArray);
 
     sigunguArray.forEach(sigungu => {
         const option = document.createElement("option");
@@ -12303,7 +12186,7 @@ function renderSigunguList(data, sigunguTotalStart) {
         });
     }
 
-    console.log(
+    debugLog(
         "🚀 시군구 전체 처리:",
         Math.round(performance.now() - sigunguTotalStart),
         "ms"
@@ -12499,7 +12382,7 @@ document.getElementById("dongSelect").addEventListener("change", function () {
 async function loadDongs(region) {
 
     const dongTotalStart = performance.now();
-    console.log("⏱️ [FRONT] loadDongs 시작:", region, selectedPropertyType);
+    debugLog("⏱️ [FRONT] loadDongs 시작:", region, selectedPropertyType);
 
     if (!region) {
         dongSelect.innerHTML = '<option value="">동을 선택 하세요</option>';
@@ -12516,13 +12399,13 @@ async function loadDongs(region) {
         renderDongs(cachedDongs);
         renderDongV3();
 
-        console.log(
+        debugLog(
             "⚡ [FRONT] /dongs 캐시 렌더:",
             Math.round(performance.now() - cacheRenderStart),
             "ms"
         );
 
-        console.log(
+        debugLog(
             "⏱️ [FRONT] loadDongs 전체(캐시):",
             Math.round(performance.now() - dongTotalStart),
             "ms"
@@ -12565,7 +12448,7 @@ async function loadDongs(region) {
     try {
 
         const fetchStart = performance.now();
-        console.log("⏱️ [FRONT] /dongs fetch 시작");
+        debugLog("⏱️ [FRONT] /dongs fetch 시작");
 
         const res = await fetch(
             `/dongs?region=${encodeURIComponent(region)}&type=${encodeURIComponent(selectedPropertyType)}`,
@@ -12574,7 +12457,7 @@ async function loadDongs(region) {
             }
         );
 
-        console.log(
+        debugLog(
             "⏱️ [FRONT] /dongs fetch 응답:",
             Math.round(performance.now() - fetchStart),
             "ms"
@@ -12587,7 +12470,7 @@ async function loadDongs(region) {
         const jsonStart = performance.now()
         const data = await res.json();
 
-        console.log(
+        debugLog(
             "⏱️ [FRONT] /dongs JSON 파싱:",
             Math.round(performance.now() - jsonStart),
             "ms"
@@ -12648,13 +12531,13 @@ async function loadDongs(region) {
         renderDongs(dongs);
         renderDongV3();
 
-        console.log(
+        debugLog(
             "⏱️ [FRONT] 동 목록 renderDongs:",
             Math.round(performance.now() - renderStart),
             "ms"
         );
 
-        console.log(
+        debugLog(
             "⏱️ [FRONT] loadDongs 전체:",
             Math.round(performance.now() - dongTotalStart),
             "ms"
@@ -12850,13 +12733,13 @@ function fetchApts(region, keyword = "") {
     }
 
     if (aptCache[cacheKey]) {
-        console.log("✅ 단지 캐시 사용:", cacheKey);
+        debugLog("✅ 단지 캐시 사용:", cacheKey);
 
         const aptRenderStart = performance.now();
 
         filterApts(aptCache[cacheKey], keyword || "");
 
-        console.log(
+        debugLog(
             "⚡ [FRONT] /apts 캐시 렌더:",
             Math.round(performance.now() - aptRenderStart),
             "ms",
@@ -12879,11 +12762,11 @@ function fetchApts(region, keyword = "") {
     listEl.style.opacity = "1";
 
     // ===== 요청 로그 =====
-    console.log("🏢 /apts 요청 직전");
-    console.log("region:", region);
-    console.log("selectedDong:", selectedDong);
-    console.log("type:", selectedPropertyType);
-    console.log(
+    debugLog("🏢 /apts 요청 직전");
+    debugLog("region:", region);
+    debugLog("selectedDong:", selectedDong);
+    debugLog("type:", selectedPropertyType);
+    debugLog(
         "URL:",
         "/apts?region=" +
         encodeURIComponent(region) +
@@ -12898,7 +12781,7 @@ function fetchApts(region, keyword = "") {
     // ===== 단지 목록 API 요청 =====
 
     const aptFetchStart = performance.now();
-    console.log("⏱️ [FRONT] /apts fetch 시작");
+    debugLog("⏱️ [FRONT] /apts fetch 시작");
 
     fetch(
         "/apts?region=" +
@@ -12915,7 +12798,7 @@ function fetchApts(region, keyword = "") {
     )
     .then(res => {
 
-        console.log(
+        debugLog(
             "⏱️ [FRONT] /apts fetch 응답:",
             Math.round(performance.now() - aptFetchStart),
             "ms"
@@ -12929,7 +12812,7 @@ function fetchApts(region, keyword = "") {
         const aptJsonStart = performance.now();
 
         return res.json().then(data => {
-            console.log(
+            debugLog(
                 "⏱️ [FRONT] /apts JSON 파싱:",
                 Math.round(performance.now() - aptJsonStart),
                 "ms"
@@ -12950,7 +12833,7 @@ function fetchApts(region, keyword = "") {
 
         filterApts(result, keyword || "");
 
-        console.log(
+        debugLog(
             "⏱️ [FRONT] 아파트 filterApts 렌더:",
             Math.round(performance.now() - aptRenderStart),
             "ms",
@@ -12958,7 +12841,7 @@ function fetchApts(region, keyword = "") {
             result.length
         );
 
-        console.log(
+        debugLog(
             "⏱️ [FRONT] fetchApts 전체:",
             Math.round(performance.now() - aptTotalStart),
             "ms"
@@ -15456,7 +15339,7 @@ function renderDongV3() {
     isDongListLoadingV3 = false;
     if ((!dongs || dongs.length === 0) && window.v3WaitingDongList && isDongListLoadingV3) {
         console.log("⏳ 동/리 목록 아직 준비 안 됨 - 로딩 유지");
-        showRegionLoadingV3("동/리 불러오는 중...");
+        showRegionLoadingV3("동/리 로딩 중...");
         return;
     }
 

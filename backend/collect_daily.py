@@ -1,4 +1,5 @@
 import time
+import sys
 
 from datetime import datetime
 
@@ -18,7 +19,8 @@ from update_trades import (
     save_month_rent_trades,
 )
 
-def save_progress(index, sido, sigungu, lawd_cd, step="region_done"):
+# ✅ 수집 작업 진행상황 저장
+def save_progress(index, sido, sigungu, lawd_cd, step="region_done", job_name="collect_daily"):
     conn = get_pg_connection()
     cur = conn.cursor()
 
@@ -43,7 +45,7 @@ def save_progress(index, sido, sigungu, lawd_cd, step="region_done"):
                 last_step = EXCLUDED.last_step,
                 updated_at = NOW()
         """, (
-            "collect_daily",
+            job_name,
             index,
             sido,
             sigungu,
@@ -57,8 +59,8 @@ def save_progress(index, sido, sigungu, lawd_cd, step="region_done"):
         cur.close()
         release_pg_connection(conn)
 
-
-def load_progress():
+# ✅ 작업별 마지막 완료 지역 불러오기
+def load_progress(job_name="collect_daily"):
     conn = get_pg_connection()
     cur = conn.cursor()
 
@@ -67,7 +69,7 @@ def load_progress():
             SELECT last_region_index
             FROM collect_progress
             WHERE job_name = %s
-        """, ("collect_daily",))
+        """, (job_name,))
 
         row = cur.fetchone()
 
@@ -85,7 +87,10 @@ def load_progress():
         release_pg_connection(conn)
 
 
-def clear_progress():
+# ==========================================================
+# ✅ 작업별 진행상황 삭제
+# ==========================================================
+def clear_progress(job_name="collect_daily"):
     conn = get_pg_connection()
     cur = conn.cursor()
 
@@ -93,7 +98,7 @@ def clear_progress():
         cur.execute("""
             DELETE FROM collect_progress
             WHERE job_name = %s
-        """, ("collect_daily",))
+        """, (job_name,))
 
         conn.commit()
 
@@ -104,7 +109,8 @@ def clear_progress():
         cur.close()
         release_pg_connection(conn)
 
-def start_collect_log():
+# ✅ 수집 작업 시작 로그 생성
+def start_collect_log(job_name="collect_daily"):
     conn = get_pg_connection()
     cur = conn.cursor()
 
@@ -118,7 +124,7 @@ def start_collect_log():
             VALUES (%s, %s, NOW())
             RETURNING id
         """, (
-            "collect_daily",
+            job_name,
             "running"
         ))
 
@@ -207,13 +213,30 @@ def fail_collect_log(log_id, error_message, sido=None, sigungu=None, lawd_cd=Non
         cur.close()
         release_pg_connection(conn)
 
-def collect_daily(test_mode=False, start_index=None):
+# ✅ 통합 자동수집 실행 함수
+def collect_daily(test_mode=False, start_index=None, mode="daily"):
+
+    # ✅ 실행 모드 설정
+    if mode == "daily":
+        job_name = "collect_daily"
+        months_count = 2
+        mode_text = "일일 자동 수집"
+
+    elif mode == "cleanup":
+        job_name = "collect_cleanup"
+        months_count = 12
+        mode_text = "12개월 데이터 정화 수집"
+
+    else:
+        raise ValueError(
+            f"지원하지 않는 수집 모드입니다: {mode}"
+        )
+    
     start_time = datetime.now()
 
-    print("===== 일일 자동 수집 시작 =====")
     print("시작 시간:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
 
-    log_id = start_collect_log()
+    log_id = start_collect_log(job_name)
 
     create_tables()
 
@@ -221,7 +244,9 @@ def collect_daily(test_mode=False, start_index=None):
     update_region_codes_from_file()
 
     # ✅ 매일은 최근 2개월만 수집
-    months = get_recent_months(2)
+    # daily   : 최근 2개월
+    # cleanup : 최근 12개월
+    months = get_recent_months(months_count)
     regions = get_all_region_codes()
 
     if test_mode:
@@ -257,7 +282,7 @@ def collect_daily(test_mode=False, start_index=None):
 
                 time.sleep(0.2)
 
-            save_progress(index, sido, sigungu, lawd_cd)
+            save_progress(index, sido, sigungu, lawd_cd, job_name=job_name)
             success_count += 1
 
     except KeyboardInterrupt:
@@ -289,7 +314,7 @@ def collect_daily(test_mode=False, start_index=None):
     end_time = datetime.now()
     elapsed = end_time - start_time
 
-    clear_progress()
+    clear_progress(job_name)
 
     finish_collect_log(
         log_id,
@@ -299,7 +324,42 @@ def collect_daily(test_mode=False, start_index=None):
 
     print("종료 시간:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
     print("실행 시간:", str(elapsed).split(".")[0])
-    print("===== 일일 자동 수집 완료 =====")
+    print(f"===== {mode_text} 완료 =====")
 
+# ==========================================================
+# ✅ 명령줄 실행 모드 및 테스트 범위 선택
+#
+# 사용 방법
+#
+# 일일 전국 수집:
+#   python collect_daily.py
+#   python collect_daily.py daily
+#
+# 12개월 전국 정화:
+#   python collect_daily.py cleanup
+#
+# 12개월 정화 3개 지역 테스트:
+#   python collect_daily.py cleanup test
+# ==========================================================
 if __name__ == "__main__":
-    collect_daily(test_mode=False)
+
+    run_mode = "daily"
+    run_test_mode = False
+
+    if len(sys.argv) >= 2:
+        run_mode = sys.argv[1].strip().lower()
+
+    if len(sys.argv) >= 3:
+        run_test_mode = (
+            sys.argv[2].strip().lower() == "test"
+        )
+
+    if run_mode not in ("daily", "cleanup"):
+        print("❌ 잘못된 실행 모드입니다:", run_mode)
+        print("사용 가능 모드: daily, cleanup")
+        sys.exit(1)
+
+    collect_daily(
+        test_mode=run_test_mode,
+        mode=run_mode
+    )

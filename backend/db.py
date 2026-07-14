@@ -3,6 +3,7 @@ import time
 import json
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
+from psycopg2.extras import execute_values
 
 DB_NAME = "real_deals.db"
 
@@ -358,6 +359,296 @@ def insert_apt_sale_trade(trade):
         cur.close()
         release_pg_connection(conn)
 
+def replace_apt_sale_trades_for_month(
+    region,
+    sigungu,
+    source_month,
+    trades
+):
+    """
+    특정 지역·특정 월의 매매 데이터를 최신 API 응답으로 통째로 교체한다.
+
+    처리 순서:
+    1. 기존 지역·월 데이터 삭제
+    2. 새 거래 전체 일괄 저장
+    3. 모두 성공하면 commit
+    4. 오류 발생 시 rollback
+    """
+
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        # ① 기존 지역·월 데이터 삭제
+        cur.execute("""
+            DELETE FROM apt_sale_trades
+            WHERE region = %s
+              AND sigungu = %s
+              AND source_month = %s
+        """, (
+            region,
+            sigungu,
+            source_month
+        ))
+
+        deleted_count = cur.rowcount
+
+        # ② 새 거래 데이터가 있으면 일괄 저장
+        if trades:
+            values = [
+                (
+                    trade["region"],
+                    trade["sigungu"],
+                    trade["dong"],
+                    trade["apt_name"],
+                    trade["size"],
+                    trade["contract_date"],
+                    trade["price"],
+                    trade["floor"],
+                    trade["source_month"]
+                )
+                for trade in trades
+            ]
+
+            execute_values(
+                cur,
+                """
+                INSERT INTO apt_sale_trades (
+                    region,
+                    sigungu,
+                    dong,
+                    apt_name,
+                    size,
+                    contract_date,
+                    price,
+                    floor,
+                    source_month
+                )
+                VALUES %s
+                """,
+                values,
+                page_size=1000
+            )
+
+        # ③ 삭제와 저장이 모두 성공했을 때만 확정
+        conn.commit()
+
+        print(
+            f"✅ 매매 월 데이터 교체 완료: "
+            f"{region} {sigungu} {source_month} "
+            f"/ 기존 {deleted_count}건 삭제 "
+            f"/ 신규 {len(trades)}건 저장"
+        )
+
+        return {
+            "deleted_count": deleted_count,
+            "inserted_count": len(trades)
+        }
+
+    except Exception as e:
+        # 삭제 후 저장에 실패해도 기존 데이터가 복원됨
+        conn.rollback()
+
+        print(
+            f"❌ 매매 월 데이터 교체 실패: "
+            f"{region} {sigungu} {source_month}"
+        )
+        print("❌ 오류:", e)
+
+        raise
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
+
+def replace_apt_rent_trades_for_month(
+    region,
+    sigungu,
+    source_month,
+    trades
+):
+    """
+    특정 지역·특정 월의 전월세 데이터를 최신 API 응답으로 통째로 교체한다.
+    삭제와 저장을 하나의 트랜잭션으로 처리한다.
+    """
+
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            DELETE FROM apt_rent_trades
+            WHERE region = %s
+              AND sigungu = %s
+              AND source_month = %s
+        """, (
+            region,
+            sigungu,
+            source_month
+        ))
+
+        deleted_count = cur.rowcount
+
+        if trades:
+            values = [
+                (
+                    trade["region"],
+                    trade["sigungu"],
+                    trade["dong"],
+                    trade["apt_name"],
+                    trade["size"],
+                    trade["contract_date"],
+                    trade["deposit"],
+                    trade["monthly_rent"],
+                    trade["floor"],
+                    trade["source_month"]
+                )
+                for trade in trades
+            ]
+
+            execute_values(
+                cur,
+                """
+                INSERT INTO apt_rent_trades (
+                    region,
+                    sigungu,
+                    dong,
+                    apt_name,
+                    size,
+                    contract_date,
+                    deposit,
+                    monthly_rent,
+                    floor,
+                    source_month
+                )
+                VALUES %s
+                """,
+                values,
+                page_size=1000
+            )
+
+        conn.commit()
+
+        print(
+            f"✅ 전월세 월 데이터 교체 완료: "
+            f"{region} {sigungu} {source_month} "
+            f"/ 기존 {deleted_count}건 삭제 "
+            f"/ 신규 {len(trades)}건 저장"
+        )
+
+        return {
+            "deleted_count": deleted_count,
+            "inserted_count": len(trades)
+        }
+
+    except Exception as e:
+        conn.rollback()
+
+        print(
+            f"❌ 전월세 월 데이터 교체 실패: "
+            f"{region} {sigungu} {source_month}"
+        )
+        print("❌ 오류:", e)
+
+        raise
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
+
+# ✅ 분양권 월별 데이터 교체 저장
+def replace_presale_trades_for_month(
+    region,
+    sigungu,
+    source_month,
+    trades
+):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        # ① 기존 지역·월 분양권 데이터 삭제
+        cur.execute("""
+            DELETE FROM presale_trades
+            WHERE region = %s
+              AND sigungu = %s
+              AND source_month = %s
+        """, (
+            region,
+            sigungu,
+            source_month
+        ))
+
+        deleted_count = cur.rowcount
+
+        # ② 최신 분양권 데이터 일괄 저장
+        if trades:
+            values = [
+                (
+                    trade["region"],
+                    trade["sigungu"],
+                    trade["dong"],
+                    trade["apt_name"],
+                    trade["size"],
+                    trade["contract_date"],
+                    trade["price"],
+                    trade["floor"],
+                    trade["source_month"]
+                )
+                for trade in trades
+            ]
+
+            execute_values(
+                cur,
+                """
+                INSERT INTO presale_trades (
+                    region,
+                    sigungu,
+                    dong,
+                    apt_name,
+                    size,
+                    contract_date,
+                    price,
+                    floor,
+                    source_month
+                )
+                VALUES %s
+                """,
+                values,
+                page_size=1000
+            )
+
+        # ③ 삭제와 저장이 모두 성공했을 때만 확정
+        conn.commit()
+
+        print(
+            f"✅ 분양권 월 데이터 교체 완료: "
+            f"{region} {sigungu} {source_month} "
+            f"/ 기존 {deleted_count}건 삭제 "
+            f"/ 신규 {len(trades)}건 저장"
+        )
+
+        return {
+            "deleted_count": deleted_count,
+            "inserted_count": len(trades)
+        }
+
+    except Exception as e:
+        # 삭제 후 저장 실패 시 기존 데이터 복원
+        conn.rollback()
+
+        print(
+            f"❌ 분양권 월 데이터 교체 실패: "
+            f"{region} {sigungu} {source_month}"
+        )
+        print("❌ 오류:", e)
+
+        raise
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)        
+    
 # ✅ 아파트 전월세 거래 저장
 def insert_apt_rent_trade(trade):
     conn = get_pg_connection()
@@ -1433,6 +1724,33 @@ def rebuild_apt_sale_list():
     finally:
         cur.close()
         release_pg_connection(conn)    
+
+def delete_apt_sale_trades_by_month(region, sigungu, source_month):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            DELETE FROM apt_sale_trades
+            WHERE region = %s
+              AND sigungu = %s
+              AND source_month = %s
+        """, (
+            region,
+            sigungu,
+            source_month
+        ))
+
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        print("❌ 기존 매매 월 데이터 삭제 오류:", e)
+        raise
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
 
 if __name__ == "__main__":
     create_tables()
