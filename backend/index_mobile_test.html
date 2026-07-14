@@ -9391,25 +9391,27 @@ body {
 
     display: flex;
     align-items: center;
+    justify-content: center;   /* ⭐ 추가 */
+    width: 100%;               /* ⭐ 추가 */
     gap: 6px;
 
     font-size: 16px;
     font-weight: 800;
-    color: #0f172a;
+    color: #2563eb;
 }
 
 .region-path-click-v3 {
     cursor: pointer !important;
     user-select: none !important;
-    color: #0f172a;
-}
-
-.region-path-click-v3:active {
     color: #2563eb;
 }
 
+.region-path-click-v3:active {
+    color: #1d4ed8;
+}
+
 .path-arrow-v3 {
-    color: #94a3b8;
+    color: #60a5fa;
     font-weight: 700;
 }
 
@@ -9452,8 +9454,6 @@ body {
 .region-path-v3 {
     display: none !important;
 }
-
-
 
 #regionGridV3 .region-option-v3 {
 
@@ -9656,7 +9656,7 @@ body {
                 <div class="step-text">
                     <div class="step-main">지역 선택</div>
                     <div class="step-sub">
-                        시/군/구, 동/리를 선택하세요
+                        시/군/구, 동/리 선택하세요
                     </div>
                 </div>
 
