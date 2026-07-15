@@ -89,13 +89,13 @@ h2 {
     width: 100%;
 
     background:
-        linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,251,255,0.92) 100%);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 244, 244, 0.92) 100%);
 
     border: 1px solid rgba(253, 147, 133, 0.781);
 
     border-radius: 30px;
 
-    padding: 24px 20px;
+    padding: 10px 20px;
 
     box-shadow:
         0 24px 50px rgba(15,23,42,0.10),
@@ -194,17 +194,31 @@ button:hover {
     padding: 14px;
     background: #fafcff;
     margin-bottom: 6px;
+
+    display: flex;
+    flex-direction: column;
+
+    justify-content: center;
+    align-items: center;
+
+    text-align: center;
 }
 
 .summary-label {
     font-size: 13px;
     color: #666;
     margin-bottom: 6px;
+
+    width: 100%;
+    text-align: center;
 }
 
 .summary-value {
     font-size: 15px;
     font-weight: bold;
+
+    width: 100%;
+    text-align: center;
 }
 
 .section-title {
@@ -1622,8 +1636,17 @@ body {
 
 /* 상단 배지 */
 .hero-badge {
-     height: 36px;
+    height: 36px;
     padding: 0 16px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    line-height: 1;
 
     background: rgba(37, 99, 235, 0.10);
     color: #2563eb;
@@ -2050,14 +2073,26 @@ body {
 
 /* 상단 빨간 배지 */
 .hero-badge-red {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: fit-content;
+    min-width: 150px;      /* 원하는 최소 길이 */
+    max-width: 160px;      /* 너무 길어지지 않도록 */
 
     height: 34px;
     padding: 0 14px;
 
+    box-sizing: border-box;
+
     background: rgba(239,68,68,0.12);
     color: #ef4444;
 
+    font-size: 13px;
     font-weight: 800;
+    line-height: 1;
 
     margin-bottom: 14px;
 }
@@ -2966,7 +3001,7 @@ body {
     background:
         linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,251,255,0.96) 100%);
 
-    border: 1px solid rgba(219,234,254,0.95);
+    border: 1px solid rgba(200, 221, 248, 0.95);
 
     box-shadow:
         0 10px 24px rgba(37,99,235,0.08);
@@ -3080,8 +3115,8 @@ body {
 
 .top-conclusion {
 
-    margin-top: 10px;
-    margin-bottom: 18px;
+    margin-top: 15px;
+    margin-bottom: 10px;
 
     padding: 18px 16px;
 
@@ -3094,11 +3129,14 @@ body {
 
     box-shadow:
         0 10px 24px rgba(37,99,235,0.10);
+
+    padding:18px 18px 10px !important;
 }
 
 /* 상단 배지 */
 .top-conclusion-head {
-    margin-bottom: 10px;
+    margin-top: 6px;
+    margin-bottom: 5px;
 }
 
 .top-conclusion-badge {
@@ -3124,7 +3162,7 @@ body {
 
 /* 본문 */
 .top-conclusion-text {
-
+    
     font-size: 17px !important;
     font-weight: 800 !important;
 
@@ -3189,7 +3227,7 @@ body {
 .modal-body,
 .report-content {
 
-    padding-top: 14px !important;
+    padding:16px 10px 20px;
 }
 
 /* 추천가 카드 복구 */
@@ -3298,7 +3336,7 @@ body {
     background:
         linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
 
-    border: 1px solid rgba(219,234,254,0.95);
+    border: 1px solid rgba(168, 204, 250, 0.95);
 
     box-shadow:
         0 10px 22px rgba(15,23,42,0.06);
@@ -4025,14 +4063,18 @@ body {
 }
 
 .summary-label {
-    font-size: 12px !important;
+    font-size: 15px !important;
     margin-bottom: 8px !important;
+    width: 100%;
+    text-align: center;
 }
 
 .summary-value {
     font-size: 20px !important;
     line-height: 1.2 !important;
     word-break: keep-all !important;
+    width: 100%;
+    text-align: center;
 }
 
 .summary-grid .summary-card:nth-child(4) .summary-value {
@@ -6565,7 +6607,7 @@ body {
 
     background: linear-gradient(135deg, #eff6ff, #ffffff);
 
-    border: 1px solid #bfdbfe;
+    border: 1px solid #ef4444;
 
     color: #1e3a8a;
 
@@ -7064,7 +7106,7 @@ body {
 .step-card-02 .step-sub {
     font-size: 10px !important;
     margin-top: 0 !important;
-    line-height: 1.1 !important;
+    line-height: 2 !important;
 }
 
 .step-card-02 label {
@@ -7073,7 +7115,7 @@ body {
     min-height: auto !important;
 
     font-size: 11px !important;
-    line-height: 1.2 !important;
+    line-height: 1.8 !important;
 }
 
 .step-card-02 .row {
@@ -9674,7 +9716,15 @@ body {
         </div>
 
         <!-- ✅ 네이버식 지역 선택 버튼 -->
-        <div id="regionPathMainV3" class="region-path-main-v3">
+        <div id="regionPathMainV3" class="region-path-main-v3"
+            style="
+                display:flex !important;
+                justify-content:center !important;
+                align-items:center !important;
+                width:100% !important;
+                text-align:center !important;
+                gap:6px !important;
+            ">
 
             <span id="pathSidoMain" class="region-path-click-v3" onclick="openRegionSheetV3('sido')">
                 시/도
@@ -11047,7 +11097,9 @@ function renderFuturePredictionReport(data) {
                                 font-size:11px;
                                 color:#2563eb;
                                 margin-bottom:4px;
-                                font-weight:700;
+                                font-weight:700;    
+                                width:100%;
+                                text-align:center;
                             ">
                                 6개월 예상가격
                             </span>
@@ -11061,6 +11113,8 @@ function renderFuturePredictionReport(data) {
                                 white-space:normal;
                                 letter-spacing:-1px;
                                 word-break:keep-all;
+                                width:100%;
+                                text-align:center;
                             ">
                                 ${formatPrice(data["6개월예상하한가"])} ~ ${formatPrice(data["6개월예상상한가"])}
                             </strong>
@@ -11076,9 +11130,11 @@ function renderFuturePredictionReport(data) {
                                 display:block;
                                 font-size:11px;
                                 color:#15803d;
-                                margin-bottom:4px;
+                                margin-bottom:10px;
                                 font-weight:700;
                                 white-space: nowrap;
+                                width:100%;
+                                text-align:center;
                             ">
                                 전세가
                             </span>
@@ -11092,6 +11148,8 @@ function renderFuturePredictionReport(data) {
                                 margin:0;
                                 white-space:nowrap;
                                 letter-spacing:-0.8px;
+                                width:100%;
+                                text-align:center;
                             ">
                                 ${formatPrice(data["전세가"] || data["전세평균가"] || 0)}
                             </strong>
@@ -11104,12 +11162,15 @@ function renderFuturePredictionReport(data) {
                             padding:12px 10px;
                         ">
                             <span style="display:block; font-size:11px; color:#b45309;
-                                margin-bottom:4px; font-weight:700; white-space: nowrap;
+                                margin-bottom:10px; font-weight:700; white-space: nowrap;
+                                width:100%; text-align:center;
                             ">
                                 갭(Gap)
                             </span>
 
-                            <strong style="display:block; font-size:18px; color:#d97706; font-weight:900; line-height:1.05; margin:0; letter-spacing:-0.8px; white-space:nowrap;">
+                            <strong style="display:block; font-size:18px; color:#d97706; 
+                                font-weight:900; line-height:1.05; margin:0; letter-spacing:-0.8px; 
+                                white-space:nowrap; width:100%; text-align:center;">
                                 ${formatPrice(data["갭차이"] || 0)}
                             </strong>
                         </div>
@@ -16136,21 +16197,64 @@ function renderKpiCards(data) {
 
             <div class="summary-card kpi-blue">
                 <div class="summary-label">추천 매수가</div>
-                <div class="summary-value">
+                <div class="summary-value"
+                    style="
+                        display:flex;
+                        justify-content:center;
+                        align-items:baseline;
+                        gap:4px;
+                    "
+                >
                     ${Number(data.추천매수가 || 0).toLocaleString()} <span>만원</span>
                 </div>
             </div>
 
             <div class="summary-card kpi-red">
                 <div class="summary-label">보정 추천가</div>
-                <div class="summary-value">
+                <div class="summary-value"
+                    style="
+                        display:flex;
+                        justify-content:center;
+                        align-items:baseline;
+                        gap:4px;
+                    "
+                >
                     ${Number(data.보정추천가 || 0).toLocaleString()} <span>만원</span>
                 </div>
             </div>
 
             <div class="summary-card kpi-blue">
-                <div class="summary-label">평균가</div>
-                <div class="summary-value">
+                <div class="summary-label"
+                    style="
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+
+                        padding-top:1px;
+                        padding-bottom:2px;
+
+                        margin-bottom:2px;
+
+                        text-align:center;
+
+                        font-size:20px;
+                        font-weight:800;
+                        line-height:1.1;
+                    "
+                    "
+                >
+                    평 균 가
+                </div>
+                <div class="summary-value"
+                    style="
+                        display:flex;
+                        justify-content:center;
+                        align-items:baseline;
+                        gap:4px;
+
+                        margin-top:0;
+                    "
+                >
                     ${Number(data.평균가격 || 0).toLocaleString()} <span>만원</span>
                 </div>
             </div>
@@ -16158,14 +16262,30 @@ function renderKpiCards(data) {
             <div class="summary-card kpi-red">
                 <div class="summary-label">최고가 / 최저가</div>
                 <div class="summary-value high-low-value">
-                    <div class="high-row">
+                    <div class="high-row"
+                        style="
+                            display:flex !important;
+                            align-items:center !important;
+                            justify-content:center !important;
+                            width:100% !important;
+                            gap:6px !important;
+                        "
+                    >
                         <span class="high-price">${Number(data.최고가 || 0).toLocaleString()}</span>
-                        <span class="mini-label red">최고</span>
+                        <span class="mini-label red">최고가</span>
                     </div>
 
-                    <div class="low-row">
+                    <div class="low-row"
+                        style="
+                            display:flex !important;
+                            align-items:center !important;
+                            justify-content:center !important;
+                            width:100% !important;
+                            gap:6px !important;
+                        "
+                    >
                         <span class="low-price">${Number(data.최저가 || 0).toLocaleString()}</span>
-                        <span class="mini-label blue">최저</span>
+                        <span class="mini-label blue">최저가</span>
                     </div>
                 </div>
             </div>
@@ -16516,8 +16636,8 @@ function renderSummaryCard(data) {
                 selectedPropertyType === "presale"
                     ? ""
                     : `
-                        <div class="result-section-head">
-                            <div class="result-section-badge">
+                        <div class="result-section-head" style="padding-top:20px !important;">
+                            <div class="result-section-badge" style="margin-bottom:1px !important;">
                                 AI 분석 결과
                             </div>
                         </div>
@@ -16548,7 +16668,7 @@ function renderSummaryCard(data) {
                 `;
             })()}
 
-            <div class="top-conclusion">
+            <div class="top-conclusion" style="padding-top:10px !important; padding-bottom:10px !important;">
                 <div class="top-conclusion-head">
                     <span class="top-conclusion-badge">
                         📈 AI 가격 판단
