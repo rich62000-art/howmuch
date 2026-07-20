@@ -10,6 +10,8 @@ import re
 from datetime import datetime, timedelta
 import time
 import threading
+import zipfile
+import os
 from db import (
     get_apt_sale_trades, get_dongs_from_db, 
     get_apts_from_db, get_sizes_from_db, 
@@ -67,8 +69,75 @@ app.add_middleware(
 )
 
 # 데이터 로드
-with open("lawd_codes.json", "r", encoding="utf-8") as f:
-    lawd_map = json.load(f)
+# =========================================================
+# 최신 법정동 코드 자동 로드
+# region_codes.txt는 실제로 ZIP 압축파일이며,
+# 내부의 '법정동코드 전체자료.txt'를 읽어서 시군구 코드를 생성한다.
+# =========================================================
+def load_lawd_map_from_region_codes():
+    result = {}
+
+    try:
+        with zipfile.ZipFile("region_codes.txt", "r") as zip_file:
+
+            # 압축파일 내부의 첫 번째 txt 파일 읽기
+            inner_file_name = zip_file.namelist()[0]
+            raw_data = zip_file.read(inner_file_name)
+
+            # 법정동 코드 원본은 CP949 인코딩
+            text = raw_data.decode("cp949")
+
+            for line in text.splitlines():
+                parts = line.strip().split()
+
+                if len(parts) < 3:
+                    continue
+
+                full_code = parts[0]
+                status = parts[-1]
+                region_name = " ".join(parts[1:-1])
+
+                # 존재하는 행정구역만 사용
+                if status != "존재":
+                    continue
+
+                # 10자리 숫자 코드만 처리
+                if not full_code.isdigit() or len(full_code) != 10:
+                    continue
+
+                # 시군구 대표 코드만 사용
+                # 예: 2827500000 → 인천광역시 서해구
+                if not full_code.endswith("00000"):
+                    continue
+
+                lawd_code = full_code[:5]
+                result[region_name] = lawd_code
+
+        if not result:
+            raise ValueError("법정동 코드가 한 건도 생성되지 않았습니다.")
+
+        print(f"✅ 최신 법정동 코드 로드 완료: {len(result)}개")
+        print(
+            "✅ 인천광역시 서해구 코드:",
+            result.get("인천광역시 서해구")
+        )
+
+        return result
+
+    except Exception as e:
+        print("❌ 최신 법정동 코드 로드 실패:", e)
+
+        # 오류 발생 시 기존 JSON을 임시 백업으로 사용
+        with open("lawd_codes.json", "r", encoding="utf-8") as f:
+            fallback_map = json.load(f)
+
+        print(f"⚠️ 기존 lawd_codes.json 사용: {len(fallback_map)}개")
+        return fallback_map
+
+
+# 서버 시작 시 최신 코드 자동 생성
+lawd_map = load_lawd_map_from_region_codes()
+
 
 trade_cache = {}
 analysis_cache = {}
