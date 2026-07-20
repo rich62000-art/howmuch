@@ -233,6 +233,19 @@ def save_month_trades(
             description
         )
 
+        # ✅ 첫 페이지의 매매 API 원본 항목 중 동 정보 확인
+        found = 0
+
+        for item in page_items:
+            apt_dong = item.findtext("aptDong", "").strip()
+
+            if apt_dong:
+                print("✅ aptDong 발견:", apt_dong)
+                print(ET.tostring(item, encoding="unicode"))
+                found += 1
+
+        print("aptDong 있는 거래 수:", found)
+
         if total_count is None:
             total_count = parsed_total_count
 
@@ -301,6 +314,7 @@ def save_month_trades(
     for item in all_items:
         apt_name = item.findtext("aptNm", "").strip()
         dong = item.findtext("umdNm", "").strip()
+        apt_dong = item.findtext("aptDong", "").strip()
 
         exclu_use_ar = item.findtext(
             "excluUseAr",
@@ -341,6 +355,7 @@ def save_month_trades(
                 "sigungu": sigungu,
                 "dong": dong,
                 "apt_name": apt_name,
+                 "apt_dong": apt_dong,
                 "size": float(exclu_use_ar or 0),
                 "contract_date": (
                     f"{deal_year}-{deal_month}-{deal_day}"
@@ -612,6 +627,17 @@ def save_month_rent_trades(
             description
         )
 
+        print("✅ 전월세 원본 확인 코드 실행됨")
+
+        if page_no == 1:
+            print("🔍 전월세 API 원본 항목 수:", len(page_items))
+
+            if page_items:
+                print("🔍 전월세 API 원본 첫 항목:")
+                print(ET.tostring(page_items[0], encoding="unicode"))
+            else:
+                print("⚠️ 전월세 API 첫 페이지에 item이 없습니다.")
+
         if total_count is None:
             total_count = parsed_total_count
 
@@ -655,6 +681,11 @@ def save_month_rent_trades(
     trades = []
 
     for item in all_items:
+        print(
+            f"🔍 전월세 변환 시작: "
+            f"{region} {sigungu} {deal_ymd} "
+            f"/ all_items={len(all_items)}건"
+        )
         apt_name = item.findtext("aptNm", "").strip()
         dong = item.findtext("umdNm", "").strip()
 
@@ -722,6 +753,11 @@ def save_month_rent_trades(
     # ======================================================
     # ③ 모든 페이지 수집·검증 완료 후 한 번만 DB 교체
     # ======================================================
+    print(
+        f"🔍 전월세 변환 완료: "
+        f"all_items={len(all_items)}건 "
+        f"/ trades={len(trades)}건"
+    )
     replace_apt_rent_trades_for_month(
         region=region,
         sigungu=sigungu,
@@ -1211,14 +1247,41 @@ def update_region_codes_from_file():
         insert_region_code(sido, sigungu, lawd_cd)
         count += 1
 
-    print("법정동 코드 자동 갱신 완료:", count)
+    print("법정동 코드 자동 갱신 완료:", count) 
+
+# ==========================================================
+# ✅ 전남광주통합특별시 북구 분양권 단일 테스트
+#
+# 목적
+#   - 실제 거래가 있는 월을 대상으로
+#     구 지역명 데이터까지 함께 삭제되는지 확인
+# ==========================================================
+def test_integrated_region_presale_replace():
+    save_month_presale_trades(
+        lawd_cd="12300",
+        region="전남광주통합특별시",
+        sigungu="북구",
+        deal_ymd="202602"
+    )
+
+    print("✅ 북구 202602 분양권 교체 테스트 완료")
 
 if __name__ == "__main__":
     create_tables()
-
     update_region_codes_from_file()
 
     print(
         "✅ region_codes 자동 갱신 후 전체 지역 수:",
         len(get_all_region_codes())
     )
+
+    print("🧪 매매 단일 지역·단일 월 테스트 시작")
+
+    save_month_trades(
+        lawd_cd="41430",
+        region="경기도",
+        sigungu="의왕시",
+        deal_ymd="202605"
+    )
+
+    print("✅ 매매 단일 테스트 완료")

@@ -16013,8 +16013,17 @@ function renderRecentTradeListCard(data) {
                                     ${t.date || t.거래일 || t.contract_date || "-"}
                                 </span>
                                 <span class="trade-floor">
-                                    ${t.apt_dong ? (t.apt_dong.includes("동") ? t.apt_dong : t.apt_dong + "동") + " · " : ""}
-                                    ${t.floor !== null && t.floor !== undefined ? t.floor + "층" : "층수 -"}
+                                    ${
+                                        t.apt_dong
+                                            ? (t.apt_dong.includes("동") ? t.apt_dong : t.apt_dong + "동")
+                                            : "-"
+                                    }
+                                    ·
+                                    ${
+                                        t.floor !== null && t.floor !== undefined
+                                            ? t.floor + "층"
+                                            : "-"
+                                    }
                                 </span>
 
                                 <strong 

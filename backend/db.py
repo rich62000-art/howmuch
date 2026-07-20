@@ -324,16 +324,17 @@ def insert_apt_sale_trade(trade):
     try:
         cur.execute("""
             INSERT INTO apt_sale_trades (
-                region, sigungu, dong, apt_name, size,
+                region, sigungu, dong, apt_name, apt_dong, size,
                 contract_date, price, floor, source_month
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
         """, (
             trade["region"],
             trade["sigungu"],
             trade["dong"],
             trade["apt_name"],
+            trade.get("apt_dong", ""),
             trade["size"],
             trade["contract_date"],
             trade["price"],
@@ -380,16 +381,34 @@ def replace_apt_sale_trades_for_month(
 
     try:
         # ① 기존 지역·월 데이터 삭제
-        cur.execute("""
-            DELETE FROM apt_sale_trades
-            WHERE region = %s
-              AND sigungu = %s
-              AND source_month = %s
-        """, (
-            region,
-            sigungu,
-            source_month
-        ))
+        # ① 기존 지역·월 데이터 삭제
+        # 행정구역 개편으로 지역명이 변경된 경우
+        # 구 지역명 데이터까지 함께 삭제하여 중복 잔존을 방지한다.
+        if region == "전남광주통합특별시":
+            cur.execute("""
+                DELETE FROM apt_sale_trades
+                WHERE region IN (
+                    '전남광주통합특별시',
+                    '광주광역시',
+                    '전라남도'
+                )
+                AND sigungu = %s
+                AND source_month = %s
+            """, (
+                sigungu,
+                source_month
+            ))
+        else:
+            cur.execute("""
+                DELETE FROM apt_sale_trades
+                WHERE region = %s
+                AND sigungu = %s
+                AND source_month = %s
+            """, (
+                region,
+                sigungu,
+                source_month
+            ))
 
         deleted_count = cur.rowcount
 
@@ -401,6 +420,7 @@ def replace_apt_sale_trades_for_month(
                     trade["sigungu"],
                     trade["dong"],
                     trade["apt_name"],
+                    trade.get("apt_dong", ""),
                     trade["size"],
                     trade["contract_date"],
                     trade["price"],
@@ -418,6 +438,7 @@ def replace_apt_sale_trades_for_month(
                     sigungu,
                     dong,
                     apt_name,
+                    apt_dong,
                     size,
                     contract_date,
                     price,
@@ -476,20 +497,72 @@ def replace_apt_rent_trades_for_month(
     cur = conn.cursor()
 
     try:
-        cur.execute("""
-            DELETE FROM apt_rent_trades
-            WHERE region = %s
-              AND sigungu = %s
-              AND source_month = %s
-        """, (
-            region,
-            sigungu,
-            source_month
-        ))
+        # ① 기존 지역·월 데이터 삭제
+        # 행정구역 개편으로 지역명이 변경된 경우
+        # 구 지역명 데이터까지 함께 삭제하여 중복 잔존을 방지한다.
+        if region == "전남광주통합특별시":
+            cur.execute("""
+                DELETE FROM apt_rent_trades
+                WHERE region IN (
+                    '전남광주통합특별시',
+                    '광주광역시',
+                    '전라남도'
+                )
+                AND sigungu = %s
+                AND source_month = %s
+            """, (
+                sigungu,
+                source_month
+            ))
+        else:
+            cur.execute("""
+                DELETE FROM apt_rent_trades
+                WHERE region = %s
+                AND sigungu = %s
+                AND source_month = %s
+            """, (
+                region,
+                sigungu,
+                source_month
+            ))
 
         deleted_count = cur.rowcount
 
         if trades:
+            print(f"🔍 전월세 INSERT 전 전체 건수: {len(trades)}")
+
+            duplicate_check = {}
+
+            for trade in trades:
+                key = (
+                    trade["region"],
+                    trade["sigungu"],
+                    trade["dong"],
+                    trade["apt_name"],
+                    str(trade["size"]),
+                    str(trade["contract_date"]),
+                    str(trade["deposit"]),
+                    str(trade["monthly_rent"]),
+                    str(trade["floor"]),
+                    str(trade["source_month"])
+                )
+
+                duplicate_check[key] = duplicate_check.get(key, 0) + 1
+
+            duplicated = [
+                (key, count)
+                for key, count in duplicate_check.items()
+                if count > 1
+            ]
+
+            print(f"⚠️ 전월세 중복 그룹 수: {len(duplicated)}")
+
+            for key, count in sorted(
+                duplicated,
+                key=lambda x: x[1],
+                reverse=True
+            )[:10]:
+                print(f"⚠️ 중복 {count}건:", key)
             values = [
                 (
                     trade["region"],
@@ -567,17 +640,35 @@ def replace_presale_trades_for_month(
     cur = conn.cursor()
 
     try:
-        # ① 기존 지역·월 분양권 데이터 삭제
-        cur.execute("""
-            DELETE FROM presale_trades
-            WHERE region = %s
-              AND sigungu = %s
-              AND source_month = %s
-        """, (
-            region,
-            sigungu,
-            source_month
-        ))
+        
+        # ① 기존 지역·월 데이터 삭제
+        # 행정구역 개편으로 지역명이 변경된 경우
+        # 구 지역명 데이터까지 함께 삭제하여 중복 잔존을 방지한다.
+        if region == "전남광주통합특별시":
+            cur.execute("""
+                DELETE FROM presale_trades
+                WHERE region IN (
+                    '전남광주통합특별시',
+                    '광주광역시',
+                    '전라남도'
+                )
+                AND sigungu = %s
+                AND source_month = %s
+            """, (
+                sigungu,
+                source_month
+            ))
+        else:
+            cur.execute("""
+                DELETE FROM presale_trades
+                WHERE region = %s
+                AND sigungu = %s
+                AND source_month = %s
+            """, (
+                region,
+                sigungu,
+                source_month
+            ))
 
         deleted_count = cur.rowcount
 
@@ -738,7 +829,9 @@ def insert_presale_trade(trade):
 
 
 def get_apt_sale_trades(apt_name, size):
-    size_key = f"{float(size):.4f}"
+    # 선택된 전용면적 값을 소수점 4자리 기준으로 캐시 키에 사용한다.
+    size_value = float(size)
+    size_key = f"{size_value:.4f}"
     cache_key = f"sale_trades:{apt_name}:{size_key}"
 
     if cache_key in DB_CACHE:
@@ -750,24 +843,28 @@ def get_apt_sale_trades(apt_name, size):
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT
-        region,
-        sigungu,
-        dong,
-        apt_name,
-        size,
-        contract_date,
-        price,
-        floor,
-        source_month
-    FROM apt_sale_trades
-    WHERE apt_name = %s
-    AND ROUND(size::numeric, 4) = ROUND(%s::numeric, 4)
-    AND source_month >= TO_CHAR(CURRENT_DATE - INTERVAL '24 months', 'YYYYMM')
-ORDER BY contract_date DESC
+        SELECT
+            region,
+            sigungu,
+            dong,
+            apt_name,
+            size,
+            contract_date,
+            price,
+            floor,
+            source_month
+            apt_dong
+        FROM apt_sale_trades
+        WHERE apt_name = %s
+          AND size = %s
+          AND source_month >= TO_CHAR(
+              CURRENT_DATE - INTERVAL '24 months',
+              'YYYYMM'
+          )
+        ORDER BY contract_date DESC
     """, (
         apt_name,
-        float(size)
+        size_value
     ))
 
     rows = cur.fetchall()
@@ -784,6 +881,7 @@ ORDER BY contract_date DESC
 
 # ✅ 분양권 거래 조회
 def get_presale_trades(apt_name, size):
+    
     conn = get_pg_connection()
     cur = conn.cursor()
 
@@ -1138,15 +1236,24 @@ def get_rent_apts_from_db(region, sigungu, dong):
 # 선택한 단지명(apt_name)과 전용면적(size)의
 # 최근 전월세 거래 데이터를 DB에서 가져온다.
 def get_rent_trades(apt_name, size):
+
     conn = get_pg_connection()
     cur = conn.cursor()
+
+    print(
+        f"🔥 get_rent_trades 실행: "
+        f"apt_name={apt_name}, size={size}"
+    )
 
     cur.execute("""
         SELECT *
         FROM apt_rent_trades
         WHERE apt_name = %s
         AND ROUND(size::numeric, 4) = ROUND(%s::numeric, 4)
-        AND source_month >= TO_CHAR(CURRENT_DATE - INTERVAL '24 months', 'YYYYMM')
+        AND source_month >= TO_CHAR(
+            CURRENT_DATE - INTERVAL '24 months',
+            'YYYYMM'
+        )
         ORDER BY contract_date DESC
     """, (
         apt_name,
@@ -1154,6 +1261,8 @@ def get_rent_trades(apt_name, size):
     ))
 
     rows = cur.fetchall()
+
+    print(f"✅ get_rent_trades 조회 건수: {len(rows)}")
 
     cur.close()
     release_pg_connection(conn)

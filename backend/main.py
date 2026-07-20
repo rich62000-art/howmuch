@@ -227,7 +227,11 @@ def db_rows_to_items(rows):
         items.append({
             "apt_name": row[3],
             "dong": row[2],
-            "apt_dong": "",
+
+            # apt_dong 컬럼이 있는 새 조회 결과는 row[9] 사용
+            # 이전 캐시처럼 컬럼이 9개뿐인 경우에는 빈 문자열 처리
+            "apt_dong": (row[9] or "") if len(row) > 9 else "",
+
             "size": round(float(row[4]), 4),
             "price": int(row[6]),
             "date": row[5],
@@ -1148,6 +1152,31 @@ def analyze_price(
     if isinstance(db_cached_result, dict) and db_cached_result:
         return db_cached_result
     
+    # ✅ 전월세는 전용 분석 엔진으로 처리
+    if type == "rent":
+        print(
+            f"🔥 analyze_rent_engine 호출: "
+            f"region={region}, apt_name={apt_name}, size={size}"
+        )
+
+        result = analyze_rent_engine(
+            region,
+            apt_name,
+            size
+        )
+
+        if len(analysis_cache) >= MAX_ANALYSIS_CACHE:
+            analysis_cache.pop(next(iter(analysis_cache)))
+
+        analysis_cache[cache_key] = {
+            "time": time.time(),
+            "data": result
+        }
+
+        save_analysis_cache_to_db(cache_key, result)
+
+        return result
+    
     # ✅ 지역 처리 시스템 V3
     # 행정구역 변경/별칭 지역을 DB 기준 지역명으로 보정
     region = normalize_region_for_db(region)
@@ -1160,41 +1189,52 @@ def analyze_price(
     apt_name_norm = normalize(apt_name)
 
     trades = []
-    if type == "presale":
+
+    if type == "rent":
+        print(
+            f"🔥 전월세 분석 분기 진입: "
+            f"apt_name={apt_name}, size={size}"
+        )
+
+        db_rows = get_rent_trades(apt_name, size)
+        items = rent_rows_to_items(db_rows)
+
+    elif type == "presale":
         db_rows = get_presale_trades(apt_name, size)
         items = db_rows_to_items(db_rows)
+
     else:
         db_rows = get_apt_sale_trades(apt_name, size)
         items = db_rows_to_items(db_rows)
 
-        if not items:
-            items = []
+    if not items:
+        items = []
+
+    trades = []
 
     for item in items:
         name = item["apt_name"]
 
-        if is_same_apartment_name(apt_name, name) and is_same_size(size, item["size"]):
-            
-            trades.append({
-                "price": item["price"],
-                "date": item["date"],
-                "floor": item.get("floor"),
-                "apt_dong": item.get("apt_dong"),
-                "size": item["size"]
-            })
-        
-        trades = []
+        if (
+            is_same_apartment_name(apt_name, name)
+            and is_same_size(size, item["size"])
+        ):
+            if type == "rent":
+                trades.append({
+                    "deposit": item["deposit"],
+                    "monthly_rent": item["monthly_rent"],
+                    "date": item["date"],
+                    "floor": item.get("floor"),
+                    "apt_dong": item.get("apt_dong", ""),
+                    "size": item["size"]
+                })
 
-        for item in items:
-            name = item["apt_name"]
-
-            if is_same_apartment_name(apt_name, name) and is_same_size(size, item["size"]):
-                
+            else:
                 trades.append({
                     "price": item["price"],
                     "date": item["date"],
                     "floor": item.get("floor"),
-                    "apt_dong": item.get("apt_dong"),
+                    "apt_dong": item.get("apt_dong", ""),
                     "size": item["size"]
                 })
 
