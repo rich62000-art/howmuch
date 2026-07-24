@@ -333,7 +333,8 @@ def rent_rows_to_items(rows):
 # 보증금과 월세 데이터를 분리해서
 # 전세 / 월세 여부를 판단하고 평균 보증금, 평균 월세를 계산한다.
 def analyze_rent_engine(region, apt_name, size):
-    rows = get_rent_trades(apt_name, size)
+
+    rows = get_rent_trades(region, apt_name, size)
     items = rent_rows_to_items(rows)
 
     if not items:
@@ -540,6 +541,12 @@ def analyze_rent_engine(region, apt_name, size):
         f"{trend_text} "
         f"본 판단은 {jeonse_trend_basis}과 최근 거래량을 함께 고려한 참고 분석입니다."
     )
+
+    for t in recent_jeonse_trades:
+        print(t)
+
+    for t in recent_monthly_trades:
+        print(t)
 
     result = {
         "유형": "전월세",
@@ -1146,7 +1153,6 @@ def get_avg_price(region: str, apt_name: str, size: int):
 
 
 @app.get("/analyze_price")
-
 def analyze_price(
     region: str, 
     apt_name: str, 
@@ -1157,6 +1163,11 @@ def analyze_price(
     interior: str | None = None,
     type: str = "apt"
 ):
+    print(
+        f"type=[{type}], region=[{region}], "
+        f"apt_name=[{apt_name}], size=[{size}]",
+        flush=True
+    )
     def presale_fallback():
         fallback_price = user_price or 0
 
@@ -1224,7 +1235,7 @@ def analyze_price(
     # ✅ 전월세는 전용 분석 엔진으로 처리
     if type == "rent":
         print(
-            f"🔥 analyze_rent_engine 호출: "
+            
             f"region={region}, apt_name={apt_name}, size={size}"
         )
 
@@ -1269,7 +1280,8 @@ def analyze_price(
         items = rent_rows_to_items(db_rows)
 
     elif type == "presale":
-        db_rows = get_presale_trades(apt_name, size)
+        print("🔥🔥 get_presale_trades 호출 직전")
+        db_rows = get_presale_trades(region, apt_name, size)
         items = db_rows_to_items(db_rows)
 
     else:
@@ -1282,12 +1294,19 @@ def analyze_price(
     trades = []
 
     for item in items:
+        
         name = item["apt_name"]
+
+        print("입력 apt_name :", apt_name)
+        print("DB apt_name   :", name)
+        print("입력 size     :", size)
+        print("DB size       :", item["size"])
 
         if (
             is_same_apartment_name(apt_name, name)
-            and is_same_size(size, item["size"])
+            and is_same_size(size, item["size"])  
         ):
+            print("✅ 매칭 성공")
             if type == "rent":
                 trades.append({
                     "deposit": item["deposit"],
@@ -1870,6 +1889,7 @@ def analyze_price(
         # ✅ Supabase 분석 결과 캐시 저장
         save_analysis_cache_to_db(cache_key, result)
 
+    print(result)
     return result
 
 
@@ -2738,8 +2758,18 @@ def get_latest_collect_log():
                 status,
                 started_at,
                 ended_at,
+                elapsed_seconds,
                 success_count,
                 fail_count,
+                    
+                sale_trade_count,
+                rent_trade_count,
+                presale_trade_count,
+                    
+                sale_list_count,
+                rent_list_count,
+                presale_list_count,
+                    
                 last_sido,
                 last_sigungu,
                 last_lawd_cd,
@@ -2758,12 +2788,23 @@ def get_latest_collect_log():
             "status": row[0],
             "started_at": row[1],
             "ended_at": row[2],
-            "success_count": row[3],
-            "fail_count": row[4],
-            "last_sido": row[5],
-            "last_sigungu": row[6],
-            "last_lawd_cd": row[7],
-            "error_message": row[8],
+            "elapsed_seconds": row[3],
+
+            "success_count": row[4],
+            "fail_count": row[5],
+
+            "sale_trade_count": row[6],
+            "rent_trade_count": row[7],
+            "presale_trade_count": row[8],
+
+            "sale_list_count": row[9],
+            "rent_list_count": row[10],
+            "presale_list_count": row[11],
+
+            "last_sido": row[12],
+            "last_sigungu": row[13],
+            "last_lawd_cd": row[14],
+            "error_message": row[15],
         }
 
     except Exception as e:
@@ -2878,19 +2919,53 @@ def admin_page(pw: str = ""):
             <h2>🤖 자동수집 현황</h2>
 
             <p><b>상태 :</b> {collect_status_text}</p>
-
             <p><b>시작 :</b> {collect_started_at}</p>
-
             <p><b>종료 :</b> {collect_ended_at}</p>
-
             <p><b>소요시간 :</b> {collect_elapsed_time}</p>
 
-            <p><b>완료 지역 :</b> {latest_collect_log["success_count"] if latest_collect_log else 0}</p>
+            <hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;">
 
-            <p><b>실패 건수:</b> {latest_collect_log["fail_count"] if latest_collect_log else 0}</p>
+            <h3 style="margin:0 0 10px;">📦 거래 데이터</h3>
+
+            <p><b>매매 거래 :</b>
+                {f'{latest_collect_log["sale_trade_count"]:,}' if latest_collect_log else '0'}건
+            </p>
+
+            <p><b>전월세 거래 :</b>
+                {f'{latest_collect_log["rent_trade_count"]:,}' if latest_collect_log else '0'}건
+            </p>
+
+            <p><b>분양권 거래 :</b>
+                {f'{latest_collect_log["presale_trade_count"]:,}' if latest_collect_log else '0'}건
+            </p>
+
+            <hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;">
+
+            <h3 style="margin:0 0 10px;">🔎 검색 목록</h3>
+
+            <p><b>매매 목록 :</b>
+                {f'{latest_collect_log["sale_list_count"]:,}' if latest_collect_log else '0'}건
+            </p>
+
+            <p><b>전월세 목록 :</b>
+                {f'{latest_collect_log["rent_list_count"]:,}' if latest_collect_log else '0'}건
+            </p>
+
+            <p><b>분양권 목록 :</b>
+                {f'{latest_collect_log["presale_list_count"]:,}' if latest_collect_log else '0'}건
+            </p>
+
+            <hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;">
+
+            <p><b>완료 지역 :</b>
+                {latest_collect_log["success_count"] if latest_collect_log else 0}
+            </p>
+
+            <p><b>실패 건수 :</b>
+                {latest_collect_log["fail_count"] if latest_collect_log else 0}
+            </p>
 
             <p><b>마지막 지역 :</b> {collect_last_region}</p>
-
             <p><b>오류 :</b> {collect_error}</p>
 
         </div>

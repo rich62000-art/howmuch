@@ -233,19 +233,6 @@ def save_month_trades(
             description
         )
 
-        # ✅ 첫 페이지의 매매 API 원본 항목 중 동 정보 확인
-        found = 0
-
-        for item in page_items:
-            apt_dong = item.findtext("aptDong", "").strip()
-
-            if apt_dong:
-                print("✅ aptDong 발견:", apt_dong)
-                print(ET.tostring(item, encoding="unicode"))
-                found += 1
-
-        print("aptDong 있는 거래 수:", found)
-
         if total_count is None:
             total_count = parsed_total_count
 
@@ -550,6 +537,69 @@ def save_month_presale_trades(
         trades.append(trade)
 
     # ======================================================
+    # ✅ 중복 거래 제거
+    # ======================================================
+    unique_trades = []
+    seen = set()
+
+    for trade in trades:
+        key = (
+            trade["region"],
+            trade["sigungu"],
+            trade["dong"],
+            trade["apt_name"],
+            round(float(trade["size"]), 4),
+            trade["contract_date"],
+            trade["price"],
+            trade["floor"]
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        unique_trades.append(trade)
+
+    trades = unique_trades
+
+    # ======================================================
+    # ✅ 중복 제거
+    # ======================================================
+    before_count = len(trades)
+
+    unique_trades = []
+    seen = set()
+
+    for trade in trades:
+        key = (
+            trade["region"],
+            trade["sigungu"],
+            trade["dong"],
+            trade["apt_name"],
+            round(float(trade["size"]), 4),
+            trade["contract_date"],
+            trade["price"],
+            trade["floor"]
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        unique_trades.append(trade)
+
+    trades = unique_trades
+
+    after_count = len(trades)
+
+    if before_count != after_count:
+        print(
+            f"⚠️ 분양권 중복 제거: "
+            f"{before_count - after_count}건 제거 "
+            f"({before_count} → {after_count})"
+        )
+
+    # ======================================================
     # ③ 전체 페이지 수집·검증 후 월 데이터 한 번만 교체
     # ======================================================
     replace_presale_trades_for_month(
@@ -680,12 +730,14 @@ def save_month_rent_trades(
     # ======================================================
     trades = []
 
+    print(
+        f"🔍 전월세 변환 시작: "
+        f"{region} {sigungu} {deal_ymd} "
+        f"/ all_items={len(all_items)}건"
+    )
+
     for item in all_items:
-        print(
-            f"🔍 전월세 변환 시작: "
-            f"{region} {sigungu} {deal_ymd} "
-            f"/ all_items={len(all_items)}건"
-        )
+        
         apt_name = item.findtext("aptNm", "").strip()
         dong = item.findtext("umdNm", "").strip()
 
@@ -1062,7 +1114,7 @@ def update_region_codes():
 
 # ✅ DB에 저장된 모든 시군구 12개월 거래 수집
 def update_all_regions_trades():
-    months = get_recent_months(12)
+    months = get_recent_months(2)
     regions = get_all_region_codes()
     total = len(regions)
 
@@ -1143,7 +1195,7 @@ def update_test_rent_trades():
 
 # ✅ 전국 전월세 12개월 수집
 def update_all_rent_trades():
-    months = get_recent_months(12)
+    months = get_recent_months(2)
     regions = get_all_region_codes()
 
     total = len(regions)
@@ -1165,7 +1217,7 @@ def update_all_rent_trades():
 
 # ✅ 전국 분양권 12개월 수집
 def update_all_presale_trades(start_index=1):
-    months = get_recent_months(12)
+    months = get_recent_months(2)
     all_regions = get_all_region_codes()
     total = len(all_regions)
 
@@ -1267,21 +1319,9 @@ def test_integrated_region_presale_replace():
     print("✅ 북구 202602 분양권 교체 테스트 완료")
 
 if __name__ == "__main__":
-    create_tables()
-    update_region_codes_from_file()
-
-    print(
-        "✅ region_codes 자동 갱신 후 전체 지역 수:",
-        len(get_all_region_codes())
+    save_month_rent_trades(
+        lawd_cd="28290",          # 검단구
+        region="인천광역시",
+        sigungu="검단구",
+        deal_ymd="202509"
     )
-
-    print("🧪 매매 단일 지역·단일 월 테스트 시작")
-
-    save_month_trades(
-        lawd_cd="41430",
-        region="경기도",
-        sigungu="의왕시",
-        deal_ymd="202605"
-    )
-
-    print("✅ 매매 단일 테스트 완료")

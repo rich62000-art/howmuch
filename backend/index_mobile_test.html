@@ -13439,6 +13439,8 @@ function analyzePrice() {
     // 3. 분석 API 요청 준비
     // =================================================
 
+    console.log("selectedPropertyType =", selectedPropertyType);
+    console.log("userPrice =", userPrice);  
     const url = buildAnalyzeUrl({
         region,
         apt,
@@ -13463,6 +13465,9 @@ function analyzePrice() {
     // =================================================
     // 4. 분석 API 호출
     // =================================================
+    console.log("분석 요청 URL:", url);
+    console.log("분석 입력 가격:", userPrice);
+    
     fetch(url, {
         signal: analyzeFetchController.signal
     })

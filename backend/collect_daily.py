@@ -7,6 +7,8 @@ from db import (
     create_tables,
     get_all_region_codes,
     rebuild_apt_sale_list,
+    rebuild_rent_list,
+    rebuild_presale_list,
     get_pg_connection,
     release_pg_connection,
 )
@@ -148,19 +150,51 @@ def finish_collect_log(log_id, success_count=0, fail_count=0):
     conn = get_pg_connection()
     cur = conn.cursor()
 
+        # 현재 테이블 건수 조회
+    cur.execute("SELECT COUNT(*) FROM apt_sale_trades")
+    sale_trade_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM apt_rent_trades")
+    rent_trade_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM presale_trades")
+    presale_trade_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM apt_sale_list")
+    sale_list_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM rent_list")
+    rent_list_count = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM presale_list")
+    presale_list_count = cur.fetchone()[0]
+
     try:
         cur.execute("""
             UPDATE collect_logs
             SET
                 status = %s,
                 ended_at = NOW(),
+                elapsed_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::INT,
                 success_count = %s,
-                fail_count = %s
+                fail_count = %s,
+                sale_trade_count = %s,
+                rent_trade_count = %s,
+                presale_trade_count = %s,
+                sale_list_count = %s,
+                rent_list_count = %s,
+                presale_list_count = %s
             WHERE id = %s
         """, (
             "success",
             success_count,
             fail_count,
+            sale_trade_count,
+            rent_trade_count,
+            presale_trade_count,
+            sale_list_count,
+            rent_list_count,
+            presale_list_count,
             log_id
         ))
 
@@ -238,7 +272,7 @@ def collect_daily(test_mode=False, start_index=None, mode="daily"):
 
     log_id = start_collect_log(job_name)
 
-    create_tables()
+    # create_tables()
 
     # ✅ 행정구역 자동 갱신
     update_region_codes_from_file()
@@ -310,6 +344,8 @@ def collect_daily(test_mode=False, start_index=None, mode="daily"):
         raise
 
     rebuild_apt_sale_list()
+    rebuild_rent_list()
+    rebuild_presale_list()
 
     end_time = datetime.now()
     elapsed = end_time - start_time
