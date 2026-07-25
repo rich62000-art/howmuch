@@ -1163,6 +1163,7 @@ def analyze_price(
     interior: str | None = None,
     type: str = "apt"
 ):
+    print("★★★★ analyze_price 시작 ★★★★")
     print(
         f"type=[{type}], region=[{region}], "
         f"apt_name=[{apt_name}], size=[{size}]",
@@ -1290,43 +1291,8 @@ def analyze_price(
 
     if not items:
         items = []
-
-    trades = []
-
-    for item in items:
-        
-        name = item["apt_name"]
-
-        print("입력 apt_name :", apt_name)
-        print("DB apt_name   :", name)
-        print("입력 size     :", size)
-        print("DB size       :", item["size"])
-
-        if (
-            is_same_apartment_name(apt_name, name)
-            and is_same_size(size, item["size"])  
-        ):
-            print("✅ 매칭 성공")
-            if type == "rent":
-                trades.append({
-                    "deposit": item["deposit"],
-                    "monthly_rent": item["monthly_rent"],
-                    "date": item["date"],
-                    "floor": item.get("floor"),
-                    "apt_dong": item.get("apt_dong", ""),
-                    "size": item["size"]
-                })
-
-            else:
-                trades.append({
-                    "price": item["price"],
-                    "date": item["date"],
-                    "floor": item.get("floor"),
-                    "apt_dong": item.get("apt_dong", ""),
-                    "size": item["size"]
-                })
-
-
+    trades = items
+    
     if not trades:
         
         if type == "presale":
@@ -1345,11 +1311,15 @@ def analyze_price(
     # 최신순 정렬
     trades.sort(key=lambda x: x["date"], reverse=True)
 
+    print("필터 전 =", len(trades))
+
     trades = [
         t for t in trades
         if is_same_size(size, t.get("size"))
     ]
 
+    print("필터 후 =", len(trades))
+    print("첫 거래 =", trades[0] if trades else "없음")
 
     # 🔥 최근 12개월 월별 거래량
    
@@ -1843,6 +1813,9 @@ def analyze_price(
         activity_score = 0
 
     activity_score = min(activity_score, 100)
+
+    print("★★★★ recent_trades =", recent_trades)
+
     result = {
         "아파트": apt_name,
         "평형": size,

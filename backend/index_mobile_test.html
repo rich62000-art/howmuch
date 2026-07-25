@@ -15876,13 +15876,19 @@ function openReportModal() {
 
     const modal = document.getElementById("reportModal");
     const resultBox = document.getElementById("modalResult");
+    const hamburgerBtn = document.querySelector(".hamburger-btn");
 
     if (!modal || !resultBox) {
-        resultBox.innerHTML = UI_TEXT.REPORT_MODAL_ERROR;
+        console.error(UI_TEXT.REPORT_MODAL_ERROR);
         return null;
     }
 
     modal.style.display = "block";
+
+    // 모달이 열리면 햄버거 버튼 숨김
+    if (hamburgerBtn) {
+        hamburgerBtn.style.display = "none";
+    }
 
     return {
         modal,
@@ -16019,9 +16025,23 @@ function renderRecentTradeListCard(data) {
                                 </span>
                                 <span class="trade-floor">
                                     ${
-                                        t.apt_dong
-                                            ? (t.apt_dong.includes("동") ? t.apt_dong : t.apt_dong + "동")
-                                            : "-"
+                                        (() => {
+                                            const aptDong =
+                                                t.apt_dong ||
+                                                t.building_dong ||
+                                                t.dong_name ||
+                                                t.동 ||
+                                                t.아파트동 ||
+                                                "";
+
+                                            if (!aptDong) return "-";
+
+                                            const dongText = String(aptDong).trim();
+
+                                            return dongText.includes("동")
+                                                ? dongText
+                                                : dongText + "동";
+                                        })()
                                     }
                                     ·
                                     ${

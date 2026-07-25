@@ -298,11 +298,33 @@ def save_month_trades(
     # ======================================================
     trades = []
 
+    xml_debug_printed = False
+
     for item in all_items:
         apt_name = item.findtext("aptNm", "").strip()
         dong = item.findtext("umdNm", "").strip()
         apt_dong = item.findtext("aptDong", "").strip()
 
+        # ✅ 고덕그라시움 2026-04-02 거래만 XML 확인
+        debug_apt_name = item.findtext("aptNm", "").strip()
+        debug_size = item.findtext("excluUseAr", "").strip()
+        debug_day = item.findtext("dealDay", "").strip()
+        debug_floor = item.findtext("floor", "").strip()
+        debug_price = item.findtext("dealAmount", "").replace(",", "").strip()
+
+        if (
+            debug_apt_name == "고덕그라시움"
+            and debug_size == "59.028"
+            and debug_day == "2"
+            and debug_floor == "3"
+            and debug_price == "184000"
+        ):
+            print("===== 고덕그라시움 해당 거래 XML =====")
+            print(ET.tostring(item, encoding="unicode"))
+            print("aptDong =", repr(item.findtext("aptDong", "")))
+            print("rgstDate =", repr(item.findtext("rgstDate", "")))
+            print("====================================")
+    
         exclu_use_ar = item.findtext(
             "excluUseAr",
             "0"
@@ -1112,7 +1134,7 @@ def update_region_codes():
 
     print("시군구 코드 저장 완료:", len(region_list))
 
-# ✅ DB에 저장된 모든 시군구 12개월 거래 수집
+# ✅ 매일 실행용: 최근 2개월
 def update_all_regions_trades():
     months = get_recent_months(2)
     regions = get_all_region_codes()
@@ -1120,6 +1142,7 @@ def update_all_regions_trades():
 
     for index, (sido, sigungu, lawd_cd) in enumerate(regions, start=1):
         print(f"[{index}/{total}] {sido} {sigungu} 수집 시작")
+
         for ym in months:
             save_month_trades(
                 lawd_cd=lawd_cd,
@@ -1130,7 +1153,114 @@ def update_all_regions_trades():
 
             time.sleep(0.2)
 
-    print("전국 12개월 거래 저장 완료")
+    print("✅ 전국 최근 2개월 매매 거래 저장 완료")
+
+import json
+import os
+
+PROGRESS_FILE_12M = "sale_12m_progress.json"
+
+
+def save_sale_12m_progress(index, sido, sigungu, lawd_cd):
+    progress = {
+        "last_region_index": index,
+        "sido": sido,
+        "sigungu": sigungu,
+        "lawd_cd": lawd_cd
+    }
+
+    with open(PROGRESS_FILE_12M, "w", encoding="utf-8") as f:
+        json.dump(progress, f, ensure_ascii=False, indent=2)
+
+
+def load_sale_12m_progress():
+    if not os.path.exists(PROGRESS_FILE_12M):
+        return 0
+
+    try:
+        with open(PROGRESS_FILE_12M, "r", encoding="utf-8") as f:
+            progress = json.load(f)
+
+        return int(progress.get("last_region_index", 0))
+
+    except Exception as e:
+        print(f"⚠️ 12개월 진행상황 파일 읽기 실패: {e}")
+        return 0
+
+# ✅ 주 1회 또는 수동 실행용: 최근 12개월
+def update_all_regions_trades_12m():
+    months = get_recent_months(12)
+    regions = get_all_region_codes()
+    total = len(regions)
+
+    start_index = load_sale_12m_progress()
+
+    if start_index > 0:
+        print(f"🔄 {start_index + 1}번째 지역부터 재개합니다.")
+
+    print("=" * 70)
+    print("🚀 전국 최근 12개월 매매 재수집 시작")
+    print(f"대상 지역 : {total}개")
+    print(f"대상 월   : {months}")
+    print("=" * 70)
+
+    success_count = 0
+    fail_count = 0
+
+    for index, (sido, sigungu, lawd_cd) in enumerate(regions, start=1):
+        if index <= start_index:
+            continue
+
+        save_sale_12m_progress(
+            index=index,
+            sido=sido,
+            sigungu=sigungu,
+            lawd_cd=lawd_cd
+        )
+
+        print(f"[{index}/{total}] {sido} {sigungu} 최근 12개월 수집 시작")
+
+        # 현재 진행 위치 저장
+        update_collect_progress(
+            job_type="sale_12m",
+            current_region=f"{sido} {sigungu}",
+            current_index=index,
+            total_regions=total
+        )
+
+        print(f"[{index}/{total}] {sido} {sigungu} 최근 12개월 수집 시작")
+
+        for ym in months:
+            try:
+                save_month_trades(
+                    lawd_cd=lawd_cd,
+                    region=sido,
+                    sigungu=sigungu,
+                    deal_ymd=ym
+                )
+
+                success_count += 1
+
+            except Exception as e:
+                fail_count += 1
+
+                print(
+                    f"❌ 수집 실패: "
+                    f"{sido} {sigungu} / {ym} / {e}"
+                )
+
+            time.sleep(0.2)
+
+    print("=" * 70)
+    print("✅ 전국 최근 12개월 매매 거래 갱신 완료")
+    print(f"성공: {success_count}회")
+    print(f"실패: {fail_count}회")
+
+    if os.path.exists(PROGRESS_FILE_12M):
+        os.remove(PROGRESS_FILE_12M)
+        
+    print("=" * 70)
+
 
 # ✅ 전국 수집 전 3개 지역 테스트
 def update_test_regions_trades():
@@ -1319,9 +1449,4 @@ def test_integrated_region_presale_replace():
     print("✅ 북구 202602 분양권 교체 테스트 완료")
 
 if __name__ == "__main__":
-    save_month_rent_trades(
-        lawd_cd="28290",          # 검단구
-        region="인천광역시",
-        sigungu="검단구",
-        deal_ymd="202509"
-    )
+    update_all_regions_trades_12m()
