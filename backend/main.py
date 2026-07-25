@@ -1280,7 +1280,7 @@ def analyze_price(
         items = rent_rows_to_items(db_rows)
 
     elif type == "presale":
-        print("🔥🔥 get_presale_trades 호출 직전")
+        
         db_rows = get_presale_trades(region, apt_name, size)
         items = db_rows_to_items(db_rows)
 
@@ -1901,6 +1901,7 @@ def future_prediction(
     apt_name: str,
     size: str = ""
 ):
+    print("★★★★★ future_prediction 실행 ★★★★★")
     region = normalize_region_for_db(region)
     
     try:
@@ -2127,7 +2128,15 @@ def future_prediction(
         # ✅ 실제 전세 평균가 계산
         rent_size = str(size).replace("㎡", "").strip()
 
-        rent_rows = get_rent_trades(apt_name, rent_size)
+        rent_rows = get_rent_trades(
+            region,
+            apt_name,
+            rent_size
+        )
+        print("전세조회 면적 =", rent_size)
+        print("전세거래 조회건수 =", len(rent_rows))
+        print("전세거래 샘플 =", rent_rows[:5])
+
         rent_items = rent_rows_to_items(rent_rows)
 
         jeonse_prices = [
@@ -2533,6 +2542,7 @@ def future_prediction(
         expected_low = int(round(expected_low))
         expected_high = int(round(expected_high))
 
+        print("★★★★★ 마지막 return 실행 ★★★★★")
         return {
             "지역": region,
             "디버그테스트": "future_prediction_return_ok",
