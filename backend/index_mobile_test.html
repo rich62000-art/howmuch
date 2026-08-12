@@ -10508,6 +10508,10 @@ function openFuturePrediction() {
     // =================================================
     // 3. 미래예측 API 요청
     // =================================================
+    console.log(
+        "🔥 미래예측 실제 전송값:",
+        analysisInput
+    );
     fetch(
         buildFuturePredictionUrl({
             region: analysisInput.region,
@@ -11101,7 +11105,7 @@ function renderFuturePredictionReport(data) {
                                 width:100%;
                                 text-align:center;
                             ">
-                                6개월 예상가격
+                                6개월후 예상가격
                             </span>
 
                             <strong style="
@@ -11118,6 +11122,15 @@ function renderFuturePredictionReport(data) {
                             ">
                                 ${formatPrice(data["6개월예상하한가"])} ~ ${formatPrice(data["6개월예상상한가"])}
                             </strong>
+                            <div style="
+                                margin-top:5px;
+                                font-size:12px;
+                                color:#475569;
+                                font-weight:700;
+                                text-align:center;
+                            ">
+                                중심가 ${formatPrice(data["6개월예상중심가"])}
+                            </div>
                         </div>
 
                         <div style="
@@ -11242,15 +11255,30 @@ function renderFuturePredictionReport(data) {
             </div>
 
             <!-- 상단 요약 배지 3개 -->
+            <!-- 상단 요약 배지 4개 -->
             <div style="
                 display:grid;
-                grid-template-columns:1.2fr 1fr 1fr;
+                grid-template-columns:1fr 1fr;
                 gap:8px;
                 margin-top:14px;
             ">
 
-                <div style="background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 8px; text-align:center;">
-                    <div style="font-size:11px; color:#64748b; font-weight:800;">거래추세</div>
+                <!-- 1. 거래추세 -->
+                <div style="
+                    background:#fff;
+                    border:1px solid #fca5a5;
+                    border-radius:14px;
+                    padding:12px 8px;
+                    text-align:center;
+                ">
+                    <div style="
+                        font-size:11px;
+                        color:#64748b;
+                        font-weight:800;
+                    ">
+                        거래추세
+                    </div>
+
                     <div style="
                         font-size:18px;
                         color:#ef4444;
@@ -11258,22 +11286,95 @@ function renderFuturePredictionReport(data) {
                         margin-top:8px;
                         white-space:nowrap;
                     ">
-                        ${data.거래추세 || "-"} ${Number(data.거래상승률 || 0) > 0 ? "+" : ""}${data.거래상승률 || 0}%
+                        ${data.거래추세 || "-"}
+                        ${Number(data.거래상승률 || 0) > 0 ? "+" : ""}${data.거래상승률 || 0}%
                     </div>
-                    
                 </div>
 
-                <div style="background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 8px; text-align:center;">
-                    <div style="font-size:11px; color:#64748b; font-weight:800;">최근 6월 평균</div>
-                    <div style="font-size:18px; color:#0f172a; font-weight:900; margin-top:8px;">
+
+                <!-- 2. 추세신뢰도 -->
+                <div style="
+                    background:#fff;
+                    border:1px solid #fca5a5;
+                    border-radius:14px;
+                    padding:12px 8px;
+                    text-align:center;
+                ">
+                    <div style="
+                        font-size:11px;
+                        color:#64748b;
+                        font-weight:800;
+                    ">
+                        추세신뢰도
+                    </div>
+
+                    <div style="
+                        font-size:18px;
+                        color:#2563eb;
+                        font-weight:900;
+                        margin-top:8px;
+                        white-space:nowrap;
+                    ">
+                        ${data.추세신뢰도 || "-"}
+                    </div>
+                </div>
+
+
+                <!-- 3. 최근 6개월 평균 -->
+                <div style="
+                    background:#fff;
+                    border:1px solid #fca5a5;
+                    border-radius:14px;
+                    padding:12px 8px;
+                    text-align:center;
+                ">
+                    <div style="
+                        font-size:11px;
+                        color:#64748b;
+                        font-weight:800;
+                    ">
+                        최근 6개월 평균
+                    </div>
+
+                    <div style="
+                        font-size:18px;
+                        color:#0f172a;
+                        font-weight:900;
+                        margin-top:8px;
+                        white-space:nowrap;
+                    ">
                         ${formatEok(data.최근6개월평균)}
                     </div>
                 </div>
 
-                <div style="background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px 8px; text-align:center;">
-                    <div style="font-size:11px; color:#64748b; font-weight:800;">이전 6월 평균</div>
-                    <div style="font-size:18px; color:#0f172a; font-weight:900; margin-top:8px;">
-                        ${Number(data.이전6개월평균 || 0) > 0 ? formatEok(data.이전6개월평균) : "-"}
+
+                <!-- 4. 이전 6개월 평균 -->
+                <div style="
+                    background:#fff;
+                    border:1px solid #fca5a5;
+                    border-radius:14px;
+                    padding:12px 8px;
+                    text-align:center;
+                ">
+                    <div style="
+                        font-size:11px;
+                        color:#64748b;
+                        font-weight:800;
+                    ">
+                        이전 6개월 평균
+                    </div>
+
+                    <div style="
+                        font-size:18px;
+                        color:#0f172a;
+                        font-weight:900;
+                        margin-top:8px;
+                        white-space:nowrap;
+                    ">
+                        ${Number(data.이전6개월평균 || 0) > 0
+                            ? formatEok(data.이전6개월평균)
+                            : "-"
+                        }
                     </div>
                 </div>
 
@@ -11284,7 +11385,7 @@ function renderFuturePredictionReport(data) {
                 background:#ffffff;
                 border-radius:16px;
                 padding:14px 10px;
-                border:1px solid #e5e7eb;
+                border:1px solid #fca5a5;
                 margin-top:10px;
                 text-align:center;
                 font-size:14px;
@@ -11391,7 +11492,7 @@ function renderFuturePredictionReport(data) {
                     background:#ffffff;
                     border-radius:14px;
                     padding:14px;
-                    border:1px solid #e5e7eb;
+                    border:1px solid #86efac;
                     text-align:center;
                     font-size:14px;
                     line-height:1.7;
@@ -11438,7 +11539,7 @@ function renderFuturePredictionReport(data) {
                             position:absolute;
                             left:0;
                             right:0;
-                            top:80px;
+                            top:70px;
                             text-align:center;
                             font-size:20px;
                             font-weight:900;
@@ -11446,6 +11547,21 @@ function renderFuturePredictionReport(data) {
                             letter-spacing:-0.8px;
                         ">
                             ${data.전세가율 || 0}%
+                        </div>
+                        <div style="
+                            margin-top:8px;
+                            font-size:11px;
+                            font-weight:700;
+                            color:#64748b;
+                            text-align:center;
+                        ">
+                            ${
+                                Number(data.전세가율 || 0) >= 70
+                                    ? "전세가율이 높은 편"
+                                    : Number(data.전세가율 || 0) >= 60
+                                        ? "전세가율이 보통 이상"
+                                        : "전세가율이 낮은 편"
+                            }
                         </div>
 
                     </div>
@@ -11458,7 +11574,7 @@ function renderFuturePredictionReport(data) {
                     background:#ffffff;
                     border-radius:14px;
                     padding:14px;
-                    border:1px solid #e5e7eb;
+                    border:1px solid #86efac;
                     text-align:center;
                     font-size:14px;
                     line-height:1.7;
@@ -11579,7 +11695,7 @@ function renderFuturePredictionReport(data) {
                     background:#ffffff;
                     border-radius:14px;
                     padding:14px;
-                    border:1px solid #e5e7eb;
+                    border:1px solid #fca5a5;
                     text-align:center;
                     font-size:14px;
                     line-height:1.7;
@@ -11620,6 +11736,23 @@ function renderFuturePredictionReport(data) {
                     ">
                          ${data.최근3개월거래량 || 0}건
                     </div>
+                    <div style="
+                        margin-top:5px;
+                        font-size:11px;
+                        line-height:1.45;
+                        color:#64748b;
+                        text-align:center;
+                    ">
+                        ${
+                            data.거래활성도 === "활발"
+                                ? "최근 거래가 비교적 활발합니다."
+                                : data.거래활성도 === "보통"
+                                    ? "최근 거래가 평균적인 수준입니다."
+                                    : data.거래활성도 === "적음"
+                                        ? "최근 거래가 많지 않은 편입니다."
+                                        : "최근 거래가 부족해 추세 해석에 주의가 필요합니다."
+                        }
+                    </div>
 
                 </div>
 
@@ -11628,7 +11761,7 @@ function renderFuturePredictionReport(data) {
                     background:#ffffff;
                     border-radius:14px;
                     padding:14px;
-                    border:1px solid #e5e7eb;
+                    border:1px solid #fca5a5;
                     text-align:center;
                     font-size:14px;
                     line-height:1.7;
@@ -11725,6 +11858,82 @@ function renderFuturePredictionReport(data) {
                         .join("")}
                 </div>
 
+                <!-- V1 핵심 전망 지표 -->
+                <div style="
+                    display:grid;
+                    grid-template-columns:1fr 1fr;
+                    gap:8px;
+                    margin-top:16px;
+                    padding-left:8px;
+                    padding-right:8px;
+                    padding-bottom:38px;
+                ">
+
+                    <!-- 6개월 예상 변동률 -->
+                    <div style="
+                        background:#ffffff;
+                        border:1px solid #93c5fd;
+                        border-radius:12px;
+                        padding:10px 8px;
+                        text-align:center;
+                    ">
+                        <div style="
+                            font-size:11px;
+                            color:#64748b;
+                            font-weight:800;
+                        ">
+                            6개월 예상 변동률
+                        </div>
+
+                        <div style="
+                            margin-top:5px;
+                            font-size:17px;
+                            font-weight:900;
+                            color:${
+                                Number(data["6개월예상상승률"] || 0) > 0
+                                    ? "#ef4444"
+                                    : Number(data["6개월예상상승률"] || 0) < 0
+                                        ? "#2563eb"
+                                        : "#64748b"
+                            };
+                        ">
+                            ${
+                                Number(data["6개월예상상승률"] || 0) > 0
+                                    ? "+"
+                                    : ""
+                            }${Number(data["6개월예상상승률"] || 0).toFixed(2)}%
+                        </div>
+                    </div>
+
+
+                    <!-- 추세신뢰도 -->
+                    <div style="
+                        background:#ffffff;
+                        border:1px solid #93c5fd;
+                        border-radius:12px;
+                        padding:10px 8px;
+                        text-align:center;
+                    ">
+                        <div style="
+                            font-size:11px;
+                            color:#64748b;
+                            font-weight:800;
+                        ">
+                            추세신뢰도
+                        </div>
+
+                        <div style="
+                            margin-top:5px;
+                            font-size:17px;
+                            font-weight:900;
+                            color:#2563eb;
+                        ">
+                            ${data.추세신뢰도 || "-"}
+                        </div>
+                    </div>
+
+                </div>
+
                 <div style="
                     position:absolute;
                     right:14px;
@@ -11774,12 +11983,29 @@ function renderFuturePredictionReport(data) {
                     5
                 </div>
 
-                <div style="
-                    font-size:18px;
-                    font-weight:900;
-                    color:#0f172a;
-                ">
-                    미래예측 요약
+                <div>
+                    <div style="
+                        font-size:18px;
+                        font-weight:900;
+                        color:#0f172a;
+                    ">
+                        미래예측 요약
+                    </div>
+
+                    <div style="
+                        font-size:11px;
+                        color:#64748b;
+                        margin-top:4px;
+                        font-weight:700;
+                    ">
+                        6개월 전망
+                        ${
+                            Number(data["6개월예상상승률"] || 0) > 0
+                                ? "+"
+                                : ""
+                        }${Number(data["6개월예상상승률"] || 0).toFixed(2)}%
+                        · 추세신뢰도 ${data.추세신뢰도 || "-"}
+                    </div>
                 </div>
             </div>
 
@@ -11810,7 +12036,7 @@ function renderFuturePredictionReport(data) {
                     </div>
                 </div>
 
-                <!-- 하락 요인 -->
+                <!-- 주의 요인 -->
                 <div style="
                     background:#fff7ed;
                     border:1px solid #fed7aa;
@@ -11882,7 +12108,7 @@ function renderFuturePredictionReport(data) {
                         color:#64748b;
                         margin-top:2px;
                     ">
-                        가격·거래·전세 종합 판단
+                        가격·거래·전세·미래전망 종합 참고점수
                     </div>
                 </div>
             </div>
@@ -11900,6 +12126,14 @@ function renderFuturePredictionReport(data) {
                     line-height:1;
                 ">
                     ${data.전망점수 || 0}%
+                </div>
+                <div style="
+                    margin-top:8px;
+                    font-size:11px;
+                    color:#64748b;
+                    font-weight:700;
+                ">
+                    ※ 확률이 아닌 종합 판단용 참고점수입니다.
                 </div>
                 
             </div>
@@ -12852,6 +13086,17 @@ function fetchApts(region, keyword = "") {
     // ===== 단지 목록 API 요청 =====
 
     const aptFetchStart = performance.now();
+
+    console.log(
+        "🔥 /apts 실제 요청값:",
+        {
+            region: region,
+            dong: selectedDong,
+            type: selectedPropertyType,
+            keyword: keyword
+        }
+    );
+
     debugLog("⏱️ [FRONT] /apts fetch 시작");
 
     fetch(
@@ -13484,6 +13729,15 @@ function analyzePrice() {
         .then(data => {
             console.log("===== 분석 결과 =====");
             console.log(data);
+            console.log(
+                "🔥 데이터신뢰도 =",
+                data.데이터신뢰도
+            );
+
+            console.log(
+                "🔥 최근12개월거래건수 =",
+                data.최근12개월거래건수
+            );
             // =================================================
             // 5. 분석 결과 분기 처리
             // =================================================
@@ -13652,8 +13906,11 @@ function analyzePrice() {
                                 ? `평균 전세보증금 ${Number(data.평균전세보증금 || 0).toLocaleString()}만원 · 평균 월세보증금 ${Number(data.평균월세보증금 || 0).toLocaleString()}만원 · 평균 월세 ${Number(data.평균월세 || 0).toLocaleString()}만원`
                                 : `평균 전세보증금 ${Number(data.평균전세보증금 || 0).toLocaleString()}만원`
 
-                            : "현재 시세 기준 적정 범위 가격입니다";
-
+                            : data.데이터신뢰도 === "분석 보류"
+                                ? "⚠️ 최근 거래 없음 · 분석 보류"
+                                : data.데이터신뢰도 === "거래 부족"
+                                    ? "⚠️ 거래 부족 · 참고용"
+                                    : "현재 시세 기준 적정 범위 가격입니다";
                 const avgPrice =
                     Number(data["평균가격"] || data["평균가"] || 0);
 
@@ -16222,6 +16479,12 @@ function renderMarketStatusCard(data) {
  * 다음 : renderMarketStatusCard()
  */
 function renderKpiCards(data) {
+    console.log(
+        "🔥 추천매수가 카드 데이터신뢰도 =",
+        data.데이터신뢰도,
+        "최근12개월거래건수 =",
+        data.최근12개월거래건수
+    );
     return `
         <!-- ==================================================
              6-3. 핵심 KPI 카드
@@ -16234,12 +16497,54 @@ function renderKpiCards(data) {
                 <div class="summary-value"
                     style="
                         display:flex;
+                        flex-direction:column;
                         justify-content:center;
-                        align-items:baseline;
-                        gap:4px;
+                        align-items:center;
+                        width:100%;
+                        text-align:center;
+                        gap:5px;
                     "
                 >
-                    ${Number(data.추천매수가 || 0).toLocaleString()} <span>만원</span>
+                    <!-- 추천 가격 -->
+                    <div style="
+                        display:flex;
+                        justify-content:center;
+                        align-items:baseline;
+                        width:100%;
+                        gap:4px;
+                        white-space:nowrap;
+                        text-align:center;
+                    ">
+                        ${
+                            Number(data.추천매수가 || 0) > 0
+                                ? `${Number(data.추천매수가).toLocaleString()} <span>만원</span>`
+                                : `<span style="
+                                    font-size:24px;
+                                    font-weight:900;
+                                    color:#64748b;
+                                ">분석 보류</span>`
+                        }
+                    </div>
+                    <!-- 거래 부족 안내 -->
+                    ${
+                        data.데이터신뢰도 === "거래 부족"
+                            ? `
+                                <div style="
+                                    display:block;
+                                    width:100%;
+                                    margin-top:2px;
+                                    text-align:center;
+                                    font-size:11px;
+                                    line-height:1.2;
+                                    font-weight:800;
+                                    color:#2563eb;
+                                    white-space:nowrap;
+                                ">
+                                    ⚠️ 거래 부족 · 참고용
+                                </div>
+                            `
+                            : ""
+                    }
                 </div>
             </div>
 
@@ -16253,7 +16558,10 @@ function renderKpiCards(data) {
                         gap:4px;
                     "
                 >
-                    ${Number(data.보정추천가 || 0).toLocaleString()} <span>만원</span>
+                    ${Number(data.보정추천가 || 0) > 0
+                        ? Number(data.보정추천가).toLocaleString() + ' <span>만원</span>'
+                        : '<span style="color:#64748b;">분석 보류</span>'
+                    }
                 </div>
             </div>
 
@@ -16289,7 +16597,10 @@ function renderKpiCards(data) {
                         margin-top:0;
                     "
                 >
-                    ${Number(data.평균가격 || 0).toLocaleString()} <span>만원</span>
+                    ${Number(data.평균가격 || 0) > 0
+                        ? Number(data.평균가격).toLocaleString() + ' <span>만원</span>'
+                        : '<span style="color:#94a3b8;">-</span>'
+                    }
                 </div>
             </div>
 
@@ -16305,7 +16616,12 @@ function renderKpiCards(data) {
                             gap:6px !important;
                         "
                     >
-                        <span class="high-price">${Number(data.최고가 || 0).toLocaleString()}</span>
+                        <span class="high-price">
+                            ${Number(data.최고가 || 0) > 0
+                                ? Number(data.최고가).toLocaleString()
+                                : "-"
+                            }
+                        </span>
                         <span class="mini-label red">최고가</span>
                     </div>
 
@@ -16318,7 +16634,12 @@ function renderKpiCards(data) {
                             gap:6px !important;
                         "
                     >
-                        <span class="low-price">${Number(data.최저가 || 0).toLocaleString()}</span>
+                        <span class="low-price">
+                            ${Number(data.최저가 || 0) > 0
+                                ? Number(data.최저가).toLocaleString()
+                                : "-"
+                            }
+                        </span>
                         <span class="mini-label blue">최저가</span>
                     </div>
                 </div>

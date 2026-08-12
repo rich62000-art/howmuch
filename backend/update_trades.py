@@ -4,9 +4,14 @@ import requests
 import zipfile
 import io
 import xml.etree.ElementTree as ET
-from datetime import datetime
+import sys
 
+DEBUG_COLLECTOR = False
+
+from datetime import datetime
 from db import (
+    get_pg_connection,
+    release_pg_connection,
     insert_apt_sale_trade,
     replace_apt_sale_trades_for_month,
     replace_apt_rent_trades_for_month,
@@ -17,7 +22,6 @@ from db import (
     create_tables,
     get_all_region_codes,
     rebuild_apt_sale_list,
-    replace_apt_rent_trades_for_month,
     clear_region_codes
 )
 
@@ -138,13 +142,13 @@ def parse_trade_xml(response_text, description):
 # ✅ 법정동 코드 파일 다운로드
 def download_region_code_file():
     response = requests.get(REGION_CODE_URL)
-
-    print("법정동 코드 다운로드 응답:", response.status_code)
+    if DEBUG_COLLECTOR:
+        print("법정동 코드 다운로드 응답:", response.status_code)
 
     with open("region_codes.txt", "wb") as f:
         f.write(response.content)
-
-    print("region_codes.txt 저장 완료")
+    if DEBUG_COLLECTOR:
+        print("region_codes.txt 저장 완료")
 
 def get_recent_months(count=12):
     months = []
@@ -216,12 +220,12 @@ def save_month_trades(
             timeout=30,
             max_retries=3
         )
-
-        print(
-            f"{sigungu} 매매 {deal_ymd} "
-            f"{page_no}페이지 응답:",
-            response.status_code
-        )
+        if DEBUG_COLLECTOR:
+            print(
+                f"{sigungu} 매매 {deal_ymd} "
+                f"{page_no}페이지 응답:",
+                response.status_code
+            )
 
         description = (
             f"{sigungu} 매매 {deal_ymd} "
@@ -237,11 +241,11 @@ def save_month_trades(
             total_count = parsed_total_count
 
         all_items.extend(page_items)
-
-        print(
-            f"{sigungu} 매매 {deal_ymd} 수집 진행: "
-            f"{len(all_items)}/{total_count}건"
-        )
+        if DEBUG_COLLECTOR:
+            print(
+                f"{sigungu} 매매 {deal_ymd} 수집 진행: "
+                f"{len(all_items)}/{total_count}건"
+            )
 
         try:
             root = ET.fromstring(response.text)
@@ -287,11 +291,11 @@ def save_month_trades(
             f"{sigungu} 매매 {deal_ymd} 전체 건수 불일치: "
             f"API {total_count}건 / 수집 {len(all_items)}건"
         )
-
-    print(
-        f"{sigungu} 매매 {deal_ymd} "
-        f"전체 거래 건수: {total_count}"
-    )
+    if DEBUG_COLLECTOR:
+        print(
+            f"{sigungu} 매매 {deal_ymd} "
+            f"전체 거래 건수: {total_count}"
+        )
 
     # ======================================================
     # ② 전체 응답을 DB 저장 형식으로 변환
@@ -304,27 +308,7 @@ def save_month_trades(
         apt_name = item.findtext("aptNm", "").strip()
         dong = item.findtext("umdNm", "").strip()
         apt_dong = item.findtext("aptDong", "").strip()
-
-        # ✅ 고덕그라시움 2026-04-02 거래만 XML 확인
-        debug_apt_name = item.findtext("aptNm", "").strip()
-        debug_size = item.findtext("excluUseAr", "").strip()
-        debug_day = item.findtext("dealDay", "").strip()
-        debug_floor = item.findtext("floor", "").strip()
-        debug_price = item.findtext("dealAmount", "").replace(",", "").strip()
-
-        if (
-            debug_apt_name == "고덕그라시움"
-            and debug_size == "59.028"
-            and debug_day == "2"
-            and debug_floor == "3"
-            and debug_price == "184000"
-        ):
-            print("===== 고덕그라시움 해당 거래 XML =====")
-            print(ET.tostring(item, encoding="unicode"))
-            print("aptDong =", repr(item.findtext("aptDong", "")))
-            print("rgstDate =", repr(item.findtext("rgstDate", "")))
-            print("====================================")
-    
+   
         exclu_use_ar = item.findtext(
             "excluUseAr",
             "0"
@@ -443,12 +427,12 @@ def save_month_presale_trades(
             timeout=30,
             max_retries=3
         )
-
-        print(
-            f"{sigungu} 분양권 {deal_ymd} "
-            f"{page_no}페이지 응답:",
-            response.status_code
-        )
+        if DEBUG_COLLECTOR:
+            print(
+                f"{sigungu} 분양권 {deal_ymd} "
+                f"{page_no}페이지 응답:",
+                response.status_code
+            )
 
         description = (
             f"{sigungu} 분양권 {deal_ymd} "
@@ -464,11 +448,11 @@ def save_month_presale_trades(
             total_count = parsed_total_count
 
         all_items.extend(page_items)
-
-        print(
-            f"{sigungu} 분양권 {deal_ymd} 수집 진행: "
-            f"{len(all_items)}/{total_count}건"
-        )
+        if DEBUG_COLLECTOR:
+            print(
+                f"{sigungu} 분양권 {deal_ymd} 수집 진행: "
+                f"{len(all_items)}/{total_count}건"
+            )
 
         if len(all_items) >= total_count:
             break
@@ -488,11 +472,11 @@ def save_month_presale_trades(
             f"{sigungu} 분양권 {deal_ymd} 전체 건수 불일치: "
             f"API {total_count}건 / 수집 {len(all_items)}건"
         )
-
-    print(
-        f"{sigungu} 분양권 {deal_ymd} "
-        f"전체 거래 건수: {total_count}"
-    )
+    if DEBUG_COLLECTOR:
+        print(
+            f"{sigungu} 분양권 {deal_ymd} "
+            f"전체 거래 건수: {total_count}"
+        )
 
     # ======================================================
     # ② 전체 응답을 DB 저장 형식으로 변환
@@ -682,12 +666,12 @@ def save_month_rent_trades(
             timeout=30,
             max_retries=3
         )
-
-        print(
-            f"{sigungu} 전월세 {deal_ymd} "
-            f"{page_no}페이지 응답:",
-            response.status_code
-        )
+        if DEBUG_COLLECTOR:
+            print(
+                f"{sigungu} 전월세 {deal_ymd} "
+                f"{page_no}페이지 응답:",
+                response.status_code
+            )
 
         description = (
             f"{sigungu} 전월세 {deal_ymd} "
@@ -698,27 +682,17 @@ def save_month_rent_trades(
             response.text,
             description
         )
-
-        print("✅ 전월세 원본 확인 코드 실행됨")
-
-        if page_no == 1:
-            print("🔍 전월세 API 원본 항목 수:", len(page_items))
-
-            if page_items:
-                print("🔍 전월세 API 원본 첫 항목:")
-                print(ET.tostring(page_items[0], encoding="unicode"))
-            else:
-                print("⚠️ 전월세 API 첫 페이지에 item이 없습니다.")
+        
 
         if total_count is None:
             total_count = parsed_total_count
 
         all_items.extend(page_items)
-
-        print(
-            f"{sigungu} 전월세 {deal_ymd} 수집 진행: "
-            f"{len(all_items)}/{total_count}건"
-        )
+        if DEBUG_COLLECTOR:
+            print(
+                f"{sigungu} 전월세 {deal_ymd} 수집 진행: "
+                f"{len(all_items)}/{total_count}건"
+            )
 
         # 전체 데이터를 모두 받았으면 종료
         if len(all_items) >= total_count:
@@ -741,22 +715,22 @@ def save_month_rent_trades(
             f"{sigungu} 전월세 {deal_ymd} 전체 건수 불일치: "
             f"API {total_count}건 / 수집 {len(all_items)}건"
         )
-
-    print(
-        f"{sigungu} 전월세 {deal_ymd} "
-        f"전체 거래 건수: {total_count}"
-    )
+    if DEBUG_COLLECTOR:
+        print(
+            f"{sigungu} 전월세 {deal_ymd} "
+            f"전체 거래 건수: {total_count}"
+        )
 
     # ======================================================
     # ② 전체 응답을 DB 저장 형식으로 변환
     # ======================================================
     trades = []
-
-    print(
-        f"🔍 전월세 변환 시작: "
-        f"{region} {sigungu} {deal_ymd} "
-        f"/ all_items={len(all_items)}건"
-    )
+    if DEBUG_COLLECTOR:
+        print(
+            f"🔍 전월세 변환 시작: "
+            f"{region} {sigungu} {deal_ymd} "
+            f"/ all_items={len(all_items)}건"
+        )
 
     for item in all_items:
         
@@ -827,11 +801,12 @@ def save_month_rent_trades(
     # ======================================================
     # ③ 모든 페이지 수집·검증 완료 후 한 번만 DB 교체
     # ======================================================
-    print(
-        f"🔍 전월세 변환 완료: "
-        f"all_items={len(all_items)}건 "
-        f"/ trades={len(trades)}건"
-    )
+    if DEBUG_COLLECTOR:
+        print(
+            f"🔍 전월세 변환 완료: "
+            f"all_items={len(all_items)}건 "
+            f"/ trades={len(trades)}건"
+        )
     replace_apt_rent_trades_for_month(
         region=region,
         sigungu=sigungu,
@@ -1131,11 +1106,333 @@ def update_region_codes():
 
     for sido, sigungu, lawd_cd in region_list:
         insert_region_code(sido, sigungu, lawd_cd)
+    if DEBUG_COLLECTOR:
+        print("시군구 코드 저장 완료:", len(region_list))
 
-    print("시군구 코드 저장 완료:", len(region_list))
+def load_sale_12m_progress():
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                last_region_index,
+                last_step,
+                status
+            FROM collect_progress
+            WHERE job_name = %s
+        """, ("sale_12m",))
+
+        row = cur.fetchone()
+
+        if row is None:
+            return {
+                "last_region_index": 0,
+                "last_month": "",
+                "status": ""
+            }
+
+        return {
+            "last_region_index": int(row[0] or 0),
+            "last_month": row[1] or "",
+            "status": row[2] or ""
+        }
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
+
+def load_rent_12m_progress():
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                last_region_index,
+                last_step,
+                status
+            FROM collect_progress
+            WHERE job_name = %s
+        """, ("rent_12m",))
+
+        row = cur.fetchone()
+
+        if row is None:
+            return {
+                "last_region_index": 0,
+                "last_month": "",
+                "status": ""
+            }
+
+        return {
+            "last_region_index": int(row[0] or 0),
+            "last_month": row[1] or "",
+            "status": row[2] or ""
+        }
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
+
+def load_presale_12m_progress():
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT
+                last_region_index,
+                last_step,
+                status
+            FROM collect_progress
+            WHERE job_name = %s
+        """, ("presale_12m",))
+
+        row = cur.fetchone()
+
+        if row is None:
+            return {
+                "last_region_index": 0,
+                "last_month": "",
+                "status": ""
+            }
+
+        return {
+            "last_region_index": int(row[0] or 0),
+            "last_month": row[1] or "",
+            "status": row[2] or ""
+        }
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
+
+def update_collect_job(
+    job_type,
+    title,
+    save_month_func,
+    load_progress_func
+):
+    progress = load_progress_func()
+
+    if progress.get("status") == "completed":
+        print("=" * 70)
+        print(f"✅ 전국 최근 12개월 {title} 수집은 이미 완료된 상태입니다.")
+        print("🔄 새로 전체 수집하려면 진행상태를 초기화해야 합니다.")
+        print("=" * 70)
+        return
+
+    months = get_recent_months(12)
+    regions = get_all_region_codes()
+    total = len(regions)
+
+    start_region_index = progress["last_region_index"]
+    last_completed_month = progress["last_month"]
+
+    success_count = 0
+    fail_count = 0
+
+    print("=" * 70)
+    print(f"🚀 전국 최근 12개월 {title} 수집 시작")
+    print(f"대상 지역 : {total}개")
+    print(f"대상 월   : {months}")
+
+    if start_region_index > 0:
+        print(
+            f"🔄 재개 위치 : "
+            f"{start_region_index}번째 지역 / "
+            f"마지막 완료 월 {last_completed_month}"
+        )
+
+    print("=" * 70)
+
+    for index, (sido, sigungu, lawd_cd) in enumerate(regions, start=1):
+
+        if index < start_region_index:
+            continue
+
+        print(
+            f"[{index}/{total}] "
+            f"{sido} {sigungu} 최근 12개월 {title} 수집 시작"
+        )
+
+        for ym in months:
+
+            if index == start_region_index and last_completed_month:
+                if ym == last_completed_month:
+                    last_completed_month = ""
+                continue
+
+            try:
+                save_month_func(
+                    lawd_cd=lawd_cd,
+                    region=sido,
+                    sigungu=sigungu,
+                    deal_ymd=ym
+                )
+
+                success_count += 1
+
+                save_collect_progress(
+                    job_type=job_type,
+                    index=index,
+                    sido=sido,
+                    sigungu=sigungu,
+                    lawd_cd=lawd_cd,
+                    month=ym,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    status="running",
+                    last_error=None
+                )
+
+                print(
+                    f"✅ [{index}/{total}] "
+                    f"{sido} {sigungu} {ym} {title} 완료"
+                )
+
+            except Exception as e:
+                fail_count += 1
+
+                save_collect_progress(
+                    job_type=job_type,
+                    index=index,
+                    sido=sido,
+                    sigungu=sigungu,
+                    lawd_cd=lawd_cd,
+                    month=ym,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    status="error",
+                    last_error=str(e)
+                )
+
+                print("=" * 70)
+                print(
+                    f"❌ {title} 수집 실패: "
+                    f"{sido} {sigungu} / {ym} / {e}"
+                )
+                print("⚠️ 현재 위치를 유지하고 수집을 중단합니다.")
+                print("⚠️ 다시 실행하면 실패한 월부터 재시도합니다.")
+                print(f"성공: {success_count}회")
+                print(f"실패: {fail_count}회")
+                print("=" * 70)
+
+                return
+
+            time.sleep(0.2)
+
+    # 전국 모든 지역 정상 완료
+    if regions:
+        last_sido, last_sigungu, last_lawd_cd = regions[-1]
+
+        save_collect_progress(
+            job_type=job_type,
+            index=total,
+            sido=last_sido,
+            sigungu=last_sigungu,
+            lawd_cd=last_lawd_cd,
+            month=months[-1] if months else "",
+            success_count=success_count,
+            fail_count=fail_count,
+            status="completed",
+            last_error=None
+        )
+
+    print_collect_summary(
+        title,
+        success_count,
+        fail_count
+    )
+
+def save_collect_progress(
+    job_type,
+    index,
+    sido,
+    sigungu,
+    lawd_cd,
+    month,
+    success_count=0,
+    fail_count=0,
+    status="running",
+    last_error=None
+):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            INSERT INTO collect_progress (
+                job_name,
+                last_region_index,
+                last_sido,
+                last_sigungu,
+                last_lawd_cd,
+                last_step,
+                status,
+                success_count,
+                fail_count,
+                last_error,
+                started_at,
+                updated_at
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s,
+                COALESCE(
+                    (
+                        SELECT started_at
+                        FROM collect_progress
+                        WHERE job_name = %s
+                    ),
+                    NOW()
+                ),
+                NOW()
+            )
+            ON CONFLICT (job_name)
+            DO UPDATE SET
+                last_region_index = EXCLUDED.last_region_index,
+                last_sido         = EXCLUDED.last_sido,
+                last_sigungu       = EXCLUDED.last_sigungu,
+                last_lawd_cd       = EXCLUDED.last_lawd_cd,
+                last_step          = EXCLUDED.last_step,
+                status             = EXCLUDED.status,
+                success_count      = EXCLUDED.success_count,
+                fail_count         = EXCLUDED.fail_count,
+                last_error         = EXCLUDED.last_error,
+                updated_at         = NOW(),
+                completed_at      = CASE
+                    WHEN EXCLUDED.status = 'completed'
+                    THEN NOW()
+                    ELSE collect_progress.completed_at
+                END;
+        """, (
+            job_type,
+            index,
+            sido,
+            sigungu,
+            lawd_cd,
+            month,
+            status,
+            success_count,
+            fail_count,
+            last_error,
+            job_type
+        ))
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
 
 # ✅ 매일 실행용: 최근 2개월
-def update_all_regions_trades():
+def update_all_regions_trades_old():
     months = get_recent_months(2)
     regions = get_all_region_codes()
     total = len(regions)
@@ -1155,82 +1452,100 @@ def update_all_regions_trades():
 
     print("✅ 전국 최근 2개월 매매 거래 저장 완료")
 
-import json
-import os
+def update_all_regions_trades():
+    return update_collect_job_recent(
+        title="매매",
+        save_month_func=save_month_trades
+    )
 
-PROGRESS_FILE_12M = "sale_12m_progress.json"
+def update_all_regions_rent_trades():
+    return update_collect_job_recent(
+        title="전월세",
+        save_month_func=save_month_rent_trades
+    )
 
+def update_all_regions_presale_trades():
+    return update_collect_job_recent(
+        title="분양권",
+        save_month_func=save_month_presale_trades
+    )
 
-def save_sale_12m_progress(index, sido, sigungu, lawd_cd):
-    progress = {
-        "last_region_index": index,
-        "sido": sido,
-        "sigungu": sigungu,
-        "lawd_cd": lawd_cd
-    }
+def update_recent_all():
+    print("\n" + "=" * 70)
+    print("🚀 최근 2개월 전국 데이터 자동수집 시작")
+    print("=" * 70)
 
-    with open(PROGRESS_FILE_12M, "w", encoding="utf-8") as f:
-        json.dump(progress, f, ensure_ascii=False, indent=2)
+    update_all_regions_trades()
+    update_all_regions_rent_trades()
+    update_all_regions_presale_trades()
 
+    print("=" * 70)
+    print("✅ 최근 2개월 전체 수집 완료")
+    print("=" * 70)
 
-def load_sale_12m_progress():
-    if not os.path.exists(PROGRESS_FILE_12M):
-        return 0
+def update_12m_all():
+    print("\n" + "=" * 70)
+    print("🚀 최근 12개월 전국 데이터 자동수집 시작")
+    print("=" * 70)
 
-    try:
-        with open(PROGRESS_FILE_12M, "r", encoding="utf-8") as f:
-            progress = json.load(f)
+    update_all_regions_trades_12m()
+    update_all_regions_rent_trades_12m()
+    update_all_presale_trades_12m()
 
-        return int(progress.get("last_region_index", 0))
+    print("=" * 70)
+    print("✅ 최근 12개월 전체 수집 완료")
+    print("=" * 70)
 
-    except Exception as e:
-        print(f"⚠️ 12개월 진행상황 파일 읽기 실패: {e}")
-        return 0
-
-# ✅ 주 1회 또는 수동 실행용: 최근 12개월
-def update_all_regions_trades_12m():
+# ==========================================================
+# Legacy Version (백업용)
+# 공통 엔진(update_collect_job) 도입 후 보관 중
+# 충분한 운영 검증 후 삭제 예정
+# ==========================================================
+def update_all_regions_trades_12m_old():
     months = get_recent_months(12)
     regions = get_all_region_codes()
     total = len(regions)
 
-    start_index = load_sale_12m_progress()
+    # 이전 진행상황 불러오기
+    progress = load_sale_12m_progress()
 
-    if start_index > 0:
-        print(f"🔄 {start_index + 1}번째 지역부터 재개합니다.")
+    start_region_index = progress["last_region_index"]
+    last_completed_month = progress["last_month"]
+
+    success_count = 0
+    fail_count = 0
 
     print("=" * 70)
     print("🚀 전국 최근 12개월 매매 재수집 시작")
     print(f"대상 지역 : {total}개")
     print(f"대상 월   : {months}")
+
+    if start_region_index > 0:
+        print(
+            f"🔄 재개 위치: "
+            f"{start_region_index}번째 지역 / "
+            f"마지막 완료 월 {last_completed_month}"
+        )
+
     print("=" * 70)
 
-    success_count = 0
-    fail_count = 0
-
     for index, (sido, sigungu, lawd_cd) in enumerate(regions, start=1):
-        if index <= start_index:
+
+        # 이미 완료된 이전 지역은 건너뜀
+        if index < start_region_index:
             continue
-
-        save_sale_12m_progress(
-            index=index,
-            sido=sido,
-            sigungu=sigungu,
-            lawd_cd=lawd_cd
-        )
-
-        print(f"[{index}/{total}] {sido} {sigungu} 최근 12개월 수집 시작")
-
-        # 현재 진행 위치 저장
-        update_collect_progress(
-            job_type="sale_12m",
-            current_region=f"{sido} {sigungu}",
-            current_index=index,
-            total_regions=total
-        )
 
         print(f"[{index}/{total}] {sido} {sigungu} 최근 12개월 수집 시작")
 
         for ym in months:
+
+            # 중단됐던 동일 지역에서는
+            # 마지막 완료 월까지 건너뛰고 그다음 월부터 재개
+            if index == start_region_index and last_completed_month:
+                if ym == last_completed_month:
+                    last_completed_month = ""
+                continue
+
             try:
                 save_month_trades(
                     lawd_cd=lawd_cd,
@@ -1241,25 +1556,79 @@ def update_all_regions_trades_12m():
 
                 success_count += 1
 
+                # PostgreSQL 진행상황 저장
+                save_collect_progress(
+                    job_type="sale_12m",
+                    index=index,
+                    sido=sido,
+                    sigungu=sigungu,
+                    lawd_cd=lawd_cd,
+                    month=ym,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    status="running",
+                    last_error=None
+                )
+
+                print(
+                    f"✅ [{index}/{total}] "
+                    f"{sido} {sigungu} {ym} 완료"
+                )
+
             except Exception as e:
                 fail_count += 1
 
+                save_collect_progress(
+                    job_type="sale_12m",
+                    index=index,
+                    sido=sido,
+                    sigungu=sigungu,
+                    lawd_cd=lawd_cd,
+                    month=ym,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    status="error",
+                    last_error=str(e)
+                )
+
+                
+                print("=" * 70)
                 print(
                     f"❌ 수집 실패: "
                     f"{sido} {sigungu} / {ym} / {e}"
                 )
+                print("⚠️ 현재 위치를 유지하고 수집을 중단합니다.")
+                print("⚠️ 다시 실행하면 실패한 월부터 재시도합니다.")
+                print(f"성공: {success_count}회")
+                print(f"실패: {fail_count}회")
+                print("=" * 70)
+
+                return
 
             time.sleep(0.2)
 
-    print("=" * 70)
-    print("✅ 전국 최근 12개월 매매 거래 갱신 완료")
-    print(f"성공: {success_count}회")
-    print(f"실패: {fail_count}회")
+    # 전국 268개 지역이 모두 정상 완료된 경우
+    if regions:
+        last_sido, last_sigungu, last_lawd_cd = regions[-1]
 
-    if os.path.exists(PROGRESS_FILE_12M):
-        os.remove(PROGRESS_FILE_12M)
-        
-    print("=" * 70)
+        save_collect_progress(
+            job_type="sale_12m",
+            index=total,
+            sido=last_sido,
+            sigungu=last_sigungu,
+            lawd_cd=last_lawd_cd,
+            month=months[-1] if months else "",
+            success_count=success_count,
+            fail_count=fail_count,
+            status="completed",
+            last_error=None
+        )
+
+    print_collect_summary(
+        "매매",
+        success_count,
+        fail_count
+    )
 
 
 # ✅ 전국 수집 전 3개 지역 테스트
@@ -1323,50 +1692,266 @@ def update_test_rent_trades():
 
     print("전월세 1개 지역 테스트 저장 완료")
 
-# ✅ 전국 전월세 12개월 수집
-def update_all_rent_trades():
-    months = get_recent_months(2)
+# ==========================================================
+# Legacy Version (백업용)
+# 공통 엔진(update_collect_job) 도입 후 보관 중
+# 충분한 운영 검증 후 삭제 예정
+# ==========================================================
+def update_all_rent_trades_12m_old():
+    months = get_recent_months(12)
     regions = get_all_region_codes()
-
     total = len(regions)
 
+    # 이전 전월세 진행상황 불러오기
+    progress = load_rent_12m_progress()
+
+    start_region_index = progress["last_region_index"]
+    last_completed_month = progress["last_month"]
+
+    success_count = 0
+    fail_count = 0
+
+    print("=" * 70)
+    print("🚀 전국 최근 12개월 전월세 재수집 시작")
+    print(f"대상 지역 : {total}개")
+    print(f"대상 월   : {months}")
+
+    if start_region_index > 0:
+        print(
+            f"🔄 재개 위치: "
+            f"{start_region_index}번째 지역 / "
+            f"마지막 완료 월 {last_completed_month}"
+        )
+
+    print("=" * 70)
+
     for index, (sido, sigungu, lawd_cd) in enumerate(regions, start=1):
-        print(f"[{index}/{total}] {sido} {sigungu} 전월세 수집 시작")
+
+        # 이미 완료된 이전 지역 건너뛰기
+        if index < start_region_index:
+            continue
+
+        print(
+            f"[{index}/{total}] "
+            f"{sido} {sigungu} 최근 12개월 전월세 수집 시작"
+        )
 
         for ym in months:
-            save_month_rent_trades(
-                lawd_cd=lawd_cd,
-                region=sido,
-                sigungu=sigungu,
-                deal_ymd=ym
-            )
+
+            # 중단됐던 동일 지역에서는 마지막 완료 월까지 건너뛰고
+            # 그다음 월부터 재개
+            if index == start_region_index and last_completed_month:
+                if ym == last_completed_month:
+                    last_completed_month = ""
+                continue
+
+            try:
+                save_month_rent_trades(
+                    lawd_cd=lawd_cd,
+                    region=sido,
+                    sigungu=sigungu,
+                    deal_ymd=ym
+                )
+
+                success_count += 1
+
+                save_collect_progress(
+                    job_type="rent_12m",
+                    index=index,
+                    sido=sido,
+                    sigungu=sigungu,
+                    lawd_cd=lawd_cd,
+                    month=ym,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    status="running"
+                )
+
+                print(
+                    f"✅ [{index}/{total}] "
+                    f"{sido} {sigungu} {ym} 전월세 완료"
+                )
+
+            except Exception as e:
+                fail_count += 1
+
+                save_collect_progress(
+                    job_type="rent_12m",
+                    index=index,
+                    sido=sido,
+                    sigungu=sigungu,
+                    lawd_cd=lawd_cd,
+                    month=ym,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    status="error",
+                    last_error=str(e)
+                )
+
+                print("=" * 70)
+                print(
+                    f"❌ 전월세 수집 실패: "
+                    f"{sido} {sigungu} / {ym} / {e}"
+                )
+                print("⚠️ 현재 위치를 유지하고 수집을 중단합니다.")
+                print("⚠️ 다시 실행하면 실패한 월부터 재시도합니다.")
+                print(f"성공: {success_count}회")
+                print(f"실패: {fail_count}회")
+                print("=" * 70)
+
+                return
 
             time.sleep(0.2)
 
-    print("전국 전월세 12개월 거래 저장 완료")
+    # 전국 전월세 수집 정상 완료
+    if regions:
+        last_sido, last_sigungu, last_lawd_cd = regions[-1]
 
-# ✅ 전국 분양권 12개월 수집
-def update_all_presale_trades(start_index=1):
-    months = get_recent_months(2)
-    all_regions = get_all_region_codes()
-    total = len(all_regions)
+        save_collect_progress(
+            job_type="rent_12m",
+            index=total,
+            sido=last_sido,
+            sigungu=last_sigungu,
+            lawd_cd=last_lawd_cd,
+            month=months[-1] if months else "",
+            success_count=success_count,
+            fail_count=fail_count,
+            status="completed"
+        )
 
-    regions = all_regions[start_index - 1:]
+    print("=" * 70)
+    print("✅ 전국 최근 12개월 전월세 거래 갱신 완료")
+    print(f"성공: {success_count}회")
+    print(f"실패: {fail_count}회")
+    print("=" * 70)
 
-    for index, (sido, sigungu, lawd_cd) in enumerate(regions, start=start_index):
-        print(f"[{index}/{total}] {sido} {sigungu} 분양권 수집 시작")
+# ==========================================================
+# Legacy Version (백업용)
+# 공통 엔진(update_collect_job) 도입 후 보관 중
+# 충분한 운영 검증 후 삭제 예정
+# ==========================================================
+def update_all_presale_trades_12m_old():
+    months = get_recent_months(12)
+    regions = get_all_region_codes()
+    total = len(regions)
+
+    progress = load_presale_12m_progress()
+
+    start_region_index = progress["last_region_index"]
+    last_completed_month = progress["last_month"]
+
+    success_count = 0
+    fail_count = 0
+
+    print("=" * 70)
+    print("🚀 전국 최근 12개월 분양권 재수집 시작")
+    print(f"대상 지역 : {total}개")
+    print(f"대상 월   : {months}")
+
+    if start_region_index > 0:
+        print(
+            f"🔄 재개 위치: "
+            f"{start_region_index}번째 지역 / "
+            f"마지막 완료 월 {last_completed_month}"
+        )
+
+    print("=" * 70)
+
+    for index, (sido, sigungu, lawd_cd) in enumerate(regions, start=1):
+
+        if index < start_region_index:
+            continue
+
+        print(
+            f"[{index}/{total}] "
+            f"{sido} {sigungu} 최근 12개월 분양권 수집 시작"
+        )
 
         for ym in months:
-            save_month_presale_trades(
-                lawd_cd=lawd_cd,
-                region=sido,
-                sigungu=sigungu,
-                deal_ymd=ym
-            )
+
+            if index == start_region_index and last_completed_month:
+                if ym == last_completed_month:
+                    last_completed_month = ""
+                continue
+
+            try:
+                save_month_presale_trades(
+                    lawd_cd=lawd_cd,
+                    region=sido,
+                    sigungu=sigungu,
+                    deal_ymd=ym
+                )
+
+                success_count += 1
+
+                save_collect_progress(
+                    job_type="presale_12m",
+                    index=index,
+                    sido=sido,
+                    sigungu=sigungu,
+                    lawd_cd=lawd_cd,
+                    month=ym,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    status="running"
+                )
+
+                print(
+                    f"✅ [{index}/{total}] "
+                    f"{sido} {sigungu} {ym} 분양권 완료"
+                )
+
+            except Exception as e:
+                fail_count += 1
+
+                save_collect_progress(
+                    job_type="presale_12m",
+                    index=index,
+                    sido=sido,
+                    sigungu=sigungu,
+                    lawd_cd=lawd_cd,
+                    month=ym,
+                    success_count=success_count,
+                    fail_count=fail_count,
+                    status="error",
+                    last_error=str(e)
+                )
+
+                print("=" * 70)
+                print(
+                    f"❌ 분양권 수집 실패: "
+                    f"{sido} {sigungu} / {ym} / {e}"
+                )
+                print("⚠️ 현재 위치를 유지하고 수집을 중단합니다.")
+                print("⚠️ 다시 실행하면 실패한 월부터 재시도합니다.")
+                print(f"성공: {success_count}회")
+                print(f"실패: {fail_count}회")
+                print("=" * 70)
+
+                return
 
             time.sleep(0.2)
 
-    print("전국 분양권 12개월 거래 저장 완료")
+    if regions:
+        last_sido, last_sigungu, last_lawd_cd = regions[-1]
+
+        save_collect_progress(
+            job_type="presale_12m",
+            index=total,
+            sido=last_sido,
+            sigungu=last_sigungu,
+            lawd_cd=last_lawd_cd,
+            month=months[-1] if months else "",
+            success_count=success_count,
+            fail_count=fail_count,
+            status="completed"
+        )
+
+    print("=" * 70)
+    print("✅ 전국 최근 12개월 분양권 거래 갱신 완료")
+    print(f"성공: {success_count}회")
+    print(f"실패: {fail_count}회")
+    print("=" * 70)
 
 def update_region_codes_from_file():
     print("법정동 코드 자동 갱신 시작")
@@ -1377,6 +1962,9 @@ def update_region_codes_from_file():
     if response.status_code != 200:
         print("❌ 법정동 코드 다운로드 실패")
         return
+
+    # ✅ 기존 지역코드 목록 임시 보관
+    old_region_codes = get_all_region_codes()
 
     clear_region_codes()
 
@@ -1429,7 +2017,242 @@ def update_region_codes_from_file():
         insert_region_code(sido, sigungu, lawd_cd)
         count += 1
 
-    print("법정동 코드 자동 갱신 완료:", count) 
+    # ===========================
+    # 지역코드 변경 비교 준비
+    # ===========================
+
+    # 기존 목록
+    old_set = {
+        (sido, sigungu, lawd_cd)
+        for sido, sigungu, lawd_cd in old_region_codes
+    }
+
+    # 새 목록
+    new_region_codes = get_all_region_codes()
+
+    new_set = {
+        (sido, sigungu, lawd_cd)
+        for sido, sigungu, lawd_cd in new_region_codes
+    }
+
+    # ===========================
+    # 변경 감지용 Dictionary 생성
+    # ===========================
+
+    old_by_code = {
+        lawd_cd: (sido, sigungu)
+        for sido, sigungu, lawd_cd in old_region_codes
+    }
+
+    new_by_code = {
+        lawd_cd: (sido, sigungu)
+        for sido, sigungu, lawd_cd in new_region_codes
+    }
+
+    # ===========================
+    # 변경된 지역 비교
+    # ===========================
+
+    added = new_set - old_set
+    removed = old_set - new_set
+
+    changed = []
+
+    for lawd_cd in old_by_code.keys() & new_by_code.keys():
+
+        if old_by_code[lawd_cd] != new_by_code[lawd_cd]:
+
+            changed.append({
+                "lawd_cd": lawd_cd,
+                "old": old_by_code[lawd_cd],
+                "new": new_by_code[lawd_cd]
+            })
+
+    print("법정동 코드 자동 갱신 완료:", count)
+
+    if not added and not removed and not changed:
+        print("✅ 행정구역 변경사항 없음")
+
+    else:
+
+        if added:
+            print(f"🆕 신규 행정구역 {len(added)}건")
+
+            for sido, sigungu, lawd_cd in sorted(added):
+                print(f"   + {sido} {sigungu} ({lawd_cd})")
+
+        if removed:
+            print(f"❌ 삭제된 행정구역 {len(removed)}건")
+
+            for sido, sigungu, lawd_cd in sorted(removed):
+                print(f"   - {sido} {sigungu} ({lawd_cd})")
+
+        if changed:
+            print(f"🔄 변경된 행정구역 {len(changed)}건")
+
+            for item in changed:
+                old_sido, old_sigungu = item["old"]
+                new_sido, new_sigungu = item["new"]
+
+                print(
+                    f"   * {item['lawd_cd']} : "
+                    f"{old_sido} {old_sigungu}"
+                    f" → "
+                    f"{new_sido} {new_sigungu}"
+                )
+
+        # ✅ 행정구역 변경 이력 DB 저장
+        for sido, sigungu, lawd_cd in added:
+            save_region_change_log(
+                change_type="added",
+                lawd_cd=lawd_cd,
+                new_sido=sido,
+                new_sigungu=sigungu
+            )
+
+        for sido, sigungu, lawd_cd in removed:
+            save_region_change_log(
+                change_type="removed",
+                lawd_cd=lawd_cd,
+                old_sido=sido,
+                old_sigungu=sigungu
+            )
+
+        for item in changed:
+            old_sido, old_sigungu = item["old"]
+            new_sido, new_sigungu = item["new"]
+
+            save_region_change_log(
+                change_type="changed",
+                lawd_cd=item["lawd_cd"],
+                old_sido=old_sido,
+                old_sigungu=old_sigungu,
+                new_sido=new_sido,
+                new_sigungu=new_sigungu
+            )
+
+
+def update_all_regions_trades_12m():
+    return update_collect_job(
+        job_type="sale_12m",
+        title="매매",
+        save_month_func=save_month_trades,
+        load_progress_func=load_sale_12m_progress
+    )
+
+def update_collect_job_recent(
+    title,
+    save_month_func
+):
+    months = get_recent_months(2)
+    regions = get_all_region_codes()
+    total = len(regions)
+
+    for index, (sido, sigungu, lawd_cd) in enumerate(regions, start=1):
+        print(f"[{index}/{total}] {sido} {sigungu} 수집 시작")
+
+        for ym in months:
+            save_month_func(
+                lawd_cd=lawd_cd,
+                region=sido,
+                sigungu=sigungu,
+                deal_ymd=ym
+            )
+
+            time.sleep(0.2)
+
+    print("=" * 70)
+    print(f"✅ 전국 최근 2개월 {title} 거래 저장 완료")
+    print("=" * 70)
+
+def update_all_rent_trades_12m():
+    return update_collect_job(
+        job_type="rent_12m",
+        title="전월세",
+        save_month_func=save_month_rent_trades,
+        load_progress_func=load_rent_12m_progress
+    )
+
+def update_all_presale_trades_12m():
+    return update_collect_job(
+        job_type="presale_12m",
+        title="분양권",
+        save_month_func=save_month_presale_trades,
+        load_progress_func=load_presale_12m_progress
+    )
+
+def print_collect_summary(title, success_count, fail_count):
+    print("=" * 70)
+    print(f"✅ 전국 최근 12개월 {title} 거래 갱신 완료")
+    print(f"성공: {success_count}회")
+    print(f"실패: {fail_count}회")
+    print("=" * 70)
+
+def save_region_change_log(
+    change_type,
+    lawd_cd,
+    old_sido=None,
+    old_sigungu=None,
+    new_sido=None,
+    new_sigungu=None
+):
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    try:
+        # ✅ 이미 같은 변경 이력이 있는지 확인
+        cur.execute("""
+            SELECT 1
+            FROM region_change_logs
+            WHERE
+                change_type = %s
+                AND lawd_cd = %s
+                AND old_sido IS NOT DISTINCT FROM %s
+                AND old_sigungu IS NOT DISTINCT FROM %s
+                AND new_sido IS NOT DISTINCT FROM %s
+                AND new_sigungu IS NOT DISTINCT FROM %s
+            LIMIT 1
+        """, (
+            change_type,
+            lawd_cd,
+            old_sido,
+            old_sigungu,
+            new_sido,
+            new_sigungu
+        ))
+
+        # ✅ 이미 저장되어 있으면 종료
+        if cur.fetchone():
+            return
+        
+        cur.execute("""
+            INSERT INTO region_change_logs (
+                change_type,
+                lawd_cd,
+                old_sido,
+                old_sigungu,
+                new_sido,
+                new_sigungu
+            )
+            VALUES (%s,%s,%s,%s,%s,%s)
+        """, (
+            change_type,
+            lawd_cd,
+            old_sido,
+            old_sigungu,
+            new_sido,
+            new_sigungu
+        ))
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
 
 # ==========================================================
 # ✅ 전남광주통합특별시 북구 분양권 단일 테스트
@@ -1449,4 +2272,21 @@ def test_integrated_region_presale_replace():
     print("✅ 북구 202602 분양권 교체 테스트 완료")
 
 if __name__ == "__main__":
-    update_all_regions_trades_12m()
+    mode = sys.argv[1] if len(sys.argv) > 1 else "recent"
+
+    if mode == "recent":
+        update_recent_all()
+
+    elif mode == "12m":
+        update_12m_all()
+
+    elif mode == "all":
+        update_recent_all()
+        update_12m_all()
+
+    else:
+        print(f"❌ 잘못된 실행 모드: {mode}")
+        print("사용법:")
+        print("  py update_trades.py recent")
+        print("  py update_trades.py 12m")
+        print("  py update_trades.py all")

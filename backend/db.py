@@ -4,6 +4,7 @@ import json
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
 from psycopg2.extras import execute_values
+DEBUG_DB = False
 
 DB_NAME = "real_deals.db"
 
@@ -56,7 +57,8 @@ def create_region_codes_table_pg():
         """)
 
         conn.commit()
-        print("✅ PostgreSQL region_codes 테이블 확인 완료")
+        if DEBUG_DB:
+            print("✅ PostgreSQL region_codes 테이블 확인 완료")
 
     except Exception as e:
         conn.rollback()
@@ -380,13 +382,13 @@ def insert_apt_sale_trade(trade):
         ))
 
         conn.commit()
-
-        print(
-            "✅ Supabase 매매 저장:",
-            trade["sigungu"],
-            trade["dong"],
-            trade["apt_name"]
-        )
+        if DEBUG_DB:
+            print(
+                "✅ Supabase 매매 저장:",
+                trade["sigungu"],
+                trade["dong"],
+                trade["apt_name"]
+            )
 
     except Exception as e:
         conn.rollback()
@@ -446,7 +448,7 @@ def replace_apt_sale_trades_for_month(
 
         if duplicate_removed_count > 0:
             print(
-                f"⚠️ 전월세 API 중복 제거: "
+                f"⚠️ 매매 API 중복 제거: "
                 f"{region} {sigungu} {source_month} "
                 f"/ 원본 {len(trades)}건 "
                 f"/ 중복 {duplicate_removed_count}건 제거 "
@@ -527,14 +529,14 @@ def replace_apt_sale_trades_for_month(
 
         # ④ 삭제와 저장이 모두 성공했을 때만 확정
         conn.commit()
-
-        print(
-            f"✅ 매매 월 데이터 교체 완료: "
-            f"{region} {sigungu} {source_month} "
-            f"/ 기존 {deleted_count}건 삭제 "
-            f"/ 신규 {len(unique_trades)}건 저장 "
-            f"/ 중복 {duplicate_removed_count}건 제거"
-        )
+        if DEBUG_DB:
+            print(
+                f"✅ 매매 월 데이터 교체 완료: "
+                f"{region} {sigungu} {source_month} "
+                f"/ 기존 {deleted_count}건 삭제 "
+                f"/ 신규 {len(unique_trades)}건 저장 "
+                f"/ 중복 {duplicate_removed_count}건 제거"
+            )
 
         return {
             "deleted_count": deleted_count,
@@ -606,7 +608,8 @@ def replace_apt_rent_trades_for_month(
         unique_trades = []
 
         if trades:
-            print(f"🔍 전월세 INSERT 전 전체 건수: {len(trades)}")
+            if DEBUG_DB:
+                print(f"🔍 전월세 INSERT 전 전체 건수: {len(trades)}")
 
             duplicate_check = {}
 
@@ -631,15 +634,15 @@ def replace_apt_rent_trades_for_month(
                 for key, count in duplicate_check.items()
                 if count > 1
             ]
-
-            print(f"⚠️ 전월세 중복 그룹 수: {len(duplicated)}")
-
-            for key, count in sorted(
-                duplicated,
-                key=lambda x: x[1],
-                reverse=True
-            )[:10]:
-                print(f"⚠️ 중복 {count}건:", key)
+            if DEBUG_DB:
+                print(f"⚠️ 전월세 중복 그룹 수: {len(duplicated)}")
+            if DEBUG_DB:
+                for key, count in sorted(
+                    duplicated,
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:10]:
+                    print(f"⚠️ 중복 {count}건:", key)
             unique_trades = []
             seen = set()
 
@@ -662,11 +665,11 @@ def replace_apt_rent_trades_for_month(
 
                 seen.add(key)
                 unique_trades.append(trade)
-
-            print(
-                f"✅ 전월세 중복 제거 완료: "
-                f"{len(trades)}건 → {len(unique_trades)}건"
-            )
+            if DEBUG_DB:
+                print(
+                    f"✅ 전월세 중복 제거 완료: "
+                    f"{len(trades)}건 → {len(unique_trades)}건"
+                )
 
             values = [
                 (
@@ -706,13 +709,13 @@ def replace_apt_rent_trades_for_month(
             )
 
         conn.commit()
-
-        print(
-            f"✅ 전월세 월 데이터 교체 완료: "
-            f"{region} {sigungu} {source_month} "
-            f"/ 기존 {deleted_count}건 삭제 "
-            f"/ 신규 {len(unique_trades)}건 저장"
-        )
+        if DEBUG_DB:
+            print(
+                f"✅ 전월세 월 데이터 교체 완료: "
+                f"{region} {sigungu} {source_month} "
+                f"/ 기존 {deleted_count}건 삭제 "
+                f"/ 신규 {len(unique_trades)}건 저장"
+            )
 
         return {
             "deleted_count": deleted_count,
@@ -852,13 +855,13 @@ def replace_presale_trades_for_month(
 
         # ③ 삭제와 저장이 모두 성공했을 때만 확정
         conn.commit()
-
-        print(
-            f"✅ 분양권 월 데이터 교체 완료: "
-            f"{region} {sigungu} {source_month} "
-            f"/ 기존 {deleted_count}건 삭제 "
-            f"/ 신규 {len(trades)}건 저장"
-        )
+        if DEBUG_DB:
+            print(
+                f"✅ 분양권 월 데이터 교체 완료: "
+                f"{region} {sigungu} {source_month} "
+                f"/ 기존 {deleted_count}건 삭제 "
+                f"/ 신규 {len(trades)}건 저장"
+            )
 
         return {
             "deleted_count": deleted_count,
@@ -908,13 +911,13 @@ def insert_apt_rent_trade(trade):
         ))
 
         conn.commit()
-
-        print(
-            "✅ Supabase 전월세 저장:",
-            trade["sigungu"],
-            trade["dong"],
-            trade["apt_name"]
-        )
+        if DEBUG_DB:
+            print(
+                "✅ Supabase 전월세 저장:",
+                trade["sigungu"],
+                trade["dong"],
+                trade["apt_name"]
+            )
 
     except Exception as e:
         conn.rollback()
@@ -951,13 +954,13 @@ def insert_presale_trade(trade):
         ))
 
         conn.commit()
-
-        print(
-            "✅ Supabase 분양권 저장:",
-            trade["sigungu"],
-            trade["dong"],
-            trade["apt_name"]
-        )
+        if DEBUG_DB:
+            print(
+                "✅ Supabase 분양권 저장:",
+                trade["sigungu"],
+                trade["dong"],
+                trade["apt_name"]
+            )
 
     except Exception as e:
         conn.rollback()
@@ -969,61 +972,143 @@ def insert_presale_trade(trade):
         release_pg_connection(conn)
 
 
-def get_apt_sale_trades(apt_name, size):
-    # 선택된 전용면적 값을 소수점 4자리 기준으로 캐시 키에 사용한다.
+def get_apt_sale_trades(apt_name, size, region=None):
+    """
+    아파트 매매 실거래 조회
+
+    region이 전달된 경우:
+        지역 + 시군구 + 단지명 + 전용면적으로 조회한다.
+
+    region이 전달되지 않은 경우:
+        기존 방식인 단지명 + 전용면적으로 조회한다.
+        기존 호출 코드의 오류를 방지하기 위한 호환용 처리다.
+    """
+
+    apt_name_value = (apt_name or "").strip()
     size_value = float(size)
     size_key = f"{size_value:.4f}"
-    cache_key = f"sale_trades:{apt_name}:{size_key}"
+    region_value = (region or "").strip()
+
+    # 지역별 거래가 서로 같은 캐시에 들어가지 않도록
+    # 반드시 지역을 캐시 키에 포함한다.
+    cache_region_key = region_value if region_value else "all_regions"
+
+    cache_key = (
+        f"sale_trades:"
+        f"{cache_region_key}:"
+        f"{apt_name_value}:"
+        f"{size_key}"
+    )
 
     if cache_key in DB_CACHE:
         cached = DB_CACHE[cache_key]
+
         if time.time() - cached["time"] < CACHE_TTL:
             return cached["data"]
+
+        # 유효기간이 지난 캐시는 제거한다.
+        del DB_CACHE[cache_key]
 
     conn = get_pg_connection()
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT
-            region,
-            sigungu,
-            dong,
-            apt_name,
-            size,           
-            contract_date,
-            price,
-            floor,
-            source_month,
-            apt_dong
-        FROM apt_sale_trades
-        WHERE apt_name = %s
-          AND size = %s
-          AND source_month >= TO_CHAR(
-              CURRENT_DATE - INTERVAL '24 months',
-              'YYYYMM'
-          )
-        ORDER BY contract_date DESC
-    """, (
-        apt_name,
-        size_value
-    ))
+    try:
+        if region_value:
+            # ✅ 정확도 우선 조회
+            # main.py에서 전달되는 "시도 시군구" 문자열과
+            # DB의 region + sigungu를 결합해 정확히 비교한다.
+            cur.execute("""
+                SELECT
+                    region,
+                    sigungu,
+                    dong,
+                    apt_name,
+                    size,
+                    contract_date,
+                    price,
+                    floor,
+                    source_month,
+                    apt_dong
+                FROM apt_sale_trades
+                WHERE TRIM(CONCAT_WS(' ', region, sigungu)) = %s
+                    AND apt_name = %s
+                    AND size = %s
+                    AND source_month >= TO_CHAR(
+                        CURRENT_DATE - INTERVAL '24 months',
+                        'YYYYMM'
+                    )
+                ORDER BY contract_date DESC
+            """, (
+                region_value,
+                apt_name_value,
+                size_value
+            ))
 
-    rows = cur.fetchall()
+        else:
+            # ✅ 기존 호출 호환용
+            # 아직 region을 넘기지 않는 다른 코드가 있어도
+            # 즉시 오류가 발생하지 않도록 기존 조회 방식을 유지한다.
+            print(
+                "⚠️ get_apt_sale_trades 지역 없이 호출:",
+                apt_name_value,
+                size_value
+            )
 
-    print(f"최근거래 조회건수 = {len(rows)}")
+            cur.execute("""
+                SELECT
+                    region,
+                    sigungu,
+                    dong,
+                    apt_name,
+                    size,
+                    contract_date,
+                    price,
+                    floor,
+                    source_month,
+                    apt_dong
+                FROM apt_sale_trades
+                WHERE apt_name = %s
+                    AND size = %s
+                    AND source_month >= TO_CHAR(
+                        CURRENT_DATE - INTERVAL '24 months',
+                        'YYYYMM'
+                    )
+                ORDER BY contract_date DESC
+            """, (
+                apt_name_value,
+                size_value
+            ))
 
-    for r in rows:
-        print(r)
+        rows = cur.fetchall()
+        if DEBUG_DB:
+            print(
+                "✅ 매매 최근거래 조회:",
+                f"region=[{region_value or '미지정'}]",
+                f"apt_name=[{apt_name_value}]",
+                f"size=[{size_key}]",
+                f"건수=[{len(rows)}]"
+            )
 
-    cur.close()
-    release_pg_connection(conn)
+        DB_CACHE[cache_key] = {
+            "time": time.time(),
+            "data": rows
+        }
 
-    DB_CACHE[cache_key] = {
-        "time": time.time(),
-        "data": rows
-    }
+        return rows
 
-    return rows
+    except Exception as e:
+        print(
+            "❌ get_apt_sale_trades 조회 오류:",
+            f"region=[{region_value}]",
+            f"apt_name=[{apt_name_value}]",
+            f"size=[{size_key}]",
+            e
+        )
+        raise
+
+    finally:
+        cur.close()
+        release_pg_connection(conn)
 
 # ✅ 분양권 거래 조회
 def get_presale_trades(region, apt_name, size):
@@ -1032,7 +1117,8 @@ def get_presale_trades(region, apt_name, size):
     cur = conn.cursor()
 
     try:
-        print(f"검색 size = [{size}] ({type(size)})")
+        if DEBUG_DB:
+            print(f"검색 size = [{size}] ({type(size)})")
         cur.execute("""
              SELECT
                 region,
@@ -1060,9 +1146,9 @@ def get_presale_trades(region, apt_name, size):
         ))
 
         rows = cur.fetchall()
-
-        for row in rows[:5]:
-            print(row)
+        if DEBUG_DB:
+            for row in rows[:5]:
+                print(row)
 
         return rows
 
@@ -1397,10 +1483,11 @@ def get_rent_trades(region, apt_name, size):
     cur = conn.cursor()
 
     try:
-        print(
-            
-            f"region={region}, apt_name={apt_name}, size={size}"
-        )
+        if DEBUG_DB:
+            print(
+                
+                f"region={region}, apt_name={apt_name}, size={size}"
+            )
 
         cur.execute("""
             SELECT *
@@ -1420,8 +1507,8 @@ def get_rent_trades(region, apt_name, size):
         ))
 
         rows = cur.fetchall()
-
-        print(f"✅ get_rent_trades 조회 건수: {len(rows)}")
+        if DEBUG_DB:
+            print(f"✅ get_rent_trades 조회 건수: {len(rows)}")
 
         return rows
 
@@ -1829,7 +1916,8 @@ def clear_region_codes():
         """)
 
         conn.commit()
-        print("✅ PostgreSQL region_codes 기존 데이터 삭제 완료")
+        if DEBUG_DB:
+            print("✅ PostgreSQL region_codes 기존 데이터 삭제 완료")
 
     except Exception as e:
         conn.rollback()
@@ -1849,8 +1937,8 @@ def optimize_database():
     cur.execute("VACUUM")
 
     conn.close()
-
-    print("DB 최적화 완료")
+    if DEBUG_DB:
+        print("DB 최적화 완료")
 
 # ✅ DB 검색속도 테스트
 def test_db_speed():
@@ -1875,9 +1963,9 @@ def test_db_speed():
 
     end = time.time()
     conn.close()
-
-    print("검색 결과 수:", len(rows))
-    print("검색 소요 시간:", round(end - start, 4), "초")
+    if DEBUG_DB:
+        print("검색 결과 수:", len(rows))
+        print("검색 소요 시간:", round(end - start, 4), "초")
 
 # ✅ DB 전체 상태 점검
 def check_db_status():
@@ -1903,13 +1991,13 @@ def check_db_status():
     rent_count = cur.fetchone()[0]
 
     conn.close()
-
-    print("아파트 매매 데이터 수:", trade_count)
-    print("분양권 데이터 수:", presale_count)
-    print("전월세 데이터 수:", rent_count)
-    print("조회 로그 수:", search_count)
-    print("분석 로그 수:", analysis_count)
-    print("시군구 코드 수:", region_count)
+    if DEBUG_DB:
+        print("아파트 매매 데이터 수:", trade_count)
+        print("분양권 데이터 수:", presale_count)
+        print("전월세 데이터 수:", rent_count)
+        print("조회 로그 수:", search_count)
+        print("분석 로그 수:", analysis_count)
+        print("시군구 코드 수:", region_count)
 
 def get_apt_sigungu_list_from_db(region):
     cache_key = f"sale_sigungu:{region}"
@@ -1998,7 +2086,8 @@ def rebuild_apt_sale_list():
     cur = conn.cursor()
 
     try:
-        print("✅ apt_sale_list 재생성 시작")
+        if DEBUG_DB:
+            print("✅ apt_sale_list 재생성 시작")
 
         cur.execute("DELETE FROM apt_sale_list")
 
@@ -2029,8 +2118,8 @@ def rebuild_apt_sale_list():
         """)
 
         conn.commit()
-
-        print("✅ apt_sale_list 재생성 완료")
+        if DEBUG_DB:
+            print("✅ apt_sale_list 재생성 완료")
 
     except Exception as e:
         conn.rollback()
@@ -2045,7 +2134,8 @@ def rebuild_rent_list():
     cur = conn.cursor()
 
     try:
-        print("✅ rent_list 재생성 시작")
+        if DEBUG_DB:
+            print("✅ rent_list 재생성 시작")
 
         cur.execute("DELETE FROM rent_list")
 
@@ -2076,8 +2166,8 @@ def rebuild_rent_list():
         """)
 
         conn.commit()
-
-        print("✅ rent_list 재생성 완료")
+        if DEBUG_DB:
+            print("✅ rent_list 재생성 완료")
 
     except Exception as e:
         conn.rollback()
@@ -2094,7 +2184,8 @@ def rebuild_presale_list():
     cur = conn.cursor()
 
     try:
-        print("✅ presale_list 재생성 시작")
+        if DEBUG_DB:
+            print("✅ presale_list 재생성 시작")
 
         cur.execute("DELETE FROM presale_list")
 
@@ -2125,8 +2216,8 @@ def rebuild_presale_list():
         """)
 
         conn.commit()
-
-        print("✅ presale_list 재생성 완료")
+        if DEBUG_DB:
+            print("✅ presale_list 재생성 완료")
 
     except Exception as e:
         conn.rollback()
