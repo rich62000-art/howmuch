@@ -14,6 +14,9 @@ import time
 import threading
 import zipfile
 import os
+
+import sqlite3
+
 from db import (
     get_apt_sale_trades, get_dongs_from_db, 
     get_apts_from_db, get_sizes_from_db, 
@@ -39,6 +42,8 @@ from difflib import SequenceMatcher
 
 DEBUG_PRICE_ENGINE = False
 DEBUG_FUTURE_ENGINE = False
+
+BACKTEST_DB_PATH = "backtest_history.db"
 
 app = FastAPI()
 
@@ -2628,13 +2633,22 @@ def future_prediction(
         for type_size, type_name in size_type_map.items():
             try:
                 
-                type_db_rows = get_apt_sale_trades(
-                    apt_name,
-                    type_size,
-                    region=region
-                )
+                if reference_date:
+                    type_items = get_backtest_sale_trades(
+                        region=region,
+                        apt_name=apt_name,
+                        size=type_size
+                    )
+                else:
+                    type_db_rows = get_apt_sale_trades(
+                        apt_name,
+                        type_size,
+                        region=region
+                    )
 
-                type_items = db_rows_to_items(type_db_rows)
+                    type_items = db_rows_to_items(
+                        type_db_rows
+                    )
 
                 
 
@@ -3411,9 +3425,22 @@ def future_prediction(
 
         # ✅ 매칭된 실제 면적으로 거래 조회
         
-        db_rows = get_apt_sale_trades(apt_name, matched_size, region=region)
-        
-        items = db_rows_to_items(db_rows)
+        if reference_date:
+            items = get_backtest_sale_trades(
+                region=region,
+                apt_name=apt_name,
+                size=matched_size
+            )
+        else:
+            db_rows = get_apt_sale_trades(
+                apt_name,
+                matched_size,
+                region=region
+            )
+
+            items = db_rows_to_items(
+                db_rows
+            )
 
         trades = []
 
@@ -3445,14 +3472,6 @@ def future_prediction(
                     item["apt_name"]
                 )
                 and item_size == target_size
-                and item.get("dong", "") in [
-                    row[2]
-                    for row in db_rows
-                    if (
-                        row[0] == db_region
-                        and row[1] == db_sigungu
-                    )
-                ]
             ):
                 trades.append({
                     "price": item["price"],
@@ -4190,6 +4209,32 @@ def future_prediction(
             }
             for key in sorted(monthly_volume_map.keys())
         ]
+
+        # ✅ 미래예측 최근 12개월 실제 거래건수
+        recent_12m_count = sum(
+            int(v.get("count", 0))
+            for v in monthly_volume
+        )
+
+        # ✅ 미래예측 거래 데이터 신뢰도
+        if recent_12m_count >= 3:
+            future_data_reliability = "정상"
+
+        elif recent_12m_count >= 1:
+            future_data_reliability = "거래 부족"
+
+        else:
+            future_data_reliability = "예측 보류"
+
+        if DEBUG_FUTURE_ENGINE:
+            print(
+                f"🔍 미래예측 최근 12개월 거래건수 = "
+                f"{recent_12m_count}건"
+            )
+            print(
+                f"🔍 미래예측 데이터 신뢰도 = "
+                f"{future_data_reliability}"
+            )
         
         # ✅ 최근 12개월 가격 + 거래량 통합 그래프용
         recent_12m_price_volume_chart = []
@@ -4215,6 +4260,27 @@ def future_prediction(
             int(v.get("count", 0))
             for v in recent_3m_volume
         )
+
+        # =========================================================
+        # ✅ 하락장 전환신호 V1용 이전 3개월 거래량
+        # 최근 3개월 직전의 3개월 거래건수
+        # =========================================================
+
+        previous_3m_volume = monthly_volume[-6:-3]
+
+        previous_3m_count = sum(
+            int(v.get("count", 0))
+            for v in previous_3m_volume
+        )
+
+        # 거래량 회복률
+        if previous_3m_count > 0:
+            volume_recovery_ratio = (
+                recent_3m_count
+                / previous_3m_count
+            )
+        else:
+            volume_recovery_ratio = 0.0
 
         ai_summary_parts = []
 
@@ -4375,6 +4441,8 @@ def future_prediction(
             outlook_score -= 3
         elif gap_eok_for_score > 0 and gap_eok_for_score <= 3:
             outlook_score += 5
+
+        
 
         outlook_score = max(0, min(100, outlook_score))
 
@@ -4705,12 +4773,97 @@ def future_prediction(
             expected_rate,
             2
         )
-        if DEBUG_FUTURE_ENGINE:
-            print(
-                f"최종 expected_rate : "
-                f"{expected_rate:+.2f}%"
+
+        # =========================================================
+        # ✅ 하락장 전환신호 V1
+        #
+        # 백테스트 확정 조건
+        # 1. 현재 거래추세가 하락
+        # 2. 이전 3개월 거래량 > 0
+        # 3. 최근/이전 3개월 거래량 >= 2.0배
+        # 4. 기존 예상변동률 <= -2.0%
+        #
+        # 조건 충족 시 추가 하락예측을 중단하고
+        # 예상변동률을 0%로 보정
+        # =========================================================
+
+        downturn_reversal_signal = False
+
+        if (
+            trend == "하락"
+            and previous_3m_count > 0
+            and volume_recovery_ratio >= 2.0
+            and expected_rate <= -2.0
+        ):
+            downturn_reversal_signal = True
+
+            expected_rate_before_reversal = expected_rate
+
+            expected_rate = 0.0
+
+        else:
+            expected_rate_before_reversal = expected_rate
+
+        # =========================================================
+        # ✅ 상승장 거래량 둔화 V3
+        #
+        # 조건
+        # 1. 현재 추세 = 상승
+        # 2. 이전3개월 거래량 > 0
+        # 3. 최근/이전 거래량 <= 0.70
+        # 4. 기존 예상상승률 >= +4.0%
+        # 5. 최근가격변동률 <= +6.0%
+        # 6. 예상상승률 - 최근가격변동률 >= +0.5%p
+        #
+        # 조건 충족 시
+        # → 기존 예상상승률의 50%만 적용
+        # =========================================================
+
+        uptrend_slowdown_signal = False
+
+        expected_rate_before_slowdown = expected_rate
+
+        momentum_gap = (
+            expected_rate
+            - current_type_variation_rate
+        )
+
+        if (
+            trend == "상승"
+            and previous_3m_count > 0
+            and volume_recovery_ratio <= 0.70
+            and expected_rate >= 4.0
+            and current_type_variation_rate <= 6.0
+            and momentum_gap >= 0.5
+        ):
+            uptrend_slowdown_signal = True
+
+            expected_rate = (
+                expected_rate
+                * 0.5
             )
 
+            expected_rate = round(
+                expected_rate,
+                2
+            )
+
+        # =========================================================
+        # ✅ V1/V3 신호에 따른 최종 전망결론 보정
+        # 전망점수 자체는 유지하고 표시 등급만 과도하지 않게 조정
+        # =========================================================
+
+        if downturn_reversal_signal:
+            if outlook_result == "위험":
+                outlook_result = "주의"
+            elif outlook_result == "주의":
+                outlook_result = "보통"
+
+        if uptrend_slowdown_signal:
+            if outlook_result == "매우긍정":
+                outlook_result = "긍정"
+
+        
         expected_center = base_price * (1 + expected_rate / 100)
         expected_low = expected_center * (1 - volatility / 100)
         expected_high = expected_center * (1 + volatility / 100)
@@ -4799,12 +4952,70 @@ def future_prediction(
                 f"보조지표 50% 반영 : "
                 f"{support_adjust * 0.5:+.2f}%"
             )
+            # ==============================================
+            # ✅ 하락장 전환신호 V1 디버그
+            # ==============================================
+
+            print(
+                f"이전3개월 거래량 : "
+                f"{previous_3m_count}건"
+            )
+
+            print(
+                f"최근3개월 거래량 : "
+                f"{recent_3m_count}건"
+            )
+
+            print(
+                f"거래량 회복률 : "
+                f"{volume_recovery_ratio:.2f}배"
+            )
+
+            print(
+                f"하락장 전환신호 : "
+                f"{downturn_reversal_signal}"
+            )
+
+            if downturn_reversal_signal:
+                print(
+                    f"전환신호 보정 : "
+                    f"{expected_rate_before_reversal:+.2f}%"
+                    f" → {expected_rate:+.2f}%"
+                )
+
+            print(
+                f"상승장 둔화신호 : "
+                f"{uptrend_slowdown_signal}"
+            )
+
+            print(
+                f"가격변동률 : "
+                f"{current_type_variation_rate:+.2f}%"
+            )
+
+            print(
+                f"예상-가격차 : "
+                f"{momentum_gap:+.2f}%p"
+            )
+
+            if uptrend_slowdown_signal:
+                print(
+                    f"상승둔화 보정 : "
+                    f"{expected_rate_before_slowdown:+.2f}%"
+                    f" → {expected_rate:+.2f}%"
+                )
 
             print(
                 f"최종 expected_rate : "
                 f"{expected_rate:+.2f}%"
             )
             print("===================================")
+        if DEBUG_FUTURE_ENGINE:
+            print(
+                "🔥 RETURN 직전 신뢰도:",
+                recent_12m_count,
+                future_data_reliability
+            )
         return {
             "지역": region,
             "디버그테스트": "future_prediction_return_ok",
@@ -4835,6 +5046,10 @@ def future_prediction(
             "6개월예상상한가": new_expected_high,
             "6개월예상중심가": new_expected_center,
             "6개월예상상승률": round(expected_rate, 2),
+
+            "신뢰도테스트": "future_reliability_ok",
+            "최근12개월거래건수": recent_12m_count,
+            "데이터신뢰도": future_data_reliability,
 
             "시장가중검증": {
                 "분석기준일": analysis_date.strftime("%Y-%m-%d"),
@@ -4886,7 +5101,13 @@ def future_prediction(
             "거래활성도": trade_activity,
             "최근3개월거래량": recent_3m_count,
             "최근3개월거래량그래프": recent_3m_volume,
-            
+
+            "이전3개월거래량": previous_3m_count,
+
+            "거래량회복률": round(volume_recovery_ratio, 2),
+            "하락장전환신호": downturn_reversal_signal,
+            "상승장둔화신호": uptrend_slowdown_signal,
+
             "전망점수": outlook_score,
             "전망결론": outlook_result,
             "상승요인": positive_factors,
@@ -6631,14 +6852,15 @@ def run_backtest(
 
     print(f"백테스트 매칭면적 : {matched_size}")
 
-    future_rows = get_apt_sale_trades(
-        apt_name,
-        matched_size,
-        region=region
+    # ✅ 백테스트 전용 로컬 과거 DB 사용
+    future_rows = get_backtest_sale_trades(
+        region=region,
+        apt_name=apt_name,
+        size=matched_size
     )
 
     print(
-        f"DB 전체 조회건수 : "
+        f"백테스트 DB 전체 조회건수 : "
         f"{len(future_rows)}건"
     )
 
@@ -6647,9 +6869,9 @@ def run_backtest(
     for row in future_rows:
 
         try:
-            raw_date = row[5]
-            raw_price = row[6]
-            raw_floor = row[7]
+            raw_date = row.get("date")
+            raw_price = row.get("price")
+            raw_floor = row.get("floor")
 
             # DB 날짜형 처리
             if isinstance(raw_date, datetime):
@@ -7143,6 +7365,8867 @@ def run_backtest(
     
     # ⚠️ 반드시 맨 마지막
     return result
+
+def run_batch_backtest(cases):
+    """
+    여러 단지/면적/기준일을 한 번에 백테스트하고
+    현재가격 오차와 미래예측 오차를 비교한다.
+    """
+
+    results = []
+
+    print()
+    print("=" * 70)
+    print("🚀 BATCH BACKTEST 시작")
+    print(f"테스트 케이스 : {len(cases)}개")
+    print("=" * 70)
+
+    for idx, case in enumerate(cases, start=1):
+
+        region = case["region"]
+        apt_name = case["apt_name"]
+        size = case["size"]
+        analysis_date = case["analysis_date"]
+
+        print()
+        print(
+            f"[{idx}/{len(cases)}] "
+            f"{region} / {apt_name} / {size}㎡ / {analysis_date}"
+        )
+
+        try:
+            result = run_backtest(
+                region=region,
+                apt_name=apt_name,
+                size=size,
+                analysis_date=analysis_date
+            )
+
+            if not isinstance(result, dict):
+                print("⚠️ 백테스트 결과 없음")
+                continue
+
+            summary = result.get("백테스트요약", {})
+
+            current_error = summary.get("현재가격오차율")
+            future_error = summary.get("6개월예측오차율")
+
+            # ✅ 계산 가능한 백테스트만 종합 통계에 포함
+            current_price = summary.get("현재기준가격", 0)
+            actual_future_price = summary.get("미래실제절사평균", 0)
+            future_trade_count = summary.get("미래거래건수", 0)
+
+            if (
+                not current_price
+                or not actual_future_price
+                or future_trade_count <= 0
+            ):
+                print("⚠️ 과거 데이터 부족으로 종합 통계에서 제외")
+                continue
+
+            if current_error is None or future_error is None:
+                print("⚠️ 오차율 계산 불가")
+                continue
+
+            monthly_volume = result.get(
+                "디버그월별거래량",
+                []
+            )
+
+            previous_3m_count = 0
+
+            if isinstance(monthly_volume, list) and len(monthly_volume) >= 6:
+
+                previous_3m_count = sum(
+                    int(v.get("count", 0) or 0)
+                    for v in monthly_volume[-6:-3]
+                )
+
+            results.append({
+                "region": region,
+                "apt_name": apt_name,
+                "size": size,
+                "analysis_date": analysis_date,
+
+                "current_error": current_error,
+                "future_error": future_error,
+
+                "current_price": summary.get(
+                    "현재기준가격",
+                    0
+                ),
+
+                "actual_future_price": summary.get(
+                    "미래실제절사평균",
+                    0
+                ),
+
+                "expected_rate": result.get(
+                    "6개월예상상승률",
+                    0
+                ),
+
+                # ✅ 과거 가격 흐름
+                "rise_rate": result.get(
+                    "거래상승률",
+                    0
+                ),
+
+                "recent_3m_avg": result.get(
+                    "시장가중검증",
+                    {}
+                ).get(
+                    "최근3개월평균가격",
+                    0
+                ),
+
+                "type_reference_price": result.get(
+                    "시장가중검증",
+                    {}
+                ).get(
+                    "TYPE대표가격",
+                    0
+                ),
+
+                "type_recent_gap_rate": result.get(
+                    "시장가중검증",
+                    {}
+                ).get(
+                    "TYPE대비최근가격변화율",
+                    0
+                ),
+
+                # ✅ 미래예측 특성 분석용
+                "expected_rate": result.get("6개월예상상승률", 0),
+
+                "recent_price_variation_rate": result.get(
+                    "시장가중검증",
+                    {}
+                ).get(
+                    "최근가격변동률",
+                    0
+                ),
+
+
+                # ✅ 미래예측 특성
+                "trend": result.get(
+                    "거래추세",
+                    "미확인"
+                ),
+
+                "trend_confidence": result.get(
+                    "추세신뢰도",
+                    "미확인"
+                ),
+
+                "recent_3m_count": result.get(
+                    "최근3개월거래량",
+                    0
+                ),
+
+                "previous_3m_count": previous_3m_count,
+                "trend": result.get("거래추세", "미확인"),
+
+                # ✅ 상승둔화 V3 실제 엔진 신호
+                "uptrend_slowdown_signal": result.get(
+                    "상승장둔화신호",
+                    False
+                )
+            })
+
+        except Exception as e:
+            print(
+                f"❌ 백테스트 실패: "
+                f"{apt_name} / {analysis_date} / {e}"
+            )
+
+    if not results:
+        print()
+        print("❌ 유효한 백테스트 결과가 없습니다.")
+        return
+
+    current_mae = sum(
+        abs(r["current_error"])
+        for r in results
+    ) / len(results)
+
+    future_mae = sum(
+        abs(r["future_error"])
+        for r in results
+    ) / len(results)
+
+    # =========================================================
+    # ✅ 가상 정책 검증
+    # 추세신뢰도가 낮으면 미래예측 보정을 적용하지 않고
+    # 현재 기준가격을 그대로 사용한다고 가정
+    # =========================================================
+
+    virtual_errors = []
+
+    for r in results:
+
+        confidence = str(
+            r.get("trend_confidence", "")
+        ).replace(" ", "").strip()
+
+        # 신뢰도가 낮으면 미래예측 보정 미적용
+        if confidence == "낮음":
+            virtual_error = abs(
+                r["current_error"]
+            )
+
+        else:
+            virtual_error = abs(
+                r["future_error"]
+            )
+
+        virtual_errors.append(
+            virtual_error
+        )
+
+    virtual_mae = sum(
+        virtual_errors
+    ) / len(virtual_errors)
+
+    # =========================================================
+    # ✅ 가상 정책 2
+    # 기존 6개월 예상변동률의 50%만 적용
+    # =========================================================
+
+    half_rate_errors = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        if current_price <= 0 or actual_future_price <= 0:
+            continue
+
+        # ✅ 기존 예상변동률의 절반만 적용
+        half_expected_rate = expected_rate * 0.5
+
+        # ✅ 가상 6개월 예상가격
+        half_predicted_price = (
+            current_price *
+            (1 + half_expected_rate / 100)
+        )
+
+        # ✅ 실제 미래가격 대비 절대 오차율
+        half_error_rate = abs(
+            (
+                half_predicted_price
+                - actual_future_price
+            )
+            / actual_future_price
+            * 100
+        )
+
+        half_rate_errors.append(
+            half_error_rate
+        )
+
+    half_rate_mae = (
+        sum(half_rate_errors)
+        / len(half_rate_errors)
+        if half_rate_errors
+        else 0
+    )
+
+    # =========================================================
+    # ✅ 가상 정책 3
+    # 미래예측 보정강도별 MAE 비교
+    # 0% / 25% / 50% / 75% / 100%
+    # =========================================================
+
+    adjustment_strengths = [
+        0.00,
+        0.25,
+        0.50,
+        0.75,
+        1.00
+    ]
+
+    strength_results = {}
+
+    for strength in adjustment_strengths:
+
+        errors = []
+
+        for r in results:
+
+            current_price = float(
+                r.get("current_price", 0) or 0
+            )
+
+            actual_future_price = float(
+                r.get("actual_future_price", 0) or 0
+            )
+
+            expected_rate = float(
+                r.get("expected_rate", 0) or 0
+            )
+
+            if (
+                current_price <= 0
+                or actual_future_price <= 0
+            ):
+                continue
+
+            # ✅ 보정강도 적용
+            adjusted_rate = (
+                expected_rate * strength
+            )
+
+            # ✅ 가상 미래예측 가격
+            virtual_predicted_price = (
+                current_price
+                * (1 + adjusted_rate / 100)
+            )
+
+            # ✅ 실제 미래가격 대비 절대 오차율
+            error_rate = abs(
+                (
+                    virtual_predicted_price
+                    - actual_future_price
+                )
+                / actual_future_price
+                * 100
+            )
+
+            errors.append(error_rate)
+
+        mae = (
+            sum(errors) / len(errors)
+            if errors
+            else 0
+        )
+
+        strength_results[strength] = mae
+
+    improved_count = sum(
+        1
+        for r in results
+        if abs(r["future_error"]) < abs(r["current_error"])
+    )
+
+    worsened_count = sum(
+        1
+        for r in results
+        if abs(r["future_error"]) > abs(r["current_error"])
+    )
+
+    same_count = sum(
+        1
+        for r in results
+        if abs(r["future_error"]) == abs(r["current_error"])
+    )
+
+    
+
+    # ✅ 검증용 단순 시장국면 분류
+    # =========================================================
+    # ✅ 시장국면별 백테스트 검증 V2
+    # 실제 과거 거래상승률 기준
+    # =========================================================
+
+    market_groups = {
+        "상승": [],
+        "보합": [],
+        "하락": []
+    }
+
+    for r in results:
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+        # ✅ 시장국면 분류
+        if rise_rate >= 1.0:
+            market_phase = "상승"
+
+        elif rise_rate <= -1.0:
+            market_phase = "하락"
+
+        else:
+            market_phase = "보합"
+
+        # ✅ 개별 결과에도 시장국면 저장
+        r["market_phase"] = market_phase
+
+        # ✅ 해당 시장국면 그룹에 추가
+        market_groups[
+            market_phase
+        ].append(r)
+
+    # =========================================================
+    # ✅ 시장국면별 결과 출력
+    # =========================================================        
+    print()
+    print("=" * 70)
+    print("📊 시장국면별 백테스트 비교")
+    print("=" * 70)
+
+    for phase in [
+        "상승",
+        "보합",
+        "하락"
+    ]:
+
+        group = market_groups[phase]
+
+        if not group:
+            print()
+            print(
+                f"[{phase}] 테스트 없음"
+            )
+            continue
+
+        count = len(group)
+
+        current_group_mae = sum(
+            abs(r["current_error"])
+            for r in group
+        ) / count
+
+        future_group_mae = sum(
+            abs(r["future_error"])
+            for r in group
+        ) / count
+
+        improved = sum(
+            1
+            for r in group
+            if abs(r["future_error"])
+            < abs(r["current_error"])
+        )
+
+        worsened = sum(
+            1
+            for r in group
+            if abs(r["future_error"])
+            > abs(r["current_error"])
+        )
+
+        same = (
+            count
+            - improved
+            - worsened
+        )
+
+        diff = (
+            future_group_mae
+            - current_group_mae
+        )
+
+        print()
+        print(f"[{phase}]")
+        print(
+            f"테스트건수 : "
+            f"{count}건"
+        )
+
+        print(
+            f"현재가격 MAE : "
+            f"{current_group_mae:.2f}%"
+        )
+
+        print(
+            f"미래예측 MAE : "
+            f"{future_group_mae:.2f}%"
+        )
+
+        print(
+            f"개선 / 악화 / 동일 : "
+            f"{improved} / "
+            f"{worsened} / "
+            f"{same}"
+        )
+
+        if diff < 0:
+            print(
+                f"✅ 미래예측 효과 : "
+                f"{abs(diff):.2f}%p 개선"
+            )
+
+        elif diff > 0:
+            print(
+                f"⚠️ 미래예측 효과 : "
+                f"{diff:.2f}%p 악화"
+            )
+
+        else:
+            print(
+                "➖ 미래예측 효과 : 동일"
+            )
+
+    print("=" * 70)
+
+    # =========================================================
+    # ✅ 보합장 상세 백테스트 검증
+    # 엔진 수정 없음
+    # =========================================================
+
+    print()
+    print("=" * 110)
+    print("➖ 보합장 개별 백테스트 상세 검증")
+    print("=" * 110)
+
+    flat_results = [
+        r
+        for r in results
+        if r.get("market_phase") == "보합"
+    ]
+
+    flat_improved = 0
+    flat_worsened = 0
+    flat_same = 0
+
+    for r in flat_results:
+
+        current_error = abs(
+            float(
+                r.get("current_error", 0) or 0
+            )
+        )
+
+        future_error = abs(
+            float(
+                r.get("future_error", 0) or 0
+            )
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        price_variation = float(
+            r.get(
+                "recent_price_variation_rate",
+                0
+            ) or 0
+        )
+
+        previous_count = int(
+            r.get(
+                "previous_3m_count",
+                0
+            ) or 0
+        )
+
+        recent_count = int(
+            r.get(
+                "recent_3m_count",
+                0
+            ) or 0
+        )
+
+        if previous_count > 0:
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+        else:
+            volume_ratio = 0.0
+
+        diff = (
+            future_error
+            - current_error
+        )
+
+        if diff < -0.001:
+
+            judgment = (
+                f"✅ 개선 {abs(diff):.2f}%p"
+            )
+
+            flat_improved += 1
+
+        elif diff > 0.001:
+
+            judgment = (
+                f"⚠️ 악화 {diff:.2f}%p"
+            )
+
+            flat_worsened += 1
+
+        else:
+
+            judgment = "➖ 동일"
+            flat_same += 1
+
+        print(
+            f'{r.get("apt_name", "")} | '
+            f'{r.get("analysis_date", "")} | '
+            f'현재 {current_error:.2f}% | '
+            f'미래 {future_error:.2f}% | '
+            f'{judgment} | '
+            f'거래상승률 {rise_rate:+.2f}% | '
+            f'예상변동 {expected_rate:+.2f}% | '
+            f'가격변동 {price_variation:+.2f}% | '
+            f'거래 {previous_count}→{recent_count}건 | '
+            f'거래비 {volume_ratio:.2f}배 | '
+            f'신뢰도 {r.get("trend_confidence", "미확인")}'
+        )
+
+    print("-" * 110)
+
+    print(
+        f"보합장 테스트 : "
+        f"{len(flat_results)}건"
+    )
+
+    print(
+        f"개선 / 악화 / 동일 : "
+        f"{flat_improved} / "
+        f"{flat_worsened} / "
+        f"{flat_same}"
+    )
+
+    if flat_results:
+
+        flat_current_mae = (
+            sum(
+                abs(
+                    float(
+                        r.get(
+                            "current_error",
+                            0
+                        ) or 0
+                    )
+                )
+                for r in flat_results
+            )
+            / len(flat_results)
+        )
+
+        flat_future_mae = (
+            sum(
+                abs(
+                    float(
+                        r.get(
+                            "future_error",
+                            0
+                        ) or 0
+                    )
+                )
+                for r in flat_results
+            )
+            / len(flat_results)
+        )
+
+        print(
+            f"보합장 현재가격 MAE : "
+            f"{flat_current_mae:.2f}%"
+        )
+
+        print(
+            f"보합장 미래예측 MAE : "
+            f"{flat_future_mae:.2f}%"
+        )
+
+        print(
+            f"보합장 개선효과 : "
+            f"{flat_current_mae - flat_future_mae:+.2f}%p"
+        )
+
+    print("=" * 110)
+
+    # =========================================================
+    # ✅ 미래예측 엔진 최종 통합 안정성 검증
+    # =========================================================
+
+    print()
+    print("=" * 110)
+    print("🧪 미래예측 엔진 최종 통합 안정성 검증")
+    print("=" * 110)
+
+    valid_results = []
+
+    for r in results:
+
+        current_error = abs(
+            float(r.get("current_error", 0) or 0)
+        )
+
+        future_error = abs(
+            float(r.get("future_error", 0) or 0)
+        )
+
+        # 오류값이 정상적으로 존재하는 결과만 사용
+        if (
+            current_error >= 0
+            and future_error >= 0
+        ):
+            valid_results.append(r)
+
+    total_count = len(valid_results)
+
+    if total_count == 0:
+
+        print("검증 가능한 데이터가 없습니다.")
+
+    else:
+
+        # -----------------------------------------------------
+        # 1. 전체 MAE
+        # -----------------------------------------------------
+
+        current_mae = (
+            sum(
+                abs(float(r.get("current_error", 0) or 0))
+                for r in valid_results
+            )
+            / total_count
+        )
+
+        future_mae = (
+            sum(
+                abs(float(r.get("future_error", 0) or 0))
+                for r in valid_results
+            )
+            / total_count
+        )
+
+        # -----------------------------------------------------
+        # 2. 개선 / 악화 / 동일
+        # -----------------------------------------------------
+
+        improved = 0
+        worsened = 0
+        same = 0
+
+        # -----------------------------------------------------
+        # 3. 큰 오차 / 심각한 오차
+        # -----------------------------------------------------
+
+        error_10_count = 0
+        error_15_count = 0
+        error_20_count = 0
+
+        # -----------------------------------------------------
+        # 4. 방향 적중률
+        #
+        # current_price → actual_future_price 실제 방향
+        # expected_rate → 예측 방향
+        #
+        # ±1% 이하는 보합으로 판정
+        # -----------------------------------------------------
+
+        direction_total = 0
+        direction_correct = 0
+
+        phase_stats = {
+            "상승": {
+                "count": 0,
+                "current_sum": 0.0,
+                "future_sum": 0.0
+            },
+            "보합": {
+                "count": 0,
+                "current_sum": 0.0,
+                "future_sum": 0.0
+            },
+            "하락": {
+                "count": 0,
+                "current_sum": 0.0,
+                "future_sum": 0.0
+            }
+        }
+
+        for r in valid_results:
+
+            current_error = abs(
+                float(r.get("current_error", 0) or 0)
+            )
+
+            future_error = abs(
+                float(r.get("future_error", 0) or 0)
+            )
+
+            # ---------------------------------------------
+            # 개선 / 악화
+            # ---------------------------------------------
+
+            diff = future_error - current_error
+
+            if diff < -0.001:
+                improved += 1
+
+            elif diff > 0.001:
+                worsened += 1
+
+            else:
+                same += 1
+
+            # ---------------------------------------------
+            # 대형 오차
+            # ---------------------------------------------
+
+            if future_error >= 10:
+                error_10_count += 1
+
+            if future_error >= 15:
+                error_15_count += 1
+
+            if future_error >= 20:
+                error_20_count += 1
+
+            # ---------------------------------------------
+            # 시장국면별 MAE
+            # ---------------------------------------------
+
+            phase = r.get(
+                "market_phase",
+                "미확인"
+            )
+
+            if phase in phase_stats:
+
+                phase_stats[phase]["count"] += 1
+
+                phase_stats[phase]["current_sum"] += (
+                    current_error
+                )
+
+                phase_stats[phase]["future_sum"] += (
+                    future_error
+                )
+
+            # ---------------------------------------------
+            # 방향 적중률
+            # ---------------------------------------------
+
+            current_price = float(
+                r.get("current_price", 0) or 0
+            )
+
+            actual_future_price = float(
+                r.get("actual_future_price", 0) or 0
+            )
+
+            expected_rate = float(
+                r.get("expected_rate", 0) or 0
+            )
+
+            if (
+                current_price > 0
+                and actual_future_price > 0
+            ):
+
+                actual_change_rate = (
+                    (
+                        actual_future_price
+                        - current_price
+                    )
+                    / current_price
+                    * 100
+                )
+
+                # 실제 방향
+                if actual_change_rate > 1:
+                    actual_direction = "상승"
+
+                elif actual_change_rate < -1:
+                    actual_direction = "하락"
+
+                else:
+                    actual_direction = "보합"
+
+                # 예측 방향
+                if expected_rate > 1:
+                    predicted_direction = "상승"
+
+                elif expected_rate < -1:
+                    predicted_direction = "하락"
+
+                else:
+                    predicted_direction = "보합"
+
+                direction_total += 1
+
+                if (
+                    actual_direction
+                    == predicted_direction
+                ):
+                    direction_correct += 1
+
+        # -----------------------------------------------------
+        # 결과 출력
+        # -----------------------------------------------------
+
+        print(
+            f"전체 유효 테스트 : "
+            f"{total_count}건"
+        )
+
+        print()
+
+        print(
+            f"현재가격 MAE : "
+            f"{current_mae:.2f}%"
+        )
+
+        print(
+            f"미래예측 MAE : "
+            f"{future_mae:.2f}%"
+        )
+
+        print(
+            f"미래예측 개선효과 : "
+            f"{current_mae - future_mae:+.2f}%p"
+        )
+
+        print()
+
+        print(
+            f"개선 / 악화 / 동일 : "
+            f"{improved} / "
+            f"{worsened} / "
+            f"{same}"
+        )
+
+        print()
+
+        print(
+            f"10% 이상 오차 : "
+            f"{error_10_count}건 "
+            f"({error_10_count / total_count * 100:.1f}%)"
+        )
+
+        print(
+            f"15% 이상 오차 : "
+            f"{error_15_count}건 "
+            f"({error_15_count / total_count * 100:.1f}%)"
+        )
+
+        print(
+            f"20% 이상 오차 : "
+            f"{error_20_count}건 "
+            f"({error_20_count / total_count * 100:.1f}%)"
+        )
+
+        print()
+
+        # -----------------------------------------------------
+        # 방향 적중률
+        # -----------------------------------------------------
+
+        if direction_total > 0:
+
+            direction_accuracy = (
+                direction_correct
+                / direction_total
+                * 100
+            )
+
+            print(
+                f"6개월 방향 적중 : "
+                f"{direction_correct}/"
+                f"{direction_total}건"
+            )
+
+            print(
+                f"6개월 방향 적중률 : "
+                f"{direction_accuracy:.1f}%"
+            )
+
+        else:
+
+            print(
+                "6개월 방향 적중률 : "
+                "계산 불가"
+            )
+
+        # -----------------------------------------------------
+        # 시장국면별 결과
+        # -----------------------------------------------------
+
+        print()
+        print("-" * 110)
+        print("시장국면별 안정성")
+        print("-" * 110)
+
+        for phase in [
+            "상승",
+            "보합",
+            "하락"
+        ]:
+
+            stat = phase_stats[phase]
+
+            count = stat["count"]
+
+            if count == 0:
+                continue
+
+            phase_current_mae = (
+                stat["current_sum"]
+                / count
+            )
+
+            phase_future_mae = (
+                stat["future_sum"]
+                / count
+            )
+
+            phase_effect = (
+                phase_current_mae
+                - phase_future_mae
+            )
+
+            print(
+                f"[{phase}] "
+                f"{count}건 | "
+                f"현재 {phase_current_mae:.2f}% | "
+                f"미래 {phase_future_mae:.2f}% | "
+                f"효과 {phase_effect:+.2f}%p"
+            )
+
+    print("=" * 110)
+
+    # =========================================================
+    # ✅ 15% 이상 대형오차 상세 분석
+    # =========================================================
+
+    print()
+    print("=" * 125)
+    print("🚨 미래예측 15% 이상 대형오차 상세 분석")
+    print("=" * 125)
+
+    large_error_results = []
+
+    for r in results:
+
+        current_error = abs(
+            float(r.get("current_error", 0) or 0)
+        )
+
+        future_error = abs(
+            float(r.get("future_error", 0) or 0)
+        )
+
+        # 미래예측 오차 15% 이상만 추출
+        if future_error < 15:
+            continue
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        price_variation = float(
+            r.get(
+                "recent_price_variation_rate",
+                0
+            ) or 0
+        )
+
+        previous_count = int(
+            r.get(
+                "previous_3m_count",
+                0
+            ) or 0
+        )
+
+        recent_count = int(
+            r.get(
+                "recent_3m_count",
+                0
+            ) or 0
+        )
+
+        # ---------------------------------------------
+        # 실제 6개월 가격변동률
+        # ---------------------------------------------
+
+        if (
+            current_price > 0
+            and actual_future_price > 0
+        ):
+
+            actual_change_rate = (
+                (
+                    actual_future_price
+                    - current_price
+                )
+                / current_price
+                * 100
+            )
+
+        else:
+            actual_change_rate = 0.0
+
+        # ---------------------------------------------
+        # 미래예측이 현재가격보다 얼마나
+        # 개선/악화시켰는지
+        # ---------------------------------------------
+
+        effect = (
+            current_error
+            - future_error
+        )
+
+        if effect > 0.001:
+            effect_text = (
+                f"✅ +{effect:.2f}%p"
+            )
+
+        elif effect < -0.001:
+            effect_text = (
+                f"⚠️ {effect:.2f}%p"
+            )
+
+        else:
+            effect_text = "➖ 0.00%p"
+
+        large_error_results.append({
+            "future_error": future_error,
+            "text": (
+                f'{r.get("apt_name", "")} | '
+                f'{r.get("analysis_date", "")} | '
+                f'국면 {r.get("market_phase", "미확인")} | '
+                f'현재오차 {current_error:.2f}% | '
+                f'미래오차 {future_error:.2f}% | '
+                f'예측효과 {effect_text} | '
+                f'예상 {expected_rate:+.2f}% | '
+                f'실제변동 {actual_change_rate:+.2f}% | '
+                f'거래상승률 {rise_rate:+.2f}% | '
+                f'가격변동 {price_variation:+.2f}% | '
+                f'거래 {previous_count}→{recent_count}건 | '
+                f'신뢰도 {r.get("trend_confidence", "미확인")}'
+            )
+        })
+
+    # 미래오차가 큰 순서대로 정렬
+    large_error_results.sort(
+        key=lambda x: x["future_error"],
+        reverse=True
+    )
+
+    for item in large_error_results:
+        print(item["text"])
+
+    print("-" * 125)
+
+    print(
+        f"15% 이상 대형오차 : "
+        f"{len(large_error_results)}건"
+    )
+
+    # ---------------------------------------------
+    # 시장국면별 대형오차 건수
+    # ---------------------------------------------
+
+    for phase in [
+        "상승",
+        "보합",
+        "하락"
+    ]:
+
+        phase_count = sum(
+            1
+            for r in results
+            if (
+                r.get("market_phase") == phase
+                and abs(
+                    float(
+                        r.get("future_error", 0) or 0
+                    )
+                ) >= 15
+            )
+        )
+
+        print(
+            f"[{phase}] 15% 이상 : "
+            f"{phase_count}건"
+        )
+
+    print("=" * 125)
+
+    # =========================================================
+    # ✅ 15% 이상 대형오차 기준가격 4자 비교
+    #
+    # 비교 대상
+    # 1. 현재 기준가격
+    # 2. TYPE 대표가격
+    # 3. 최근3개월 평균가격
+    # 4. 실제 6개월 후 가격
+    #
+    # 목적:
+    # 미래예측률 문제가 아니라
+    # 기준가격 자체의 오차인지 확인
+    # =========================================================
+
+    print()
+    print("=" * 135)
+    print("🔎 15% 이상 대형오차 기준가격 4자 비교")
+    print("=" * 135)
+
+    base_compare_results = []
+
+    current_error_sum = 0.0
+    type_error_sum = 0.0
+    recent_error_sum = 0.0
+
+    current_win_count = 0
+    type_win_count = 0
+    recent_win_count = 0
+
+    valid_compare_count = 0
+
+    for r in results:
+
+        future_error = abs(
+            float(
+                r.get("future_error", 0) or 0
+            )
+        )
+
+        # 미래예측 오차 15% 이상만 분석
+        if future_error < 15:
+            continue
+
+        actual_price = float(
+            r.get(
+                "actual_future_price",
+                0
+            ) or 0
+        )
+
+        current_price = float(
+            r.get(
+                "current_price",
+                0
+            ) or 0
+        )
+
+        type_price = float(
+            r.get(
+                "type_reference_price",
+                0
+            ) or 0
+        )
+
+        recent_price = float(
+            r.get(
+                "recent_3m_avg",
+                0
+            ) or 0
+        )
+
+        if actual_price <= 0:
+            continue
+
+        # 세 가격이 모두 있어야
+        # 동일 조건으로 비교
+        if (
+            current_price <= 0
+            or type_price <= 0
+            or recent_price <= 0
+        ):
+            continue
+
+        # ---------------------------------------------
+        # 실제 미래가격 대비 각각의 오차율
+        # ---------------------------------------------
+
+        current_base_error = abs(
+            (
+                current_price
+                - actual_price
+            )
+            / actual_price
+            * 100
+        )
+
+        type_base_error = abs(
+            (
+                type_price
+                - actual_price
+            )
+            / actual_price
+            * 100
+        )
+
+        recent_base_error = abs(
+            (
+                recent_price
+                - actual_price
+            )
+            / actual_price
+            * 100
+        )
+
+        valid_compare_count += 1
+
+        current_error_sum += current_base_error
+        type_error_sum += type_base_error
+        recent_error_sum += recent_base_error
+
+        # ---------------------------------------------
+        # 가장 실제 미래가격에 가까운 기준가격
+        # ---------------------------------------------
+
+        errors = {
+            "현재기준": current_base_error,
+            "TYPE": type_base_error,
+            "최근3개월": recent_base_error
+        }
+
+        best_source = min(
+            errors,
+            key=errors.get
+        )
+
+        if best_source == "현재기준":
+            current_win_count += 1
+
+        elif best_source == "TYPE":
+            type_win_count += 1
+
+        elif best_source == "최근3개월":
+            recent_win_count += 1
+
+        base_compare_results.append({
+            "future_error": future_error,
+            "apt_name": r.get(
+                "apt_name",
+                ""
+            ),
+            "analysis_date": r.get(
+                "analysis_date",
+                ""
+            ),
+            "market_phase": r.get(
+                "market_phase",
+                "미확인"
+            ),
+
+            "actual_price": actual_price,
+            "current_price": current_price,
+            "type_price": type_price,
+            "recent_price": recent_price,
+
+            "current_error": current_base_error,
+            "type_error": type_base_error,
+            "recent_error": recent_base_error,
+
+            "best_source": best_source
+        })
+
+
+    # 미래예측 오차 큰 순서
+    base_compare_results.sort(
+        key=lambda x: x["future_error"],
+        reverse=True
+    )
+
+
+    for x in base_compare_results:
+
+        print(
+            f'{x["apt_name"]} | '
+            f'{x["analysis_date"]} | '
+            f'국면 {x["market_phase"]} | '
+            f'실제 {x["actual_price"]:,.0f}만원 | '
+            f'현재 {x["current_price"]:,.0f} '
+            f'({x["current_error"]:.2f}%) | '
+            f'TYPE {x["type_price"]:,.0f} '
+            f'({x["type_error"]:.2f}%) | '
+            f'최근3M {x["recent_price"]:,.0f} '
+            f'({x["recent_error"]:.2f}%) | '
+            f'🏆 {x["best_source"]}'
+        )
+
+
+    print("-" * 135)
+
+    print(
+        f"비교 가능 대형오차 : "
+        f"{valid_compare_count}건"
+    )
+
+    if valid_compare_count > 0:
+
+        current_base_mae = (
+            current_error_sum
+            / valid_compare_count
+        )
+
+        type_base_mae = (
+            type_error_sum
+            / valid_compare_count
+        )
+
+        recent_base_mae = (
+            recent_error_sum
+            / valid_compare_count
+        )
+
+        print()
+        print(
+            f"현재기준가격 MAE : "
+            f"{current_base_mae:.2f}%"
+        )
+
+        print(
+            f"TYPE대표가격 MAE : "
+            f"{type_base_mae:.2f}%"
+        )
+
+        print(
+            f"최근3개월평균 MAE : "
+            f"{recent_base_mae:.2f}%"
+        )
+
+        print()
+
+        print(
+            f"실제 미래가격에 가장 가까운 횟수"
+        )
+
+        print(
+            f"현재기준가격 : "
+            f"{current_win_count}건"
+        )
+
+        print(
+            f"TYPE대표가격 : "
+            f"{type_win_count}건"
+        )
+
+        print(
+            f"최근3개월평균 : "
+            f"{recent_win_count}건"
+        )
+
+        print()
+
+        # ---------------------------------------------
+        # 전체 1위 가격원
+        # ---------------------------------------------
+
+        source_mae = {
+            "현재기준가격": current_base_mae,
+            "TYPE대표가격": type_base_mae,
+            "최근3개월평균": recent_base_mae
+        }
+
+        best_overall_source = min(
+            source_mae,
+            key=source_mae.get
+        )
+
+        print(
+            f"🏆 대형오차 구간 최저 MAE : "
+            f"{best_overall_source} "
+            f"({source_mae[best_overall_source]:.2f}%)"
+        )
+
+    print("=" * 135)
+
+    # =========================================================
+    # ✅ 하락장 거래량 보정 가상정책
+    #
+    # 최근 3개월 거래량에 따라
+    # 기존 예상변동률의 적용 강도를 조절한다.
+    #
+    # 0~6건   → 100%
+    # 7~10건  → 50%
+    # 11건 이상 → 0%
+    #
+    # 실제 미래예측 엔진은 수정하지 않음
+    # =========================================================
+
+    down_market_results = [
+        r
+        for r in results
+        if r.get("market_phase") == "하락"
+    ]
+
+    if down_market_results:
+
+        virtual_errors = []
+
+        print()
+        print("=" * 70)
+        print("📉 하락장 거래량 보정 가상정책")
+        print("=" * 70)
+
+        for r in down_market_results:
+
+            current_price = float(
+                r.get("current_price", 0) or 0
+            )
+
+            actual_price = float(
+                r.get("actual_future_price", 0) or 0
+            )
+
+            expected_change_rate = float(
+                r.get("expected_rate", 0) or 0
+            )
+
+            recent_count = int(
+                r.get("recent_3m_count", 0) or 0
+            )
+
+            if (
+                current_price <= 0
+                or actual_price <= 0
+            ):
+                continue
+
+            # -----------------------------------------
+            # 거래량에 따른 하락 보정 강도
+            # -----------------------------------------
+
+            if recent_count <= 6:
+                strength = 1.0
+
+            elif recent_count <= 10:
+                strength = 0.5
+
+            else:
+                strength = 0.0
+
+            adjusted_change_rate = (
+                expected_change_rate
+                * strength
+            )
+
+            virtual_price = (
+                current_price
+                * (
+                    1
+                    + adjusted_change_rate / 100
+                )
+            )
+
+            virtual_error = (
+                (
+                    virtual_price
+                    - actual_price
+                )
+                / actual_price
+                * 100
+            )
+
+            virtual_errors.append(
+                abs(virtual_error)
+            )
+
+            print(
+                f"{r.get('apt_name')} | "
+                f"{r.get('analysis_date')} | "
+                f"거래 {recent_count}건 | "
+                f"기존 {expected_change_rate:+.2f}% | "
+                f"강도 {strength * 100:.0f}% | "
+                f"보정 {adjusted_change_rate:+.2f}% | "
+                f"가상오차 {virtual_error:+.2f}%"
+            )
+
+        if virtual_errors:
+
+            virtual_mae = (
+                sum(virtual_errors)
+                / len(virtual_errors)
+            )
+
+            current_down_mae = (
+                sum(
+                    abs(r["current_error"])
+                    for r in down_market_results
+                )
+                / len(down_market_results)
+            )
+
+            future_down_mae = (
+                sum(
+                    abs(r["future_error"])
+                    for r in down_market_results
+                )
+                / len(down_market_results)
+            )
+
+            print("-" * 70)
+
+            print(
+                f"현재가격 MAE : "
+                f"{current_down_mae:.2f}%"
+            )
+
+            print(
+                f"기존 미래예측 MAE : "
+                f"{future_down_mae:.2f}%"
+            )
+
+            print(
+                f"거래량 보정 MAE : "
+                f"{virtual_mae:.2f}%"
+            )
+
+            print()
+
+            diff_current = (
+                virtual_mae
+                - current_down_mae
+            )
+
+            diff_future = (
+                virtual_mae
+                - future_down_mae
+            )
+
+            if diff_current < 0:
+                print(
+                    f"✅ 현재가격 대비 "
+                    f"{abs(diff_current):.2f}%p 개선"
+                )
+            else:
+                print(
+                    f"⚠️ 현재가격 대비 "
+                    f"{diff_current:.2f}%p 악화"
+                )
+
+            if diff_future < 0:
+                print(
+                    f"✅ 기존 미래예측 대비 "
+                    f"{abs(diff_future):.2f}%p 개선"
+                )
+            else:
+                print(
+                    f"⚠️ 기존 미래예측 대비 "
+                    f"{diff_future:.2f}%p 악화"
+                )
+
+        print("=" * 70)
+
+    print()
+    print("=" * 100)
+    print("📋 개별 백테스트 비교")
+    print("=" * 100)
+
+    for r in results:
+
+        current_abs = abs(r["current_error"])
+        future_abs = abs(r["future_error"])
+
+        diff = future_abs - current_abs
+
+        if diff < 0:
+            judgment = f"✅ 개선 {abs(diff):.2f}%p"
+        elif diff > 0:
+            judgment = f"⚠️ 악화 {diff:.2f}%p"
+        else:
+            judgment = "➖ 동일"
+
+        print(
+            f'{r["apt_name"]} | '
+            f'{r["analysis_date"]} | '
+            f'현재 {current_abs:.2f}% | '
+            f'미래 {future_abs:.2f}% | '
+            f'{judgment} | '
+            f'예상변동 {r["expected_rate"]:+.2f}% | '
+            f'추세 {r["trend"]} | '
+            f'신뢰도 {r["trend_confidence"]} | '
+            f'이전3개월 {r["previous_3m_count"]}건 | '
+            f'최근3개월 {r["recent_3m_count"]}건'
+        )
+
+    # =========================================================
+    # ✅ 추세신뢰도별 미래예측 성능 검증
+    # =========================================================
+
+    confidence_groups = {}
+
+    for r in results:
+
+        confidence = str(
+            r.get("trend_confidence", "미확인")
+        ).replace(" ", "").strip()
+
+        if confidence not in confidence_groups:
+            confidence_groups[confidence] = []
+
+        confidence_groups[confidence].append(r)
+
+
+    print()
+    print("=" * 70)
+    print("📊 추세신뢰도별 백테스트 비교")
+    print("=" * 70)
+
+    for confidence, group in confidence_groups.items():
+
+        count = len(group)
+
+        current_group_mae = sum(
+            abs(r["current_error"])
+            for r in group
+        ) / count
+
+        future_group_mae = sum(
+            abs(r["future_error"])
+            for r in group
+        ) / count
+
+        improved = sum(
+            1
+            for r in group
+            if abs(r["future_error"])
+            < abs(r["current_error"])
+        )
+
+        worsened = sum(
+            1
+            for r in group
+            if abs(r["future_error"])
+            > abs(r["current_error"])
+        )
+
+        diff = future_group_mae - current_group_mae
+
+        print()
+        print(f"[{confidence}]")
+        print(f"테스트건수 : {count}건")
+        print(
+            f"현재가격 MAE : "
+            f"{current_group_mae:.2f}%"
+        )
+        print(
+            f"미래예측 MAE : "
+            f"{future_group_mae:.2f}%"
+        )
+        print(
+            f"개선 / 악화 : "
+            f"{improved} / {worsened}"
+        )
+
+        if diff < 0:
+            print(
+                f"✅ 미래예측 효과 : "
+                f"{abs(diff):.2f}%p 개선"
+            )
+        elif diff > 0:
+            print(
+                f"⚠️ 미래예측 효과 : "
+                f"{diff:.2f}%p 악화"
+            )
+        else:
+            print("➖ 미래예측 효과 : 동일")
+
+    print("=" * 70) 
+
+    print()
+    print("=" * 70)
+    print("📊 BATCH BACKTEST 종합 결과")
+    print("=" * 70)
+
+    print(f"유효 테스트 : {len(results)}건")
+    print(f"현재가격 MAE : {current_mae:.2f}%")
+    print(f"미래예측 MAE : {future_mae:.2f}%")
+    print(
+        f"미래예측 개선 : "
+        f"{improved_count}/{len(results)}건"
+    )
+    print(
+        f"미래예측 악화 : "
+        f"{worsened_count}/{len(results)}건"
+    )
+    print(
+        f"동일 : "
+        f"{same_count}/{len(results)}건"
+    )
+    print()
+    print(
+        f"가상정책 MAE "
+        f"(낮은 신뢰도 보정 제외) : "
+        f"{virtual_mae:.2f}%"
+    )
+
+    print()
+    print(
+        f"가상정책 MAE "
+        f"(예상변동률 50% 적용) : "
+        f"{half_rate_mae:.2f}%"
+    )
+
+    half_vs_current = (
+        half_rate_mae - current_mae
+    )
+
+    half_vs_future = (
+        half_rate_mae - future_mae
+    )
+
+    if half_vs_current < 0:
+        print(
+            f"✅ 50% 정책이 현재가격보다 "
+            f"{abs(half_vs_current):.2f}%p 개선"
+        )
+    elif half_vs_current > 0:
+        print(
+            f"⚠️ 50% 정책이 현재가격보다 "
+            f"{half_vs_current:.2f}%p 악화"
+        )
+    else:
+        print(
+            "➖ 50% 정책과 현재가격 정확도가 동일"
+        )
+
+    if half_vs_future < 0:
+        print(
+            f"✅ 50% 정책이 기존 미래예측보다 "
+            f"{abs(half_vs_future):.2f}%p 개선"
+        )
+    elif half_vs_future > 0:
+        print(
+            f"⚠️ 50% 정책이 기존 미래예측보다 "
+            f"{half_vs_future:.2f}%p 악화"
+        )
+    else:
+        print(
+            "➖ 50% 정책과 기존 미래예측 정확도가 동일"
+        )
+
+    virtual_diff = virtual_mae - current_mae
+
+    if virtual_diff < 0:
+        print(
+            f"✅ 가상정책이 현재가격 대비 "
+            f"{abs(virtual_diff):.2f}%p 개선"
+        )
+
+    elif virtual_diff > 0:
+        print(
+            f"⚠️ 가상정책이 현재가격 대비 "
+            f"{virtual_diff:.2f}%p 악화"
+        )
+
+    else:
+        print(
+            "➖ 가상정책과 현재가격 정확도가 동일"
+        )
+
+    future_vs_virtual = (
+        virtual_mae - future_mae
+    )
+
+    if future_vs_virtual < 0:
+        print(
+            f"✅ 가상정책이 기존 미래예측보다 "
+            f"{abs(future_vs_virtual):.2f}%p 개선"
+        )
+
+    elif future_vs_virtual > 0:
+        print(
+            f"⚠️ 가상정책이 기존 미래예측보다 "
+            f"{future_vs_virtual:.2f}%p 악화"
+        )
+
+    else:
+        print(
+            "➖ 가상정책과 기존 미래예측 정확도가 동일"
+        )
+
+    mae_diff = future_mae - current_mae
+
+    if mae_diff < 0:
+        print(
+            f"✅ 미래예측 엔진이 평균 "
+            f"{abs(mae_diff):.2f}%p 개선"
+        )
+    elif mae_diff > 0:
+        print(
+            f"⚠️ 미래예측 엔진이 평균 "
+            f"{mae_diff:.2f}%p 악화"
+        )
+    else:
+        print("➖ 현재가격과 미래예측 정확도가 동일")
+
+    print("=" * 70)
+
+    print()
+    print("=" * 70)
+    print("📊 미래예측 보정강도별 MAE 비교")
+    print("=" * 70)
+
+    for strength, mae in strength_results.items():
+
+        percent = round(
+            strength * 100
+        )
+
+        diff = mae - current_mae
+
+        if diff < 0:
+            status = (
+                f"✅ 현재가격 대비 "
+                f"{abs(diff):.2f}%p 개선"
+            )
+
+        elif diff > 0:
+            status = (
+                f"⚠️ 현재가격 대비 "
+                f"{diff:.2f}%p 악화"
+            )
+
+        else:
+            status = "➖ 현재가격과 동일"
+
+        print(
+            f"보정강도 {percent:>3}%"
+            f" | MAE {mae:.2f}%"
+            f" | {status}"
+        )
+
+    best_strength = min(
+        strength_results,
+        key=strength_results.get
+    )
+
+    best_mae = strength_results[
+        best_strength
+    ]
+
+    print("-" * 70)
+
+    print(
+        f"🏆 최적 보정강도 후보 : "
+        f"{round(best_strength * 100)}%"
+    )
+
+    print(
+        f"🏆 최적 MAE : "
+        f"{best_mae:.2f}%"
+    )
+
+    print("=" * 70)
+
+    # =========================================================
+    # ✅ 하락장 거래량 경계값 자동 탐색
+    #
+    # low_limit 이하      → 기존 하락예측 100%
+    # low_limit 초과
+    # ~ high_limit 이하   → 하락예측 50%
+    # high_limit 초과     → 하락예측 0%
+    #
+    # 실제 엔진은 수정하지 않음
+    # =========================================================
+
+    down_results = [
+        r
+        for r in results
+        if r.get("market_phase") == "하락"
+    ]
+
+    policy_results = []
+
+    if down_results:
+
+        for low_limit in range(3, 9):
+
+            for high_limit in range(
+                low_limit + 1,
+                16
+            ):
+
+                errors = []
+
+                for r in down_results:
+
+                    current_price = float(
+                        r.get(
+                            "current_price",
+                            0
+                        ) or 0
+                    )
+
+                    actual_price = float(
+                        r.get(
+                            "actual_future_price",
+                            0
+                        ) or 0
+                    )
+
+                    expected_rate = float(
+                        r.get(
+                            "expected_rate",
+                            0
+                        ) or 0
+                    )
+
+                    recent_count = int(
+                        r.get(
+                            "recent_3m_count",
+                            0
+                        ) or 0
+                    )
+
+                    if (
+                        current_price <= 0
+                        or actual_price <= 0
+                    ):
+                        continue
+
+                    # ✅ 거래량별 보정 강도
+                    if recent_count <= low_limit:
+
+                        strength = 1.0
+
+                    elif recent_count <= high_limit:
+
+                        strength = 0.5
+
+                    else:
+
+                        strength = 0.0
+
+                    adjusted_rate = (
+                        expected_rate
+                        * strength
+                    )
+
+                    predicted_price = (
+                        current_price
+                        * (
+                            1
+                            + adjusted_rate / 100
+                        )
+                    )
+
+                    error = abs(
+                        (
+                            predicted_price
+                            - actual_price
+                        )
+                        / actual_price
+                        * 100
+                    )
+
+                    errors.append(
+                        error
+                    )
+
+                if not errors:
+                    continue
+
+                mae = (
+                    sum(errors)
+                    / len(errors)
+                )
+
+                policy_results.append({
+                    "low_limit": low_limit,
+                    "high_limit": high_limit,
+                    "mae": mae
+                })
+
+        # ✅ MAE가 낮은 순서
+        policy_results.sort(
+            key=lambda x: x["mae"]
+        )
+
+        print()
+        print("=" * 70)
+        print("📉 하락장 거래량 경계값 자동 탐색")
+        print("=" * 70)
+
+        # 상위 10개만 출력
+        for rank, policy in enumerate(
+            policy_results[:10],
+            start=1
+        ):
+
+            print(
+                f"{rank}위 | "
+                f"100% 적용 <= "
+                f"{policy['low_limit']}건 | "
+                f"50% 적용 <= "
+                f"{policy['high_limit']}건 | "
+                f"그 이상 0% | "
+                f"MAE {policy['mae']:.2f}%"
+            )
+
+        if policy_results:
+
+            best = policy_results[0]
+
+            print("-" * 70)
+
+            print(
+                f"🏆 최적 후보 : "
+                f"{best['low_limit']}건 이하 100% / "
+                f"{best['high_limit']}건 이하 50% / "
+                f"그 이상 0%"
+            )
+
+            print(
+                f"🏆 최적 MAE : "
+                f"{best['mae']:.2f}%"
+            )
+
+        print("=" * 70)
+
+    # =========================================================
+    # ✅ 하락장 전환신호 가상정책
+    #
+    # 조건:
+    # 1) 최근3개월 거래량 / 이전3개월 거래량 >= 2배
+    # 2) 기존 예상하락률 <= -2%
+    #
+    # 두 조건이 모두 맞으면
+    # → 하락보정 0%
+    #
+    # 그 외
+    # → 기존 예상변동률 100% 적용
+    #
+    # 실제 엔진은 수정하지 않음
+    # =========================================================
+
+    transition_errors = []
+
+    down_results = [
+        r
+        for r in results
+        if r.get("market_phase") == "하락"
+    ]
+
+    print()
+    print("=" * 70)
+    print("📉 하락장 전환신호 가상정책")
+    print("=" * 70)
+
+    for r in down_results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_price <= 0
+        ):
+            continue
+
+        # -----------------------------------------
+        # 거래량 회복률
+        # -----------------------------------------
+
+        if previous_count > 0:
+            volume_recovery_ratio = (
+                recent_count
+                / previous_count
+            )
+        else:
+            volume_recovery_ratio = 0
+
+        # -----------------------------------------
+        # 저점 접근 / 반등 전환 신호
+        # -----------------------------------------
+
+        if (
+            volume_recovery_ratio >= 2.0
+            and expected_rate <= -2.0
+        ):
+            strength = 0.0
+            signal = "전환신호"
+
+        else:
+            strength = 1.0
+            signal = "하락지속"
+
+        adjusted_rate = (
+            expected_rate
+            * strength
+        )
+
+        virtual_price = (
+            current_price
+            * (
+                1
+                + adjusted_rate / 100
+            )
+        )
+
+        virtual_error = (
+            (
+                virtual_price
+                - actual_price
+            )
+            / actual_price
+            * 100
+        )
+
+        transition_errors.append(
+            abs(virtual_error)
+        )
+
+        print(
+            f"{r.get('apt_name')} | "
+            f"{r.get('analysis_date')} | "
+            f"{previous_count}→{recent_count}건 | "
+            f"회복률 {volume_recovery_ratio:.2f}배 | "
+            f"기존 {expected_rate:+.2f}% | "
+            f"{signal} | "
+            f"보정 {adjusted_rate:+.2f}% | "
+            f"가상오차 {virtual_error:+.2f}%"
+        )
+
+    if transition_errors:
+
+        transition_mae = (
+            sum(transition_errors)
+            / len(transition_errors)
+        )
+
+        current_down_mae = (
+            sum(
+                abs(r["current_error"])
+                for r in down_results
+            )
+            / len(down_results)
+        )
+
+        future_down_mae = (
+            sum(
+                abs(r["future_error"])
+                for r in down_results
+            )
+            / len(down_results)
+        )
+
+        print("-" * 70)
+
+        print(
+            f"현재가격 MAE : "
+            f"{current_down_mae:.2f}%"
+        )
+
+        print(
+            f"기존 미래예측 MAE : "
+            f"{future_down_mae:.2f}%"
+        )
+
+        print(
+            f"전환신호 정책 MAE : "
+            f"{transition_mae:.2f}%"
+        )
+
+        diff_current = (
+            transition_mae
+            - current_down_mae
+        )
+
+        diff_future = (
+            transition_mae
+            - future_down_mae
+        )
+
+        if diff_current < 0:
+            print(
+                f"✅ 현재가격 대비 "
+                f"{abs(diff_current):.2f}%p 개선"
+            )
+        else:
+            print(
+                f"⚠️ 현재가격 대비 "
+                f"{diff_current:.2f}%p 악화"
+            )
+
+        if diff_future < 0:
+            print(
+                f"✅ 기존 미래예측 대비 "
+                f"{abs(diff_future):.2f}%p 개선"
+            )
+        else:
+            print(
+                f"⚠️ 기존 미래예측 대비 "
+                f"{diff_future:.2f}%p 악화"
+            )
+
+    print("=" * 70)
+
+    # =========================================================
+    # ✅ 하락장 전환신호 임계값 자동 탐색
+    #
+    # 거래량 회복률 후보:
+    # 1.5 / 2.0 / 2.5 / 3.0배
+    #
+    # 예상하락률 후보:
+    # -1.5 / -2.0 / -2.5 / -3.0%
+    #
+    # 두 조건을 동시에 만족하면
+    # 하락보정 0%
+    #
+    # 실제 엔진은 수정하지 않음
+    # =========================================================
+
+    recovery_ratio_candidates = [
+        1.5,
+        2.0,
+        2.5,
+        3.0
+    ]
+
+    decline_rate_candidates = [
+        -1.5,
+        -2.0,
+        -2.5,
+        -3.0
+    ]
+
+    transition_policy_results = []
+
+    down_results = [
+        r
+        for r in results
+        if r.get("market_phase") == "하락"
+    ]
+
+    for recovery_threshold in recovery_ratio_candidates:
+
+        for decline_threshold in decline_rate_candidates:
+
+            errors = []
+            signal_count = 0
+
+            for r in down_results:
+
+                current_price = float(
+                    r.get("current_price", 0) or 0
+                )
+
+                actual_price = float(
+                    r.get("actual_future_price", 0) or 0
+                )
+
+                expected_rate = float(
+                    r.get("expected_rate", 0) or 0
+                )
+
+                recent_count = int(
+                    r.get("recent_3m_count", 0) or 0
+                )
+
+                previous_count = int(
+                    r.get("previous_3m_count", 0) or 0
+                )
+
+                if (
+                    current_price <= 0
+                    or actual_price <= 0
+                ):
+                    continue
+
+                if previous_count > 0:
+                    recovery_ratio = (
+                        recent_count
+                        / previous_count
+                    )
+                else:
+                    recovery_ratio = 0
+
+                # ✅ 전환신호 판정
+                if (
+                    recovery_ratio
+                    >= recovery_threshold
+                    and expected_rate
+                    <= decline_threshold
+                ):
+                    strength = 0.0
+                    signal_count += 1
+
+                else:
+                    strength = 1.0
+
+                adjusted_rate = (
+                    expected_rate
+                    * strength
+                )
+
+                predicted_price = (
+                    current_price
+                    * (
+                        1
+                        + adjusted_rate / 100
+                    )
+                )
+
+                error = abs(
+                    (
+                        predicted_price
+                        - actual_price
+                    )
+                    / actual_price
+                    * 100
+                )
+
+                errors.append(error)
+
+            if not errors:
+                continue
+
+            mae = (
+                sum(errors)
+                / len(errors)
+            )
+
+            transition_policy_results.append({
+                "recovery_threshold": recovery_threshold,
+                "decline_threshold": decline_threshold,
+                "signal_count": signal_count,
+                "mae": mae
+            })
+
+    # ✅ MAE 낮은 순서
+    transition_policy_results.sort(
+        key=lambda x: x["mae"]
+    )
+
+    print()
+    print("=" * 78)
+    print("📉 하락장 전환신호 임계값 자동 탐색")
+    print("=" * 78)
+
+    for rank, policy in enumerate(
+        transition_policy_results[:10],
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"회복률 >= "
+            f"{policy['recovery_threshold']:.1f}배 | "
+            f"예상하락률 <= "
+            f"{policy['decline_threshold']:.1f}% | "
+            f"전환신호 {policy['signal_count']}건 | "
+            f"MAE {policy['mae']:.2f}%"
+        )
+
+    if transition_policy_results:
+
+        best = transition_policy_results[0]
+
+        print("-" * 78)
+
+        print(
+            f"🏆 최적 회복률 기준 : "
+            f"{best['recovery_threshold']:.1f}배 이상"
+        )
+
+        print(
+            f"🏆 최적 예상하락률 기준 : "
+            f"{best['decline_threshold']:.1f}% 이하"
+        )
+
+        print(
+            f"🏆 전환신호 발생 : "
+            f"{best['signal_count']}건"
+        )
+
+        print(
+            f"🏆 최적 MAE : "
+            f"{best['mae']:.2f}%"
+        )
+
+    print("=" * 78)
+
+    # =========================================================
+    # ✅ 하락장 전환신호 최소 거래건수 자동 검증
+    # 고정 조건:
+    #   회복률 >= 2.0배
+    #   예상하락률 <= -2.0%
+    #
+    # 추가 검증:
+    #   이전3개월 / 최근3개월 최소 거래건수
+    # =========================================================
+
+    print()
+    print("=" * 78)
+    print("📉 하락장 전환신호 최소 거래건수 자동 검증")
+    print("=" * 78)
+
+    min_count_results = []
+
+    # 이전3개월 최소건수 / 최근3개월 최소건수
+    for previous_min in [1, 2, 3, 4]:
+
+        for recent_min in [1, 2, 3, 4]:
+
+            policy_errors = []
+            signal_count = 0
+
+            for r in results:
+
+                # 하락장만 검증
+                rise_rate = float(
+                    r.get("rise_rate", 0) or 0
+                )
+
+                if rise_rate >= -1:
+                    continue
+
+                previous_count = int(
+                    r.get("previous_3m_count", 0) or 0
+                )
+
+                recent_count = int(
+                    r.get("recent_3m_count", 0) or 0
+                )
+
+                expected_rate = float(
+                    r.get("expected_rate", 0) or 0
+                )
+
+                current_price = float(
+                    r.get("current_price", 0) or 0
+                )
+
+                actual_price = float(
+                    r.get("actual_future_price", 0) or 0
+                )
+
+                if (
+                    current_price <= 0
+                    or actual_price <= 0
+                ):
+                    continue
+
+                # 이전 거래가 없으면
+                # 회복률 계산 대상에서 제외
+                if previous_count <= 0:
+                    recovery_ratio = 0.0
+                else:
+                    recovery_ratio = (
+                        recent_count
+                        / previous_count
+                    )
+
+                # -----------------------------------------
+                # 전환신호 판정
+                # -----------------------------------------
+                transition_signal = (
+                    previous_count >= previous_min
+                    and recent_count >= recent_min
+                    and recovery_ratio >= 2.0
+                    and expected_rate <= -2.0
+                )
+
+                if transition_signal:
+
+                    # 하락보정 중단
+                    adjusted_rate = 0.0
+                    signal_count += 1
+
+                else:
+
+                    # 기존 미래예측 유지
+                    adjusted_rate = expected_rate
+
+                virtual_price = (
+                    current_price
+                    * (1 + adjusted_rate / 100)
+                )
+
+                virtual_error = (
+                    (virtual_price - actual_price)
+                    / actual_price
+                    * 100
+                )
+
+                policy_errors.append(
+                    abs(virtual_error)
+                )
+
+            if not policy_errors:
+                continue
+
+            policy_mae = (
+                sum(policy_errors)
+                / len(policy_errors)
+            )
+
+            min_count_results.append({
+                "previous_min": previous_min,
+                "recent_min": recent_min,
+                "signal_count": signal_count,
+                "mae": policy_mae
+            })
+
+    # MAE가 낮은 순서
+    min_count_results.sort(
+        key=lambda x: x["mae"]
+    )
+
+    for rank, item in enumerate(
+        min_count_results[:10],
+        start=1
+    ):
+
+        print(
+            f'{rank}위 | '
+            f'이전 >= {item["previous_min"]}건 | '
+            f'최근 >= {item["recent_min"]}건 | '
+            f'전환신호 {item["signal_count"]}건 | '
+            f'MAE {item["mae"]:.2f}%'
+        )
+
+    print("-" * 78)
+
+    if min_count_results:
+
+        best = min_count_results[0]
+
+        print(
+            f'🏆 최적 후보 : '
+            f'이전3개월 >= '
+            f'{best["previous_min"]}건 / '
+            f'최근3개월 >= '
+            f'{best["recent_min"]}건'
+        )
+
+        print(
+            f'🏆 전환신호 건수 : '
+            f'{best["signal_count"]}건'
+        )
+
+        print(
+            f'🏆 최적 MAE : '
+            f'{best["mae"]:.2f}%'
+        )
+
+    print("=" * 78)
+
+    # =========================================================
+    # ✅ 상승장 거래량 둔화 임계값 자동 탐색
+    #
+    # 조건:
+    # 1) 시장국면 = 상승
+    # 2) 최근3개월 / 이전3개월 거래량 유지율이
+    #    특정 기준 이하
+    # 3) 기존 예상상승률이 특정 기준 이상
+    #
+    # 조건 충족 시 기존 예상상승률을
+    # 75% / 50% / 25% / 0%로 축소해 비교
+    #
+    # 실제 엔진은 수정하지 않음
+    # =========================================================
+
+    print()
+    print("=" * 86)
+    print("📈 상승장 거래량 둔화 임계값 자동 탐색")
+    print("=" * 86)
+
+    up_results = [
+        r
+        for r in results
+        if r.get("market_phase") == "상승"
+    ]
+
+    retention_candidates = [
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8
+    ]
+
+    expected_rate_candidates = [
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0
+    ]
+
+    strength_candidates = [
+        0.75,
+        0.50,
+        0.25,
+        0.00
+    ]
+
+    up_policy_results = []
+
+    for retention_threshold in retention_candidates:
+
+        for rate_threshold in expected_rate_candidates:
+
+            for strength in strength_candidates:
+
+                errors = []
+                signal_count = 0
+
+                for r in up_results:
+
+                    current_price = float(
+                        r.get("current_price", 0) or 0
+                    )
+
+                    actual_price = float(
+                        r.get(
+                            "actual_future_price",
+                            0
+                        ) or 0
+                    )
+
+                    expected_rate = float(
+                        r.get("expected_rate", 0) or 0
+                    )
+
+                    previous_count = int(
+                        r.get(
+                            "previous_3m_count",
+                            0
+                        ) or 0
+                    )
+
+                    recent_count = int(
+                        r.get(
+                            "recent_3m_count",
+                            0
+                        ) or 0
+                    )
+
+                    if (
+                        current_price <= 0
+                        or actual_price <= 0
+                    ):
+                        continue
+
+                    # 이전 거래가 없으면
+                    # 거래량 유지율 신호 사용 안 함
+                    if previous_count > 0:
+                        retention_ratio = (
+                            recent_count
+                            / previous_count
+                        )
+                    else:
+                        retention_ratio = 1.0
+
+                    # -----------------------------------------
+                    # 상승장 둔화 신호
+                    # -----------------------------------------
+                    slowdown_signal = (
+                        retention_ratio
+                        <= retention_threshold
+                        and expected_rate
+                        >= rate_threshold
+                    )
+
+                    if slowdown_signal:
+
+                        adjusted_rate = (
+                            expected_rate
+                            * strength
+                        )
+
+                        signal_count += 1
+
+                    else:
+                        adjusted_rate = expected_rate
+
+                    predicted_price = (
+                        current_price
+                        * (
+                            1
+                            + adjusted_rate / 100
+                        )
+                    )
+
+                    error = abs(
+                        (
+                            predicted_price
+                            - actual_price
+                        )
+                        / actual_price
+                        * 100
+                    )
+
+                    errors.append(error)
+
+                if not errors:
+                    continue
+
+                mae = (
+                    sum(errors)
+                    / len(errors)
+                )
+
+                up_policy_results.append({
+                    "retention_threshold":
+                        retention_threshold,
+
+                    "rate_threshold":
+                        rate_threshold,
+
+                    "strength":
+                        strength,
+
+                    "signal_count":
+                        signal_count,
+
+                    "mae":
+                        mae
+                })
+
+    # ✅ MAE 낮은 순서
+    up_policy_results.sort(
+        key=lambda x: x["mae"]
+    )
+
+    for rank, policy in enumerate(
+        up_policy_results[:15],
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"거래량 유지율 <= "
+            f"{policy['retention_threshold']:.1f}배 | "
+            f"예상상승률 >= "
+            f"+{policy['rate_threshold']:.1f}% | "
+            f"상승보정 "
+            f"{policy['strength'] * 100:.0f}% 적용 | "
+            f"신호 {policy['signal_count']}건 | "
+            f"MAE {policy['mae']:.2f}%"
+        )
+
+    print("-" * 86)
+
+    if up_policy_results:
+
+        best = up_policy_results[0]
+
+        print(
+            f"🏆 최적 거래량 유지율 기준 : "
+            f"{best['retention_threshold']:.1f}배 이하"
+        )
+
+        print(
+            f"🏆 최적 예상상승률 기준 : "
+            f"+{best['rate_threshold']:.1f}% 이상"
+        )
+
+        print(
+            f"🏆 최적 상승보정 강도 : "
+            f"{best['strength'] * 100:.0f}%"
+        )
+
+        print(
+            f"🏆 둔화신호 발생 : "
+            f"{best['signal_count']}건"
+        )
+
+        print(
+            f"🏆 최적 MAE : "
+            f"{best['mae']:.2f}%"
+        )
+
+    print("=" * 86)
+
+    # =========================================================
+    # ✅ 상승장 거래량 둔화 V1 후보 상세 검증
+    #
+    # 현재 최적 후보:
+    # 거래량 유지율 <= 0.7배
+    # 예상상승률 >= +4.0%
+    # 기존 상승예측의 50%만 적용
+    # =========================================================
+
+    print()
+    print("=" * 100)
+    print("📈 상승장 거래량 둔화 V1 후보 상세 검증")
+    print("=" * 100)
+
+    slowdown_cases = []
+
+    for r in up_results:
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        if (
+            previous_count <= 0
+            or current_price <= 0
+            or actual_price <= 0
+        ):
+            continue
+
+        retention_ratio = (
+            recent_count
+            / previous_count
+        )
+
+        # ✅ 현재 1위 정책
+        if (
+            retention_ratio <= 0.7
+            and expected_rate >= 4.0
+        ):
+
+            adjusted_rate = (
+                expected_rate * 0.5
+            )
+
+            original_predicted_price = (
+                current_price
+                * (1 + expected_rate / 100)
+            )
+
+            adjusted_predicted_price = (
+                current_price
+                * (1 + adjusted_rate / 100)
+            )
+
+            original_error = abs(
+                (
+                    original_predicted_price
+                    - actual_price
+                )
+                / actual_price
+                * 100
+            )
+
+            adjusted_error = abs(
+                (
+                    adjusted_predicted_price
+                    - actual_price
+                )
+                / actual_price
+                * 100
+            )
+
+            improvement = (
+                original_error
+                - adjusted_error
+            )
+
+            slowdown_cases.append({
+                "apt_name":
+                    r.get("apt_name", ""),
+
+                "analysis_date":
+                    r.get("analysis_date", ""),
+
+                "previous_count":
+                    previous_count,
+
+                "recent_count":
+                    recent_count,
+
+                "retention_ratio":
+                    retention_ratio,
+
+                "expected_rate":
+                    expected_rate,
+
+                "adjusted_rate":
+                    adjusted_rate,
+
+                "original_error":
+                    original_error,
+
+                "adjusted_error":
+                    adjusted_error,
+
+                "recent_price_variation_rate": float(
+                    r.get(
+                        "recent_price_variation_rate",
+                        0
+                    ) or 0
+                ),
+
+                "improvement":
+                    improvement
+            })
+
+    improved_slowdown = 0
+    worsened_slowdown = 0
+    same_slowdown = 0
+
+    for case in slowdown_cases:
+
+        improvement = case["improvement"]
+
+        if improvement > 0.001:
+            judgment = (
+                f"✅ 개선 {improvement:.2f}%p"
+            )
+            improved_slowdown += 1
+
+        elif improvement < -0.001:
+            judgment = (
+                f"⚠️ 악화 {abs(improvement):.2f}%p"
+            )
+            worsened_slowdown += 1
+
+        else:
+            judgment = "➖ 동일"
+            same_slowdown += 1
+
+        print(
+            f'{case["apt_name"]} | '
+            f'{case["analysis_date"]} | '
+            f'{case["previous_count"]}'
+            f'→{case["recent_count"]}건 | '
+            f'유지율 '
+            f'{case["retention_ratio"]:.2f}배 | '
+            f'가격변동 '
+            f'{case["recent_price_variation_rate"]:+.2f}% | '
+            f'기존 '
+            f'+{case["expected_rate"]:.2f}% | '
+            f'보정 '
+            f'+{case["adjusted_rate"]:.2f}% | '
+            f'기존오차 '
+            f'{case["original_error"]:.2f}% | '
+            f'보정오차 '
+            f'{case["adjusted_error"]:.2f}% | '
+            f'{judgment}'           
+        )
+
+    print("-" * 100)
+
+    print(
+        f"둔화신호 : "
+        f"{len(slowdown_cases)}건"
+    )
+
+    print(
+        f"개선 / 악화 / 동일 : "
+        f"{improved_slowdown} / "
+        f"{worsened_slowdown} / "
+        f"{same_slowdown}"
+    )
+
+    if slowdown_cases:
+
+        original_signal_mae = (
+            sum(
+                c["original_error"]
+                for c in slowdown_cases
+            )
+            / len(slowdown_cases)
+        )
+
+        adjusted_signal_mae = (
+            sum(
+                c["adjusted_error"]
+                for c in slowdown_cases
+            )
+            / len(slowdown_cases)
+        )
+
+        print(
+            f"신호구간 기존 MAE : "
+            f"{original_signal_mae:.2f}%"
+        )
+
+        print(
+            f"신호구간 보정 MAE : "
+            f"{adjusted_signal_mae:.2f}%"
+        )
+
+        print(
+            f"신호구간 개선효과 : "
+            f"{original_signal_mae - adjusted_signal_mae:.2f}%p"
+        )
+
+    print("=" * 100)
+
+    # =========================================================
+    # ✅ 상승장 거래량 둔화 + 가격모멘텀 임계값 자동 탐색
+    # =========================================================
+
+    print()
+    print("=" * 86)
+    print("📈 상승장 거래량 둔화 + 가격모멘텀 임계값 자동 탐색")
+    print("=" * 86)
+
+    momentum_test_results = []
+
+    # 가격변동률 상한 후보
+    momentum_limits = [
+        2.0,
+        3.0,
+        4.0,
+        4.5,
+        5.0,
+        6.0,
+        7.0,
+        8.0
+    ]
+
+    # 보정 강도 후보
+    adjustment_factors = [
+        0.25,
+        0.50,
+        0.75
+    ]
+
+    for momentum_limit in momentum_limits:
+
+        for adjustment_factor in adjustment_factors:
+
+            errors = []
+            signal_count = 0
+
+            for r in results:
+
+                rise_rate = float(
+                    r.get("rise_rate", 0) or 0
+                )
+
+                # 상승장만
+                if rise_rate <= 1:
+                    continue
+
+                previous_count = int(
+                    r.get("previous_3m_count", 0) or 0
+                )
+
+                recent_count = int(
+                    r.get("recent_3m_count", 0) or 0
+                )
+
+                expected_rate = float(
+                    r.get("expected_rate", 0) or 0
+                )
+
+                price_momentum = float(
+                    r.get(
+                        "recent_price_variation_rate",
+                        0
+                    ) or 0
+                )
+
+                current_price = float(
+                    r.get("current_price", 0) or 0
+                )
+
+                actual_future_price = float(
+                    r.get("actual_future_price", 0) or 0
+                )
+
+                if (
+                    current_price <= 0
+                    or actual_future_price <= 0
+                ):
+                    continue
+
+                if previous_count > 0:
+                    retention_ratio = (
+                        recent_count / previous_count
+                    )
+                else:
+                    retention_ratio = 999
+
+                adjusted_rate = expected_rate
+
+                # 기존 V1 조건
+                # +
+                # 가격 모멘텀이 일정 수준 이하일 때만 보정
+                if (
+                    retention_ratio <= 0.7
+                    and expected_rate >= 4.0
+                    and price_momentum <= momentum_limit
+                ):
+                    adjusted_rate = (
+                        expected_rate
+                        * adjustment_factor
+                    )
+
+                    signal_count += 1
+
+                adjusted_price = (
+                    current_price
+                    * (1 + adjusted_rate / 100)
+                )
+
+                error = abs(
+                    (
+                        adjusted_price
+                        - actual_future_price
+                    )
+                    / actual_future_price
+                    * 100
+                )
+
+                errors.append(error)
+
+            if not errors:
+                continue
+
+            mae = sum(errors) / len(errors)
+
+            momentum_test_results.append({
+                "momentum_limit": momentum_limit,
+                "adjustment_factor": adjustment_factor,
+                "signal_count": signal_count,
+                "mae": mae
+            })
+
+
+    momentum_test_results.sort(
+        key=lambda x: x["mae"]
+    )
+
+    for rank, item in enumerate(
+        momentum_test_results[:15],
+        start=1
+    ):
+
+        print(
+            f'{rank}위 | '
+            f'가격변동률 <= '
+            f'{item["momentum_limit"]:+.1f}% | '
+            f'상승보정 '
+            f'{item["adjustment_factor"] * 100:.0f}% 적용 | '
+            f'신호 {item["signal_count"]}건 | '
+            f'MAE {item["mae"]:.2f}%'
+        )
+
+
+    if momentum_test_results:
+
+        best = momentum_test_results[0]
+
+        print("-" * 86)
+
+        print(
+            f'🏆 최적 가격변동률 상한 : '
+            f'{best["momentum_limit"]:+.1f}%'
+        )
+
+        print(
+            f'🏆 최적 상승보정 강도 : '
+            f'{best["adjustment_factor"] * 100:.0f}%'
+        )
+
+        print(
+            f'🏆 신호 발생 : '
+            f'{best["signal_count"]}건'
+        )
+
+        print(
+            f'🏆 최적 MAE : '
+            f'{best["mae"]:.2f}%'
+        )
+
+    # =========================================================
+    # ✅ 상승장 거래량 둔화 V2 상세 검증
+    # 조건:
+    # 거래량 유지율 <= 0.7
+    # 예상상승률 >= +4.0%
+    # 가격변동률 <= +6.0%
+    # 예상상승률 50% 적용
+    # =========================================================
+
+    print()
+    print("=" * 100)
+    print("📈 상승장 거래량 둔화 V3 상세 검증")
+    print("=" * 100)
+
+    v2_cases = []
+
+    for r in results:
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        # 상승장만
+        if rise_rate <= 1:
+            continue
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        price_momentum = float(
+            r.get(
+                "recent_price_variation_rate",
+                0
+            ) or 0
+        )
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+            or previous_count <= 0
+        ):
+            continue
+
+        retention_ratio = (
+            recent_count / previous_count
+        )
+
+        # V2 신호
+        momentum_gap = (
+            expected_rate
+            - price_momentum
+        )
+
+        if not (
+            retention_ratio <= 0.7
+            and expected_rate >= 4.0
+            and price_momentum <= 6.0
+            and momentum_gap >= 0.5
+        ):
+            continue
+
+        adjusted_rate = (
+            expected_rate * 0.5
+        )
+
+        original_price = (
+            current_price
+            * (1 + expected_rate / 100)
+        )
+
+        adjusted_price = (
+            current_price
+            * (1 + adjusted_rate / 100)
+        )
+
+        original_error = abs(
+            (
+                original_price
+                - actual_future_price
+            )
+            / actual_future_price
+            * 100
+        )
+
+        adjusted_error = abs(
+            (
+                adjusted_price
+                - actual_future_price
+            )
+            / actual_future_price
+            * 100
+        )
+
+        improvement = (
+            original_error
+            - adjusted_error
+        )
+
+        if improvement > 0.001:
+            judgment = (
+                f"✅ 개선 {improvement:.2f}%p"
+            )
+
+        elif improvement < -0.001:
+            judgment = (
+                f"⚠️ 악화 {abs(improvement):.2f}%p"
+            )
+
+        else:
+            judgment = "➖ 동일"
+
+        v2_cases.append({
+            "apt_name": r["apt_name"],
+            "analysis_date": r["analysis_date"],
+            "previous_count": previous_count,
+            "recent_count": recent_count,
+            "retention_ratio": retention_ratio,
+            "price_momentum": price_momentum,
+            "expected_rate": expected_rate,
+            "adjusted_rate": adjusted_rate,
+            "original_error": original_error,
+            "adjusted_error": adjusted_error,
+            "improvement": improvement,
+            "momentum_gap": momentum_gap,
+            "judgment": judgment
+        })
+
+
+    for case in v2_cases:
+
+        print(
+            f'{case["apt_name"]} | '
+            f'{case["analysis_date"]} | '
+            f'{case["previous_count"]}'
+            f'→{case["recent_count"]}건 | '
+            f'유지율 {case["retention_ratio"]:.2f}배 | '
+            f'가격변동 {case["price_momentum"]:+.2f}% | '
+            f'예상-가격차 {case["momentum_gap"]:+.2f}%p | '
+            f'기존 {case["expected_rate"]:+.2f}% | '
+            f'보정 {case["adjusted_rate"]:+.2f}% | '
+            f'기존오차 {case["original_error"]:.2f}% | '
+            f'보정오차 {case["adjusted_error"]:.2f}% | '
+            f'{case["judgment"]}'
+        )
+
+
+    improved = sum(
+        1
+        for x in v2_cases
+        if x["improvement"] > 0.001
+    )
+
+    worsened = sum(
+        1
+        for x in v2_cases
+        if x["improvement"] < -0.001
+    )
+
+    same = (
+        len(v2_cases)
+        - improved
+        - worsened
+    )
+
+    print("-" * 100)
+
+    print(
+        f'V3 신호 : {len(v2_cases)}건'
+    )
+
+    print(
+        f'개선 / 악화 / 동일 : '
+        f'{improved} / {worsened} / {same}'
+    )
+
+    if v2_cases:
+
+        original_mae = sum(
+            x["original_error"]
+            for x in v2_cases
+        ) / len(v2_cases)
+
+        adjusted_mae = sum(
+            x["adjusted_error"]
+            for x in v2_cases
+        ) / len(v2_cases)
+
+        print(
+            f'신호구간 기존 MAE : '
+            f'{original_mae:.2f}%'
+        )
+
+        print(
+            f'신호구간 V3 MAE : '
+            f'{adjusted_mae:.2f}%'
+        )
+
+        print(
+            f'신호구간 개선효과 : '
+            f'{original_mae - adjusted_mae:.2f}%p'
+        )
+
+    # =========================================================
+    # ✅ 상승장 거래량 둔화 V3
+    # 예상상승률 - 최근가격변동률 차이 임계값 자동 탐색
+    # =========================================================
+
+    print()
+    print("=" * 90)
+    print("📈 상승장 거래량 둔화 V3 예상-가격모멘텀 차이 자동 탐색")
+    print("=" * 90)
+
+    gap_test_results = []
+
+    gap_limits = [
+        0.0,
+        0.5,
+        1.0,
+        1.5,
+        2.0,
+        2.5,
+        3.0
+    ]
+
+    adjustment_factors = [
+        0.25,
+        0.50,
+        0.75
+    ]
+
+    for gap_limit in gap_limits:
+
+        for adjustment_factor in adjustment_factors:
+
+            errors = []
+            signal_count = 0
+
+            for r in results:
+
+                rise_rate = float(
+                    r.get("rise_rate", 0) or 0
+                )
+
+                # 상승장만
+                if rise_rate <= 1:
+                    continue
+
+                previous_count = int(
+                    r.get("previous_3m_count", 0) or 0
+                )
+
+                recent_count = int(
+                    r.get("recent_3m_count", 0) or 0
+                )
+
+                expected_rate = float(
+                    r.get("expected_rate", 0) or 0
+                )
+
+                price_momentum = float(
+                    r.get(
+                        "recent_price_variation_rate",
+                        0
+                    ) or 0
+                )
+
+                current_price = float(
+                    r.get("current_price", 0) or 0
+                )
+
+                actual_future_price = float(
+                    r.get("actual_future_price", 0) or 0
+                )
+
+                if (
+                    current_price <= 0
+                    or actual_future_price <= 0
+                ):
+                    continue
+
+                if previous_count > 0:
+                    retention_ratio = (
+                        recent_count / previous_count
+                    )
+                else:
+                    retention_ratio = 999
+
+                # 예상상승률과 최근 가격모멘텀 차이
+                momentum_gap = (
+                    expected_rate
+                    - price_momentum
+                )
+
+                adjusted_rate = expected_rate
+
+                # V3 조건
+                if (
+                    retention_ratio <= 0.7
+                    and expected_rate >= 4.0
+                    and price_momentum <= 6.0
+                    and momentum_gap >= gap_limit
+                ):
+
+                    adjusted_rate = (
+                        expected_rate
+                        * adjustment_factor
+                    )
+
+                    signal_count += 1
+
+                adjusted_price = (
+                    current_price
+                    * (1 + adjusted_rate / 100)
+                )
+
+                error = abs(
+                    (
+                        adjusted_price
+                        - actual_future_price
+                    )
+                    / actual_future_price
+                    * 100
+                )
+
+                errors.append(error)
+
+            if not errors:
+                continue
+
+            mae = (
+                sum(errors)
+                / len(errors)
+            )
+
+            gap_test_results.append({
+                "gap_limit": gap_limit,
+                "adjustment_factor": adjustment_factor,
+                "signal_count": signal_count,
+                "mae": mae
+            })
+
+
+    gap_test_results.sort(
+        key=lambda x: x["mae"]
+    )
+
+    for rank, item in enumerate(
+        gap_test_results[:15],
+        start=1
+    ):
+
+        print(
+            f'{rank}위 | '
+            f'예상-가격차 >= '
+            f'{item["gap_limit"]:.1f}%p | '
+            f'상승보정 '
+            f'{item["adjustment_factor"] * 100:.0f}% | '
+            f'신호 {item["signal_count"]}건 | '
+            f'MAE {item["mae"]:.2f}%'
+        )
+
+
+    if gap_test_results:
+
+        best = gap_test_results[0]
+
+        print("-" * 90)
+
+        print(
+            f'🏆 최적 예상-가격차 기준 : '
+            f'{best["gap_limit"]:.1f}%p 이상'
+        )
+
+        print(
+            f'🏆 최적 상승보정 강도 : '
+            f'{best["adjustment_factor"] * 100:.0f}%'
+        )
+
+        print(
+            f'🏆 신호 발생 : '
+            f'{best["signal_count"]}건'
+        )
+
+        print(
+            f'🏆 최적 MAE : '
+            f'{best["mae"]:.2f}%'
+        )
+
+    # =========================================================
+    # ✅ 통합 가상정책 백테스트
+    #
+    # 하락장 V1
+    # - trend == 하락
+    # - 이전3개월 > 0
+    # - 최근/이전 >= 2.0배
+    # - expected_rate <= -2.0%
+    # → expected_rate = 0%
+    #
+    # 상승장 V3
+    # - trend == 상승
+    # - 이전3개월 > 0
+    # - 최근/이전 <= 0.7배
+    # - expected_rate >= +4.0%
+    # - 최근가격변동률 <= +6.0%
+    # - expected_rate - 최근가격변동률 >= +0.5%p
+    # → expected_rate *= 0.5
+    #
+    # 실제 엔진은 아직 수정하지 않음
+    # =========================================================
+
+    print()
+    print("=" * 90)
+    print("📊 하락장 V1 + 상승장 V3 통합 가상정책")
+    print("=" * 90)
+
+    integrated_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        trend = str(
+            r.get("trend", "")
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        price_momentum = float(
+            r.get(
+                "recent_price_variation_rate",
+                0
+            ) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_price <= 0
+        ):
+            continue
+
+        adjusted_rate = expected_rate
+        policy = "기존"
+
+        if previous_count > 0:
+
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+
+        else:
+
+            volume_ratio = 0.0
+
+        # -----------------------------------------
+        # ✅ 하락장 V1
+        # -----------------------------------------
+        if (
+            trend == "하락"
+            and previous_count > 0
+            and volume_ratio >= 2.0
+            and expected_rate <= -2.0
+        ):
+
+            adjusted_rate = 0.0
+            policy = "하락V1"
+
+        # -----------------------------------------
+        # ✅ 상승장 V3
+        # -----------------------------------------
+        elif (
+            trend == "상승"
+            and previous_count > 0
+            and volume_ratio <= 0.7
+            and expected_rate >= 4.0
+            and price_momentum <= 6.0
+            and (
+                expected_rate
+                - price_momentum
+            ) >= 0.5
+        ):
+
+            adjusted_rate = (
+                expected_rate
+                * 0.5
+            )
+
+            policy = "상승V3"
+
+        predicted_price = (
+            current_price
+            * (
+                1
+                + adjusted_rate / 100
+            )
+        )
+
+        error = (
+            (
+                predicted_price
+                - actual_price
+            )
+            / actual_price
+            * 100
+        )
+
+        integrated_results.append({
+            "market_phase":
+                r.get("market_phase", "미확인"),
+
+            "policy":
+                policy,
+
+            "error":
+                error
+        })
+
+
+    # =========================================================
+    # 전체 MAE
+    # =========================================================
+
+    if integrated_results:
+
+        integrated_mae = (
+            sum(
+                abs(x["error"])
+                for x in integrated_results
+            )
+            / len(integrated_results)
+        )
+
+        original_mae = (
+            sum(
+                abs(r["future_error"])
+                for r in results
+            )
+            / len(results)
+        )
+
+        current_mae_all = (
+            sum(
+                abs(r["current_error"])
+                for r in results
+            )
+            / len(results)
+        )
+
+        down_v1_count = sum(
+            1
+            for x in integrated_results
+            if x["policy"] == "하락V1"
+        )
+
+        up_v3_count = sum(
+            1
+            for x in integrated_results
+            if x["policy"] == "상승V3"
+        )
+
+        print(
+            f"유효 테스트 : "
+            f"{len(integrated_results)}건"
+        )
+
+        print(
+            f"현재가격 MAE : "
+            f"{current_mae_all:.2f}%"
+        )
+
+        print(
+            f"기존 미래예측 MAE : "
+            f"{original_mae:.2f}%"
+        )
+
+        print(
+            f"통합정책 MAE : "
+            f"{integrated_mae:.2f}%"
+        )
+
+        print(
+            f"하락 V1 적용 : "
+            f"{down_v1_count}건"
+        )
+
+        print(
+            f"상승 V3 적용 : "
+            f"{up_v3_count}건"
+        )
+
+        print()
+
+        if integrated_mae < original_mae:
+
+            print(
+                f"✅ 기존 미래예측 대비 "
+                f"{original_mae - integrated_mae:.2f}%p 개선"
+            )
+
+        else:
+
+            print(
+                f"⚠️ 기존 미래예측 대비 "
+                f"{integrated_mae - original_mae:.2f}%p 악화"
+            )
+
+        if integrated_mae < current_mae_all:
+
+            print(
+                f"✅ 현재가격 대비 "
+                f"{current_mae_all - integrated_mae:.2f}%p 개선"
+            )
+
+        else:
+
+            print(
+                f"⚠️ 현재가격 대비 "
+                f"{integrated_mae - current_mae_all:.2f}%p 악화"
+            )
+
+
+        # =====================================================
+        # 시장국면별 통합정책 MAE
+        # =====================================================
+
+        print()
+        print("-" * 90)
+        print("📊 통합정책 시장국면별 결과")
+        print("-" * 90)
+
+        for phase in [
+            "상승",
+            "보합",
+            "하락"
+        ]:
+
+            group = [
+                x
+                for x in integrated_results
+                if x["market_phase"] == phase
+            ]
+
+            if not group:
+
+                print(
+                    f"[{phase}] 테스트 없음"
+                )
+
+                continue
+
+            phase_mae = (
+                sum(
+                    abs(x["error"])
+                    for x in group
+                )
+                / len(group)
+            )
+
+            print(
+                f"[{phase}] "
+                f"{len(group)}건 | "
+                f"통합정책 MAE "
+                f"{phase_mae:.2f}%"
+            )
+
+    print("=" * 90)
+
+    # ✅ 급락장 조기경보 V1 임계값 탐색
+    analyze_crash_warning_v1(
+        results
+    )
+
+    # ✅ 급락장 조기경보 V2
+    analyze_crash_warning_v2(
+        results
+    )
+
+    # ✅ 급락장 조기경보 V3
+    analyze_crash_warning_v3(
+        results
+    )
+
+    # ✅ 급락장 조기경보 V4
+    # 하락 보정강도 자동 탐색
+    analyze_crash_adjustment_v4(
+        results
+    )
+
+    # ✅ 급락 추가보정 미사용기간 외부검증
+    validate_crash_adjustment_out_of_sample(
+        results
+    )
+
+    # =====================================================
+    # 🚀 15% 이상 급등 사례 상세 분석
+    # =====================================================
+    analyze_surge_cases(
+        results
+    )
+
+    # ✅ 급등 조기신호 V1 임계값 자동 탐색
+    analyze_surge_warning_v1(
+        results
+    )
+
+    # ✅ 급등 조기신호 V2 최근가격 모멘텀 탐색
+    analyze_surge_warning_v2(
+        results
+    )
+
+    # ✅ 급등 V3 거래량 유지율 구간분석
+    analyze_surge_volume_buckets_v3(
+        results
+    )
+
+    # ✅ 급등 V4 거래량 증가 임계값 자동 탐색
+    analyze_surge_volume_threshold_v4(
+        results
+    )
+
+    # ✅ 급등 V5 상승둔화 V3와 실제 급등 충돌 분석
+    analyze_surge_slowdown_conflict_v5(
+        results
+    )
+
+    # ✅ 급등 V6
+    # 강한 상승모멘텀일 때 V3 둔화보정 예외 검증
+    analyze_uptrend_slowdown_exception_v6(
+        results
+    )
+
+    # ✅ 급등 V7 선행기간 분석
+    analyze_surge_lead_time_v7(
+        results
+    )
+
+    # ✅ 급등 V7.1 실제가격 경로 분석
+    analyze_surge_price_path_v71(
+        results
+    )
+
+    # ✅ 급등 V7.2 가격 기준 일치성 검증
+    analyze_surge_price_consistency_v72(
+        results
+    )
+
+    return {
+        "count": len(results),
+        "current_mae": round(current_mae, 2),
+        "future_mae": round(future_mae, 2),
+        "improved_count": improved_count,
+        "worsened_count": worsened_count,
+        "same_count": same_count,
+        "results": results
+    }
+
+def build_monthly_backtest_cases(
+    apartments,
+    start_date="2025-07-06",
+    end_date="2026-02-06"
+):
+    """
+    여러 단지에 대해 월 단위 백테스트 케이스를 자동 생성한다.
+    예:
+    2025-07-06
+    2025-08-06
+    ...
+    2026-02-06
+    """
+
+    from datetime import datetime
+
+    start = datetime.strptime(
+        start_date,
+        "%Y-%m-%d"
+    )
+
+    end = datetime.strptime(
+        end_date,
+        "%Y-%m-%d"
+    )
+
+    cases = []
+
+    current = start
+
+    while current <= end:
+
+        analysis_date = current.strftime(
+            "%Y-%m-%d"
+        )
+
+        for apt in apartments:
+
+            cases.append({
+                "region": apt["region"],
+                "apt_name": apt["apt_name"],
+                "size": apt["size"],
+                "analysis_date": analysis_date
+            })
+
+        # ✅ 다음 달로 이동
+        if current.month == 12:
+            current = current.replace(
+                year=current.year + 1,
+                month=1
+            )
+        else:
+            current = current.replace(
+                month=current.month + 1
+            )
+
+    return cases
+
+def analyze_crash_warning_v1(results):
+    """
+    급락장 조기경보 V1 임계값 자동 탐색
+
+    목적
+    --------------------------------------------------
+    미래예측 오차가 15% 이상 발생하는 대형오차를
+    사전에 구분할 수 있는 조건을 탐색한다.
+
+    현재 미래예측 엔진은 수정하지 않는다.
+    results에 저장된 과거 데이터만 사용한다.
+    """
+
+    print()
+    print("=" * 100)
+    print("🚨 급락장 조기경보 V1 임계값 자동 탐색")
+    print("=" * 100)
+
+    valid_results = []
+
+    for r in results:
+
+        current_error = abs(
+            float(r.get("current_error", 0) or 0)
+        )
+
+        future_error = abs(
+            float(r.get("future_error", 0) or 0)
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        price_variation = float(
+            r.get("recent_price_variation_rate", 0) or 0
+        )
+
+        trend = str(
+            r.get("trend", "")
+        )
+
+        # 거래량 유지율
+        if previous_count > 0:
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+        else:
+            volume_ratio = 0
+
+        valid_results.append({
+            "apt_name": r.get("apt_name", ""),
+            "analysis_date": r.get("analysis_date", ""),
+
+            "current_error": current_error,
+            "future_error": future_error,
+
+            "rise_rate": rise_rate,
+
+            "previous_count": previous_count,
+            "recent_count": recent_count,
+
+            "volume_ratio": volume_ratio,
+
+            "price_variation": price_variation,
+
+            "trend": trend
+        })
+
+    if not valid_results:
+        print("검증 가능한 데이터가 없습니다.")
+        return
+
+    # --------------------------------------------------
+    # 대형오차 정의
+    # --------------------------------------------------
+
+    large_error_threshold = 15.0
+
+    large_errors = [
+        r
+        for r in valid_results
+        if r["future_error"] >= large_error_threshold
+    ]
+
+    print(
+        f"전체 테스트 : {len(valid_results)}건"
+    )
+
+    print(
+        f"15% 이상 대형오차 : {len(large_errors)}건"
+    )
+
+    print()
+
+    # --------------------------------------------------
+    # 자동 탐색 후보
+    # --------------------------------------------------
+
+    rise_thresholds = [
+        -1.0,
+        -2.0,
+        -3.0,
+        -4.0,
+        -5.0,
+        -7.0,
+        -10.0
+    ]
+
+    volume_thresholds = [
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        1.0
+    ]
+
+    candidates = []
+
+    for rise_threshold in rise_thresholds:
+
+        for volume_threshold in volume_thresholds:
+
+            signal_results = []
+
+            for r in valid_results:
+
+                # 이전 거래가 없는 경우 제외
+                if r["previous_count"] <= 0:
+                    continue
+
+                signal = (
+                    r["rise_rate"] <= rise_threshold
+                    and
+                    r["volume_ratio"] <= volume_threshold
+                )
+
+                if signal:
+                    signal_results.append(r)
+
+            if not signal_results:
+                continue
+
+            # ------------------------------------------
+            # 신호가 잡은 대형오차
+            # ------------------------------------------
+
+            captured_large_errors = [
+                r
+                for r in signal_results
+                if r["future_error"] >= large_error_threshold
+            ]
+
+            # ------------------------------------------
+            # 정상구간 오탐
+            # ------------------------------------------
+
+            false_signals = [
+                r
+                for r in signal_results
+                if r["future_error"] < large_error_threshold
+            ]
+
+            signal_count = len(
+                signal_results
+            )
+
+            captured_count = len(
+                captured_large_errors
+            )
+
+            false_count = len(
+                false_signals
+            )
+
+            # ------------------------------------------
+            # 대형오차 포착률
+            # ------------------------------------------
+
+            if large_errors:
+                capture_rate = (
+                    captured_count
+                    / len(large_errors)
+                    * 100
+                )
+            else:
+                capture_rate = 0
+
+            # ------------------------------------------
+            # 신호 정확도
+            #
+            # 신호를 발생시켰을 때 실제 대형오차였던 비율
+            # ------------------------------------------
+
+            if signal_count > 0:
+                precision = (
+                    captured_count
+                    / signal_count
+                    * 100
+                )
+            else:
+                precision = 0
+
+            # ------------------------------------------
+            # 임시 종합점수
+            #
+            # 포착률과 정확도를 동일 비중으로 평가
+            # ------------------------------------------
+
+            score = (
+                capture_rate
+                + precision
+            ) / 2
+
+            candidates.append({
+                "rise_threshold": rise_threshold,
+                "volume_threshold": volume_threshold,
+
+                "signal_count": signal_count,
+                "captured_count": captured_count,
+                "false_count": false_count,
+
+                "capture_rate": capture_rate,
+                "precision": precision,
+
+                "score": score
+            })
+
+    if not candidates:
+        print("조건에 해당하는 후보가 없습니다.")
+        return
+
+    # 종합점수 우선
+    # 동점이면 포착 건수가 많은 조건 우선
+
+    candidates.sort(
+        key=lambda x: (
+            x["score"],
+            x["captured_count"],
+            -x["false_count"]
+        ),
+        reverse=True
+    )
+
+    print(
+        "순위 | 거래상승률 기준 | 거래량 유지율 기준 | "
+        "신호 | 대형오차 포착 | 오탐 | 포착률 | 정확도 | 점수"
+    )
+
+    print("-" * 100)
+
+    for rank, c in enumerate(
+        candidates[:15],
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"상승률 <= {c['rise_threshold']:+.1f}% | "
+            f"거래비 <= {c['volume_threshold']:.1f}배 | "
+            f"신호 {c['signal_count']}건 | "
+            f"포착 {c['captured_count']}건 | "
+            f"오탐 {c['false_count']}건 | "
+            f"포착률 {c['capture_rate']:.1f}% | "
+            f"정확도 {c['precision']:.1f}% | "
+            f"점수 {c['score']:.1f}"
+        )
+
+    best = candidates[0]
+
+    print("-" * 100)
+
+    print(
+        f"🏆 최적 거래상승률 기준 : "
+        f"{best['rise_threshold']:+.1f}% 이하"
+    )
+
+    print(
+        f"🏆 최적 거래량 유지율 기준 : "
+        f"{best['volume_threshold']:.1f}배 이하"
+    )
+
+    print(
+        f"🏆 신호 발생 : "
+        f"{best['signal_count']}건"
+    )
+
+    print(
+        f"🏆 대형오차 포착 : "
+        f"{best['captured_count']}건"
+    )
+
+    print(
+        f"🏆 정상구간 오탐 : "
+        f"{best['false_count']}건"
+    )
+
+    print(
+        f"🏆 대형오차 포착률 : "
+        f"{best['capture_rate']:.1f}%"
+    )
+
+    print(
+        f"🏆 신호 정확도 : "
+        f"{best['precision']:.1f}%"
+    )
+
+    print(
+        f"🏆 종합점수 : "
+        f"{best['score']:.1f}"
+    )
+
+    print("=" * 100)
+
+def analyze_crash_warning_v2(results):
+
+    print()
+    print("=" * 110)
+    print("🚨 급락장 조기경보 V2 임계값 자동 탐색")
+    print("=" * 110)
+
+    valid_results = []
+
+    for r in results:
+
+        future_error = abs(
+            float(r.get("future_error", 0) or 0)
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        price_variation = float(
+            r.get(
+                "recent_price_variation_rate",
+                0
+            ) or 0
+        )
+
+        if previous_count > 0:
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+        else:
+            volume_ratio = 0.0
+
+        valid_results.append({
+            "future_error": future_error,
+            "rise_rate": rise_rate,
+            "previous_count": previous_count,
+            "recent_count": recent_count,
+            "volume_ratio": volume_ratio,
+            "price_variation": price_variation
+        })
+
+    if not valid_results:
+        print("검증 가능한 데이터가 없습니다.")
+        return
+
+    large_error_threshold = 15.0
+
+    large_errors = [
+        r
+        for r in valid_results
+        if r["future_error"] >= large_error_threshold
+    ]
+
+    print(
+        f"전체 테스트 : "
+        f"{len(valid_results)}건"
+    )
+
+    print(
+        f"15% 이상 대형오차 : "
+        f"{len(large_errors)}건"
+    )
+
+    print()
+
+    rise_thresholds = [
+        -1.0,
+        -2.0,
+        -3.0,
+        -4.0,
+        -5.0
+    ]
+
+    volume_thresholds = [
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        1.0
+    ]
+
+    price_variation_thresholds = [
+        0.0,
+        0.5,
+        1.0,
+        1.5,
+        2.0,
+        2.5,
+        3.0
+    ]
+
+    candidates = []
+
+    for rise_threshold in rise_thresholds:
+
+        for volume_threshold in volume_thresholds:
+
+            for price_threshold in price_variation_thresholds:
+
+                signal_results = []
+
+                for r in valid_results:
+
+                    if r["previous_count"] <= 0:
+                        continue
+
+                    signal = (
+                        r["rise_rate"]
+                        <= rise_threshold
+                        and
+                        r["volume_ratio"]
+                        <= volume_threshold
+                        and
+                        r["price_variation"]
+                        >= price_threshold
+                    )
+
+                    if signal:
+                        signal_results.append(r)
+
+                if not signal_results:
+                    continue
+
+                captured = [
+                    r
+                    for r in signal_results
+                    if r["future_error"]
+                    >= large_error_threshold
+                ]
+
+                false_signals = [
+                    r
+                    for r in signal_results
+                    if r["future_error"]
+                    < large_error_threshold
+                ]
+
+                signal_count = len(
+                    signal_results
+                )
+
+                captured_count = len(
+                    captured
+                )
+
+                false_count = len(
+                    false_signals
+                )
+
+                if large_errors:
+                    capture_rate = (
+                        captured_count
+                        / len(large_errors)
+                        * 100
+                    )
+                else:
+                    capture_rate = 0
+
+                if signal_count > 0:
+                    precision = (
+                        captured_count
+                        / signal_count
+                        * 100
+                    )
+                else:
+                    precision = 0
+
+                # F1 형태 점수
+                if (
+                    capture_rate > 0
+                    and precision > 0
+                ):
+                    score = (
+                        2
+                        * capture_rate
+                        * precision
+                        / (
+                            capture_rate
+                            + precision
+                        )
+                    )
+                else:
+                    score = 0
+
+                candidates.append({
+                    "rise_threshold":
+                        rise_threshold,
+
+                    "volume_threshold":
+                        volume_threshold,
+
+                    "price_threshold":
+                        price_threshold,
+
+                    "signal_count":
+                        signal_count,
+
+                    "captured_count":
+                        captured_count,
+
+                    "false_count":
+                        false_count,
+
+                    "capture_rate":
+                        capture_rate,
+
+                    "precision":
+                        precision,
+
+                    "score":
+                        score
+                })
+
+    if not candidates:
+        print("조건에 해당하는 후보가 없습니다.")
+        return
+
+    candidates.sort(
+        key=lambda x: (
+            x["score"],
+            x["precision"],
+            x["captured_count"],
+            -x["false_count"]
+        ),
+        reverse=True
+    )
+
+    print(
+        "순위 | 상승률 기준 | 거래량 유지율 | "
+        "가격변동률 기준 | 신호 | 포착 | 오탐 | "
+        "포착률 | 정확도 | 점수"
+    )
+
+    print("-" * 110)
+
+    for rank, c in enumerate(
+        candidates[:20],
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"상승률 <= "
+            f"{c['rise_threshold']:+.1f}% | "
+            f"거래비 <= "
+            f"{c['volume_threshold']:.1f}배 | "
+            f"가격변동 >= "
+            f"{c['price_threshold']:+.1f}% | "
+            f"신호 {c['signal_count']}건 | "
+            f"포착 {c['captured_count']}건 | "
+            f"오탐 {c['false_count']}건 | "
+            f"포착률 {c['capture_rate']:.1f}% | "
+            f"정확도 {c['precision']:.1f}% | "
+            f"점수 {c['score']:.1f}"
+        )
+
+    best = candidates[0]
+
+    print("-" * 110)
+
+    print(
+        f"🏆 최적 거래상승률 기준 : "
+        f"{best['rise_threshold']:+.1f}% 이하"
+    )
+
+    print(
+        f"🏆 최적 거래량 유지율 기준 : "
+        f"{best['volume_threshold']:.1f}배 이하"
+    )
+
+    print(
+        f"🏆 최적 최근가격변동률 기준 : "
+        f"{best['price_threshold']:+.1f}% 이상"
+    )
+
+    print(
+        f"🏆 신호 발생 : "
+        f"{best['signal_count']}건"
+    )
+
+    print(
+        f"🏆 대형오차 포착 : "
+        f"{best['captured_count']}건"
+    )
+
+    print(
+        f"🏆 정상구간 오탐 : "
+        f"{best['false_count']}건"
+    )
+
+    print(
+        f"🏆 대형오차 포착률 : "
+        f"{best['capture_rate']:.1f}%"
+    )
+
+    print(
+        f"🏆 신호 정확도 : "
+        f"{best['precision']:.1f}%"
+    )
+
+    print(
+        f"🏆 F1 점수 : "
+        f"{best['score']:.1f}"
+    )
+
+    print("=" * 110)
+
+def analyze_crash_warning_v3(results):
+    """
+    급락장 조기경보 V3
+
+    V1 조건:
+    - 거래상승률 하락
+    - 거래량 감소
+
+    V3 추가 조건:
+    - TYPE 대비 최근가격변화율 하락
+
+    목적:
+    대형오차 포착률을 유지하면서
+    정상구간 오탐을 줄일 수 있는지 검증
+    """
+
+    print()
+    print("=" * 115)
+    print("🚨 급락장 조기경보 V3 TYPE-최근가격 괴리 임계값 자동 탐색")
+    print("=" * 115)
+
+    valid_results = []
+
+    for r in results:
+
+        future_error = abs(
+            float(
+                r.get(
+                    "future_error",
+                    0
+                ) or 0
+            )
+        )
+
+        rise_rate = float(
+            r.get(
+                "rise_rate",
+                0
+            ) or 0
+        )
+
+        previous_count = int(
+            r.get(
+                "previous_3m_count",
+                0
+            ) or 0
+        )
+
+        recent_count = int(
+            r.get(
+                "recent_3m_count",
+                0
+            ) or 0
+        )
+
+        type_recent_gap_rate = float(
+            r.get(
+                "type_recent_gap_rate",
+                0
+            ) or 0
+        )
+
+        if previous_count > 0:
+
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+
+        else:
+
+            volume_ratio = 0.0
+
+        valid_results.append({
+
+            "apt_name":
+                r.get("apt_name", ""),
+
+            "analysis_date":
+                r.get("analysis_date", ""),
+
+            "future_error":
+                future_error,
+
+            "rise_rate":
+                rise_rate,
+
+            "previous_count":
+                previous_count,
+
+            "recent_count":
+                recent_count,
+
+            "volume_ratio":
+                volume_ratio,
+
+            "type_recent_gap_rate":
+                type_recent_gap_rate
+        })
+
+    if not valid_results:
+
+        print(
+            "검증 가능한 데이터가 없습니다."
+        )
+
+        return
+
+    # =====================================================
+    # 15% 이상 미래예측 오차를 대형오차로 정의
+    # =====================================================
+
+    large_error_threshold = 15.0
+
+    large_errors = [
+
+        r
+
+        for r in valid_results
+
+        if (
+            r["future_error"]
+            >= large_error_threshold
+        )
+    ]
+
+    print(
+        f"전체 테스트 : "
+        f"{len(valid_results)}건"
+    )
+
+    print(
+        f"15% 이상 대형오차 : "
+        f"{len(large_errors)}건"
+    )
+
+    print()
+
+    # =====================================================
+    # 자동 탐색 범위
+    # =====================================================
+
+    rise_thresholds = [
+        -1.0,
+        -2.0,
+        -3.0,
+        -4.0,
+        -5.0,
+        -7.0,
+        -10.0
+    ]
+
+    volume_thresholds = [
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        1.0
+    ]
+
+    # TYPE 대비 최근가격변화율
+    #
+    # 예:
+    # -5% = 최근가격이 TYPE보다 5% 낮음
+    # -10% = 최근가격이 TYPE보다 10% 낮음
+
+    gap_thresholds = [
+        0.0,
+        -1.0,
+        -2.0,
+        -3.0,
+        -4.0,
+        -5.0,
+        -7.0,
+        -10.0,
+        -15.0
+    ]
+
+    candidates = []
+
+    # =====================================================
+    # 모든 조합 탐색
+    # =====================================================
+
+    for rise_threshold in rise_thresholds:
+
+        for volume_threshold in volume_thresholds:
+
+            for gap_threshold in gap_thresholds:
+
+                signal_results = []
+
+                for r in valid_results:
+
+                    if (
+                        r["previous_count"]
+                        <= 0
+                    ):
+                        continue
+
+                    signal = (
+
+                        r["rise_rate"]
+                        <= rise_threshold
+
+                        and
+
+                        r["volume_ratio"]
+                        <= volume_threshold
+
+                        and
+
+                        r["type_recent_gap_rate"]
+                        <= gap_threshold
+                    )
+
+                    if signal:
+
+                        signal_results.append(
+                            r
+                        )
+
+                if not signal_results:
+                    continue
+
+                captured = [
+
+                    r
+
+                    for r in signal_results
+
+                    if (
+                        r["future_error"]
+                        >= large_error_threshold
+                    )
+                ]
+
+                false_signals = [
+
+                    r
+
+                    for r in signal_results
+
+                    if (
+                        r["future_error"]
+                        < large_error_threshold
+                    )
+                ]
+
+                signal_count = len(
+                    signal_results
+                )
+
+                captured_count = len(
+                    captured
+                )
+
+                false_count = len(
+                    false_signals
+                )
+
+                # =========================================
+                # 포착률
+                # =========================================
+
+                if large_errors:
+
+                    capture_rate = (
+                        captured_count
+                        / len(large_errors)
+                        * 100
+                    )
+
+                else:
+
+                    capture_rate = 0
+
+                # =========================================
+                # 정확도
+                # =========================================
+
+                if signal_count > 0:
+
+                    precision = (
+                        captured_count
+                        / signal_count
+                        * 100
+                    )
+
+                else:
+
+                    precision = 0
+
+                # =========================================
+                # F1 점수
+                # =========================================
+
+                if (
+                    capture_rate > 0
+                    and
+                    precision > 0
+                ):
+
+                    score = (
+
+                        2
+                        * capture_rate
+                        * precision
+
+                        / (
+                            capture_rate
+                            + precision
+                        )
+                    )
+
+                else:
+
+                    score = 0
+
+                candidates.append({
+
+                    "rise_threshold":
+                        rise_threshold,
+
+                    "volume_threshold":
+                        volume_threshold,
+
+                    "gap_threshold":
+                        gap_threshold,
+
+                    "signal_count":
+                        signal_count,
+
+                    "captured_count":
+                        captured_count,
+
+                    "false_count":
+                        false_count,
+
+                    "capture_rate":
+                        capture_rate,
+
+                    "precision":
+                        precision,
+
+                    "score":
+                        score
+                })
+
+    if not candidates:
+
+        print(
+            "조건에 해당하는 후보가 없습니다."
+        )
+
+        return
+
+    # =====================================================
+    # 순위 정렬
+    # =====================================================
+
+    candidates.sort(
+
+        key=lambda x: (
+
+            x["score"],
+            x["precision"],
+            x["captured_count"],
+            -x["false_count"]
+        ),
+
+        reverse=True
+    )
+
+    print(
+        "순위 | 거래상승률 | 거래량 유지율 | "
+        "TYPE대비최근가격 | 신호 | 포착 | 오탐 | "
+        "포착률 | 정확도 | F1"
+    )
+
+    print("-" * 115)
+
+    # =====================================================
+    # 상위 20개 출력
+    # =====================================================
+
+    for rank, c in enumerate(
+        candidates[:20],
+        start=1
+    ):
+
+        print(
+
+            f"{rank}위 | "
+
+            f"상승률 <= "
+            f"{c['rise_threshold']:+.1f}% | "
+
+            f"거래비 <= "
+            f"{c['volume_threshold']:.1f}배 | "
+
+            f"TYPE괴리 <= "
+            f"{c['gap_threshold']:+.1f}% | "
+
+            f"신호 "
+            f"{c['signal_count']}건 | "
+
+            f"포착 "
+            f"{c['captured_count']}건 | "
+
+            f"오탐 "
+            f"{c['false_count']}건 | "
+
+            f"포착률 "
+            f"{c['capture_rate']:.1f}% | "
+
+            f"정확도 "
+            f"{c['precision']:.1f}% | "
+
+            f"F1 "
+            f"{c['score']:.1f}"
+        )
+
+    # =====================================================
+    # 최적 후보
+    # =====================================================
+
+    best = candidates[0]
+
+    print("-" * 115)
+
+    print(
+        f"🏆 최적 거래상승률 기준 : "
+        f"{best['rise_threshold']:+.1f}% 이하"
+    )
+
+    print(
+        f"🏆 최적 거래량 유지율 기준 : "
+        f"{best['volume_threshold']:.1f}배 이하"
+    )
+
+    print(
+        f"🏆 최적 TYPE대비최근가격변화율 : "
+        f"{best['gap_threshold']:+.1f}% 이하"
+    )
+
+    print(
+        f"🏆 신호 발생 : "
+        f"{best['signal_count']}건"
+    )
+
+    print(
+        f"🏆 대형오차 포착 : "
+        f"{best['captured_count']}건"
+    )
+
+    print(
+        f"🏆 정상구간 오탐 : "
+        f"{best['false_count']}건"
+    )
+
+    print(
+        f"🏆 대형오차 포착률 : "
+        f"{best['capture_rate']:.1f}%"
+    )
+
+    print(
+        f"🏆 신호 정확도 : "
+        f"{best['precision']:.1f}%"
+    )
+
+    print(
+        f"🏆 F1 점수 : "
+        f"{best['score']:.1f}"
+    )
+
+    print("=" * 115)    
+
+def analyze_crash_adjustment_v4(results):
+    """
+    급락장 조기경보 V4
+
+    V1 신호를 고정한 상태에서
+    추가 하락 보정률을 자동 탐색한다.
+
+    실제 future_prediction()은 수정하지 않는다.
+    """
+
+    print()
+    print("=" * 110)
+    print("🚨 급락장 조기경보 V4 하락 보정강도 자동 탐색")
+    print("=" * 110)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_price = float(
+            r.get(
+                "actual_future_price",
+                0
+            ) or 0
+        )
+
+        expected_rate = float(
+            r.get(
+                "expected_rate",
+                0
+            ) or 0
+        )
+
+        rise_rate = float(
+            r.get(
+                "rise_rate",
+                0
+            ) or 0
+        )
+
+        previous_count = int(
+            r.get(
+                "previous_3m_count",
+                0
+            ) or 0
+        )
+
+        recent_count = int(
+            r.get(
+                "recent_3m_count",
+                0
+            ) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_price <= 0
+        ):
+            continue
+
+        if previous_count > 0:
+
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+
+        else:
+
+            volume_ratio = 0.0
+
+        valid_results.append({
+            "apt_name":
+                r.get("apt_name", ""),
+
+            "analysis_date":
+                r.get("analysis_date", ""),
+
+            "current_price":
+                current_price,
+
+            "actual_price":
+                actual_price,
+
+            "expected_rate":
+                expected_rate,
+
+            "rise_rate":
+                rise_rate,
+
+            "previous_count":
+                previous_count,
+
+            "recent_count":
+                recent_count,
+
+            "volume_ratio":
+                volume_ratio
+        })
+
+    if not valid_results:
+
+        print(
+            "검증 가능한 데이터가 없습니다."
+        )
+
+        return
+
+    # =====================================================
+    # V1 급락 경보 조건 고정
+    # =====================================================
+
+    warning_results = [
+
+        r
+
+        for r in valid_results
+
+        if (
+            r["previous_count"] > 0
+            and r["rise_rate"] <= -1.0
+            and r["volume_ratio"] <= 0.8
+        )
+    ]
+
+    print(
+        f"전체 테스트 : "
+        f"{len(valid_results)}건"
+    )
+
+    print(
+        f"V1 급락경보 발생 : "
+        f"{len(warning_results)}건"
+    )
+
+    print()
+
+    # =====================================================
+    # 기존 실제 엔진 전체 MAE
+    # =====================================================
+
+    original_errors = []
+
+    for r in valid_results:
+
+        original_predicted_price = (
+            r["current_price"]
+            * (
+                1
+                + r["expected_rate"] / 100
+            )
+        )
+
+        original_error = abs(
+            (
+                original_predicted_price
+                - r["actual_price"]
+            )
+            / r["actual_price"]
+            * 100
+        )
+
+        original_errors.append(
+            original_error
+        )
+
+    original_mae = (
+        sum(original_errors)
+        / len(original_errors)
+    )
+
+    # =====================================================
+    # 추가 하락 보정 후보
+    #
+    # -1.0 = 기존 expected_rate에서
+    #        추가로 1%p 하향
+    # =====================================================
+
+    adjustment_candidates = [
+        0.0,
+        -2.0,
+        -4.0,
+        -6.0,
+        -8.0,
+        -10.0,
+        -12.0,
+        -14.0,
+        -16.0,
+        -18.0,
+        -20.0,
+        -25.0,
+        -30.0
+    ]
+
+    adjustment_results = []
+
+    for adjustment in adjustment_candidates:
+
+        all_errors = []
+
+        signal_original_errors = []
+        signal_adjusted_errors = []
+
+        improved_count = 0
+        worsened_count = 0
+        same_count = 0
+
+        for r in valid_results:
+
+            original_rate = (
+                r["expected_rate"]
+            )
+
+            adjusted_rate = (
+                original_rate
+            )
+
+            warning_signal = (
+                r["previous_count"] > 0
+                and r["rise_rate"] <= -1.0
+                and r["volume_ratio"] <= 0.8
+            )
+
+            if warning_signal:
+
+                adjusted_rate = (
+                    original_rate
+                    + adjustment
+                )
+
+            # -----------------------------------------
+            # 기존 예상가격
+            # -----------------------------------------
+
+            original_price = (
+                r["current_price"]
+                * (
+                    1
+                    + original_rate / 100
+                )
+            )
+
+            # -----------------------------------------
+            # 가상 보정 예상가격
+            # -----------------------------------------
+
+            adjusted_price = (
+                r["current_price"]
+                * (
+                    1
+                    + adjusted_rate / 100
+                )
+            )
+
+            original_error = abs(
+                (
+                    original_price
+                    - r["actual_price"]
+                )
+                / r["actual_price"]
+                * 100
+            )
+
+            adjusted_error = abs(
+                (
+                    adjusted_price
+                    - r["actual_price"]
+                )
+                / r["actual_price"]
+                * 100
+            )
+
+            all_errors.append(
+                adjusted_error
+            )
+
+            if warning_signal:
+
+                signal_original_errors.append(
+                    original_error
+                )
+
+                signal_adjusted_errors.append(
+                    adjusted_error
+                )
+
+                diff = (
+                    original_error
+                    - adjusted_error
+                )
+
+                if diff > 0.001:
+                    improved_count += 1
+
+                elif diff < -0.001:
+                    worsened_count += 1
+
+                else:
+                    same_count += 1
+
+        if not all_errors:
+            continue
+
+        total_mae = (
+            sum(all_errors)
+            / len(all_errors)
+        )
+
+        if signal_adjusted_errors:
+
+            signal_original_mae = (
+                sum(signal_original_errors)
+                / len(signal_original_errors)
+            )
+
+            signal_adjusted_mae = (
+                sum(signal_adjusted_errors)
+                / len(signal_adjusted_errors)
+            )
+
+        else:
+
+            signal_original_mae = 0.0
+            signal_adjusted_mae = 0.0
+
+        adjustment_results.append({
+            "adjustment":
+                adjustment,
+
+            "total_mae":
+                total_mae,
+
+            "signal_original_mae":
+                signal_original_mae,
+
+            "signal_adjusted_mae":
+                signal_adjusted_mae,
+
+            "improved_count":
+                improved_count,
+
+            "worsened_count":
+                worsened_count,
+
+            "same_count":
+                same_count
+        })
+
+    # =====================================================
+    # 전체 MAE가 가장 낮은 순서
+    # =====================================================
+
+    adjustment_results.sort(
+        key=lambda x: x["total_mae"]
+    )
+
+    print(
+        "순위 | 추가하락보정 | 전체 MAE | "
+        "신호구간 기존 MAE | 신호구간 보정 MAE | "
+        "개선 / 악화 / 동일"
+    )
+
+    print("-" * 110)
+
+    for rank, item in enumerate(
+        adjustment_results,
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"{item['adjustment']:+.1f}%p | "
+            f"전체 {item['total_mae']:.2f}% | "
+            f"신호기존 "
+            f"{item['signal_original_mae']:.2f}% | "
+            f"신호보정 "
+            f"{item['signal_adjusted_mae']:.2f}% | "
+            f"{item['improved_count']} / "
+            f"{item['worsened_count']} / "
+            f"{item['same_count']}"
+        )
+
+    if adjustment_results:
+
+        best = (
+            adjustment_results[0]
+        )
+
+        print("-" * 110)
+
+        print(
+            f"현재 실제엔진 전체 MAE : "
+            f"{original_mae:.2f}%"
+        )
+
+        print(
+            f"🏆 최적 추가 하락보정 : "
+            f"{best['adjustment']:+.1f}%p"
+        )
+
+        print(
+            f"🏆 보정 후 전체 MAE : "
+            f"{best['total_mae']:.2f}%"
+        )
+
+        print(
+            f"🏆 전체 MAE 개선효과 : "
+            f"{original_mae - best['total_mae']:+.2f}%p"
+        )
+
+        print(
+            f"🏆 신호구간 기존 MAE : "
+            f"{best['signal_original_mae']:.2f}%"
+        )
+
+        print(
+            f"🏆 신호구간 보정 MAE : "
+            f"{best['signal_adjusted_mae']:.2f}%"
+        )
+
+        print(
+            f"🏆 신호구간 개선효과 : "
+            f"{best['signal_original_mae'] - best['signal_adjusted_mae']:+.2f}%p"
+        )
+
+        print(
+            f"🏆 신호구간 개선 / 악화 / 동일 : "
+            f"{best['improved_count']} / "
+            f"{best['worsened_count']} / "
+            f"{best['same_count']}"
+        )
+
+    print("=" * 110)
+
+def validate_crash_adjustment_out_of_sample(results):
+    """
+    급락장 추가보정 외부검증
+
+    학습/탐색 구간에서 선택한 후보만 검증:
+    0%p / -12%p / -14%p
+
+    새로운 최적값 탐색 금지
+    """
+
+    print()
+    print("=" * 110)
+    print("🧪 급락장 추가보정 미사용기간 외부검증")
+    print("=" * 110)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_price <= 0
+        ):
+            continue
+
+        if previous_count > 0:
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+        else:
+            volume_ratio = 0.0
+
+        valid_results.append({
+            "current_price": current_price,
+            "actual_price": actual_price,
+            "expected_rate": expected_rate,
+            "rise_rate": rise_rate,
+            "previous_count": previous_count,
+            "recent_count": recent_count,
+            "volume_ratio": volume_ratio
+        })
+
+
+    if not valid_results:
+        print("검증 가능한 데이터가 없습니다.")
+        return
+
+
+    # 탐색구간에서 확정한 후보만 사용
+    fixed_candidates = [
+        0.0,
+        -12.0,
+        -14.0
+    ]
+
+    print(
+        f"전체 외부검증 테스트 : "
+        f"{len(valid_results)}건"
+    )
+
+    warning_count = sum(
+        1
+        for r in valid_results
+        if (
+            r["previous_count"] > 0
+            and r["rise_rate"] <= -1.0
+            and r["volume_ratio"] <= 0.8
+        )
+    )
+
+    print(
+        f"V1 급락경보 발생 : "
+        f"{warning_count}건"
+    )
+
+    print("-" * 110)
+
+    validation_results = []
+
+    for adjustment in fixed_candidates:
+
+        errors = []
+
+        signal_original_errors = []
+        signal_adjusted_errors = []
+
+        improved = 0
+        worsened = 0
+        same = 0
+
+        for r in valid_results:
+
+            original_rate = r["expected_rate"]
+            adjusted_rate = original_rate
+
+            warning_signal = (
+                r["previous_count"] > 0
+                and r["rise_rate"] <= -1.0
+                and r["volume_ratio"] <= 0.8
+            )
+
+            if warning_signal:
+                adjusted_rate = (
+                    original_rate
+                    + adjustment
+                )
+
+            original_price = (
+                r["current_price"]
+                * (1 + original_rate / 100)
+            )
+
+            adjusted_price = (
+                r["current_price"]
+                * (1 + adjusted_rate / 100)
+            )
+
+            original_error = abs(
+                (
+                    original_price
+                    - r["actual_price"]
+                )
+                / r["actual_price"]
+                * 100
+            )
+
+            adjusted_error = abs(
+                (
+                    adjusted_price
+                    - r["actual_price"]
+                )
+                / r["actual_price"]
+                * 100
+            )
+
+            errors.append(
+                adjusted_error
+            )
+
+            if warning_signal:
+
+                signal_original_errors.append(
+                    original_error
+                )
+
+                signal_adjusted_errors.append(
+                    adjusted_error
+                )
+
+                diff = (
+                    original_error
+                    - adjusted_error
+                )
+
+                if diff > 0.001:
+                    improved += 1
+                elif diff < -0.001:
+                    worsened += 1
+                else:
+                    same += 1
+
+        total_mae = (
+            sum(errors)
+            / len(errors)
+        )
+
+        if signal_adjusted_errors:
+
+            signal_original_mae = (
+                sum(signal_original_errors)
+                / len(signal_original_errors)
+            )
+
+            signal_adjusted_mae = (
+                sum(signal_adjusted_errors)
+                / len(signal_adjusted_errors)
+            )
+
+        else:
+
+            signal_original_mae = 0.0
+            signal_adjusted_mae = 0.0
+
+        validation_results.append({
+            "adjustment": adjustment,
+            "total_mae": total_mae,
+            "signal_original_mae": signal_original_mae,
+            "signal_adjusted_mae": signal_adjusted_mae,
+            "improved": improved,
+            "worsened": worsened,
+            "same": same
+        })
+
+
+    for item in validation_results:
+
+        print(
+            f'추가보정 {item["adjustment"]:+.1f}%p | '
+            f'전체 MAE {item["total_mae"]:.2f}% | '
+            f'신호기존 {item["signal_original_mae"]:.2f}% | '
+            f'신호보정 {item["signal_adjusted_mae"]:.2f}% | '
+            f'개선/악화/동일 '
+            f'{item["improved"]}/'
+            f'{item["worsened"]}/'
+            f'{item["same"]}'
+        )
+
+    print("=" * 110)
+
+def analyze_surge_cases(results):
+
+    print()
+    print("=" * 125)
+    print("🚀 15% 이상 급등 사례 상세 분석")
+    print("=" * 125)
+
+    surge_cases = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+        ):
+            continue
+
+        actual_change_rate = (
+            (actual_future_price - current_price)
+            / current_price
+            * 100
+        )
+
+        if actual_change_rate < 15:
+            continue
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        if previous_count > 0:
+            volume_ratio = (
+                recent_count / previous_count
+            )
+        else:
+            volume_ratio = 0
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        price_variation = float(
+            r.get("recent_price_variation", 0) or 0
+        )
+
+        surge_cases.append({
+            "apt_name": r.get("apt_name", ""),
+            "analysis_date": r.get("analysis_date", ""),
+            "actual_change_rate": actual_change_rate,
+            "expected_rate": expected_rate,
+            "rise_rate": rise_rate,
+            "price_variation": price_variation,
+            "previous_count": previous_count,
+            "recent_count": recent_count,
+            "volume_ratio": volume_ratio,
+            "trend_confidence": r.get(
+                "trend_confidence",
+                "미확인"
+            )
+        })
+
+    surge_cases.sort(
+        key=lambda x: x["actual_change_rate"],
+        reverse=True
+    )
+
+    for x in surge_cases:
+
+        print(
+            f'{x["apt_name"]} | '
+            f'{x["analysis_date"]} | '
+            f'실제변동 {x["actual_change_rate"]:+.2f}% | '
+            f'예상 {x["expected_rate"]:+.2f}% | '
+            f'거래상승률 {x["rise_rate"]:+.2f}% | '
+            f'가격변동 {x["price_variation"]:+.2f}% | '
+            f'거래 {x["previous_count"]}→{x["recent_count"]}건 | '
+            f'거래비 {x["volume_ratio"]:.2f}배 | '
+            f'신뢰도 {x["trend_confidence"]}'
+        )
+
+    print("-" * 125)
+    print(
+        f"15% 이상 급등 사례 : "
+        f"{len(surge_cases)}건"
+    )
+
+def analyze_surge_warning_v1(results):
+
+    print()
+    print("=" * 110)
+    print("🚀 급등 조기신호 V1 임계값 자동 탐색")
+    print("=" * 110)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+        ):
+            continue
+
+        actual_change_rate = (
+            (
+                actual_future_price
+                - current_price
+            )
+            / current_price
+            * 100
+        )
+
+        rate_gap = (
+            rise_rate
+            - expected_rate
+        )
+
+        valid_results.append({
+            "actual_change_rate":
+                actual_change_rate,
+
+            "rise_rate":
+                rise_rate,
+
+            "expected_rate":
+                expected_rate,
+
+            "rate_gap":
+                rate_gap
+        })
+
+    if not valid_results:
+        print("검증 가능한 데이터가 없습니다.")
+        return
+
+    # =====================================================
+    # 실제 6개월 +15% 이상 상승을 급등으로 정의
+    # =====================================================
+
+    surge_threshold = 15.0
+
+    surge_results = [
+        r
+        for r in valid_results
+        if (
+            r["actual_change_rate"]
+            >= surge_threshold
+        )
+    ]
+
+    print(
+        f"전체 테스트 : "
+        f"{len(valid_results)}건"
+    )
+
+    print(
+        f"15% 이상 급등 : "
+        f"{len(surge_results)}건"
+    )
+
+    print()
+
+    # =====================================================
+    # 자동 탐색 후보
+    # =====================================================
+
+    rise_thresholds = [
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0,
+        8.0,
+        10.0,
+        12.0,
+        15.0
+    ]
+
+    gap_thresholds = [
+        0.0,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        8.0,
+        10.0
+    ]
+
+    candidates = []
+
+    for rise_threshold in rise_thresholds:
+
+        for gap_threshold in gap_thresholds:
+
+            signal_results = [
+                r
+                for r in valid_results
+                if (
+                    r["rise_rate"]
+                    >= rise_threshold
+                    and
+                    r["rate_gap"]
+                    >= gap_threshold
+                )
+            ]
+
+            if not signal_results:
+                continue
+
+            captured = [
+                r
+                for r in signal_results
+                if (
+                    r["actual_change_rate"]
+                    >= surge_threshold
+                )
+            ]
+
+            false_signals = [
+                r
+                for r in signal_results
+                if (
+                    r["actual_change_rate"]
+                    < surge_threshold
+                )
+            ]
+
+            signal_count = len(
+                signal_results
+            )
+
+            captured_count = len(
+                captured
+            )
+
+            false_count = len(
+                false_signals
+            )
+
+            if surge_results:
+
+                capture_rate = (
+                    captured_count
+                    / len(surge_results)
+                    * 100
+                )
+
+            else:
+
+                capture_rate = 0
+
+            if signal_count > 0:
+
+                precision = (
+                    captured_count
+                    / signal_count
+                    * 100
+                )
+
+            else:
+
+                precision = 0
+
+            if (
+                capture_rate > 0
+                and precision > 0
+            ):
+
+                f1 = (
+                    2
+                    * capture_rate
+                    * precision
+                    / (
+                        capture_rate
+                        + precision
+                    )
+                )
+
+            else:
+
+                f1 = 0
+
+            candidates.append({
+                "rise_threshold":
+                    rise_threshold,
+
+                "gap_threshold":
+                    gap_threshold,
+
+                "signal_count":
+                    signal_count,
+
+                "captured_count":
+                    captured_count,
+
+                "false_count":
+                    false_count,
+
+                "capture_rate":
+                    capture_rate,
+
+                "precision":
+                    precision,
+
+                "f1":
+                    f1
+            })
+
+    if not candidates:
+        print("조건에 해당하는 후보가 없습니다.")
+        return
+
+    candidates.sort(
+        key=lambda x: (
+            x["f1"],
+            x["precision"],
+            x["captured_count"],
+            -x["false_count"]
+        ),
+        reverse=True
+    )
+
+    print(
+        "순위 | 거래상승률 기준 | "
+        "상승률-예상률 차이 | "
+        "신호 | 급등포착 | 오탐 | "
+        "포착률 | 정확도 | F1"
+    )
+
+    print("-" * 110)
+
+    for rank, c in enumerate(
+        candidates[:20],
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"거래상승률 >= "
+            f"+{c['rise_threshold']:.1f}% | "
+            f"격차 >= "
+            f"+{c['gap_threshold']:.1f}%p | "
+            f"신호 {c['signal_count']}건 | "
+            f"포착 {c['captured_count']}건 | "
+            f"오탐 {c['false_count']}건 | "
+            f"포착률 {c['capture_rate']:.1f}% | "
+            f"정확도 {c['precision']:.1f}% | "
+            f"F1 {c['f1']:.1f}"
+        )
+
+    best = candidates[0]
+
+    print("-" * 110)
+
+    print(
+        f"🏆 최적 거래상승률 기준 : "
+        f"+{best['rise_threshold']:.1f}% 이상"
+    )
+
+    print(
+        f"🏆 최적 상승률-예상률 격차 : "
+        f"+{best['gap_threshold']:.1f}%p 이상"
+    )
+
+    print(
+        f"🏆 신호 발생 : "
+        f"{best['signal_count']}건"
+    )
+
+    print(
+        f"🏆 급등 포착 : "
+        f"{best['captured_count']}건"
+    )
+
+    print(
+        f"🏆 정상구간 오탐 : "
+        f"{best['false_count']}건"
+    )
+
+    print(
+        f"🏆 급등 포착률 : "
+        f"{best['capture_rate']:.1f}%"
+    )
+
+    print(
+        f"🏆 신호 정확도 : "
+        f"{best['precision']:.1f}%"
+    )
+
+    print(
+        f"🏆 F1 점수 : "
+        f"{best['f1']:.1f}"
+    )
+
+    print("=" * 110)
+
+def analyze_surge_warning_v2(results):
+
+    print()
+    print("=" * 120)
+    print("🚀 급등 조기신호 V2 최근가격 모멘텀 임계값 자동 탐색")
+    print("=" * 120)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+        ):
+            continue
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        price_variation = float(
+            r.get(
+                "recent_price_variation_rate",
+                0
+            ) or 0
+        )
+
+        actual_change_rate = (
+            (actual_future_price - current_price)
+            / current_price
+            * 100
+        )
+
+        rate_gap = (
+            rise_rate
+            - expected_rate
+        )
+
+        valid_results.append({
+            "actual_change_rate": actual_change_rate,
+            "rise_rate": rise_rate,
+            "expected_rate": expected_rate,
+            "rate_gap": rate_gap,
+            "price_variation": price_variation
+        })
+
+    if not valid_results:
+        print("검증 가능한 데이터가 없습니다.")
+        return
+
+    surge_threshold = 15.0
+
+    surge_results = [
+        r
+        for r in valid_results
+        if r["actual_change_rate"] >= surge_threshold
+    ]
+
+    print(
+        f"전체 테스트 : {len(valid_results)}건"
+    )
+
+    print(
+        f"15% 이상 급등 : {len(surge_results)}건"
+    )
+
+    print()
+
+    # =====================================================
+    # V1 조건은 고정
+    # 거래상승률 >= +4%
+    # 거래상승률 - 예상상승률 >= +2%p
+    #
+    # V2에서는 최근가격변동률 임계값만 탐색
+    # =====================================================
+
+    price_thresholds = [
+        -5.0,
+        -3.0,
+        -2.0,
+        -1.0,
+        0.0,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        8.0,
+        10.0
+    ]
+
+    candidates = []
+
+    for price_threshold in price_thresholds:
+
+        signal_results = [
+            r
+            for r in valid_results
+            if (
+                r["rise_rate"] >= 4.0
+                and r["rate_gap"] >= 2.0
+                and r["price_variation"] >= price_threshold
+            )
+        ]
+
+        if not signal_results:
+            continue
+
+        captured_count = sum(
+            1
+            for r in signal_results
+            if r["actual_change_rate"] >= surge_threshold
+        )
+
+        signal_count = len(signal_results)
+
+        false_count = (
+            signal_count
+            - captured_count
+        )
+
+        capture_rate = (
+            captured_count
+            / len(surge_results)
+            * 100
+            if surge_results
+            else 0
+        )
+
+        precision = (
+            captured_count
+            / signal_count
+            * 100
+            if signal_count
+            else 0
+        )
+
+        if capture_rate + precision > 0:
+            f1 = (
+                2
+                * capture_rate
+                * precision
+                / (capture_rate + precision)
+            )
+        else:
+            f1 = 0
+
+        candidates.append({
+            "price_threshold": price_threshold,
+            "signal_count": signal_count,
+            "captured_count": captured_count,
+            "false_count": false_count,
+            "capture_rate": capture_rate,
+            "precision": precision,
+            "f1": f1
+        })
+
+    candidates.sort(
+        key=lambda x: (
+            x["f1"],
+            x["precision"],
+            x["captured_count"]
+        ),
+        reverse=True
+    )
+
+    print(
+        "순위 | 최근가격변동률 기준 | "
+        "신호 | 급등포착 | 오탐 | "
+        "포착률 | 정확도 | F1"
+    )
+
+    print("-" * 120)
+
+    for rank, c in enumerate(
+        candidates,
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"가격변동 >= {c['price_threshold']:+.1f}% | "
+            f"신호 {c['signal_count']}건 | "
+            f"포착 {c['captured_count']}건 | "
+            f"오탐 {c['false_count']}건 | "
+            f"포착률 {c['capture_rate']:.1f}% | "
+            f"정확도 {c['precision']:.1f}% | "
+            f"F1 {c['f1']:.1f}"
+        )
+
+    if not candidates:
+        print("조건에 해당하는 후보가 없습니다.")
+        return
+
+    best = candidates[0]
+
+    print("-" * 120)
+
+    print(
+        f"🏆 V1 고정조건 : "
+        f"거래상승률 +4.0% 이상 / "
+        f"상승률-예상률 격차 +2.0%p 이상"
+    )
+
+    print(
+        f"🏆 최적 최근가격변동률 기준 : "
+        f"{best['price_threshold']:+.1f}% 이상"
+    )
+
+    print(
+        f"🏆 신호 발생 : "
+        f"{best['signal_count']}건"
+    )
+
+    print(
+        f"🏆 급등 포착 : "
+        f"{best['captured_count']}건"
+    )
+
+    print(
+        f"🏆 정상구간 오탐 : "
+        f"{best['false_count']}건"
+    )
+
+    print(
+        f"🏆 급등 포착률 : "
+        f"{best['capture_rate']:.1f}%"
+    )
+
+    print(
+        f"🏆 신호 정확도 : "
+        f"{best['precision']:.1f}%"
+    )
+
+    print(
+        f"🏆 F1 점수 : "
+        f"{best['f1']:.1f}"
+    )
+
+    print("=" * 120)
+
+def analyze_surge_volume_buckets_v3(results):
+
+    print()
+    print("=" * 115)
+    print("🚀 급등 V3 거래량 유지율 구간분석")
+    print("=" * 115)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+        ):
+            continue
+
+        actual_change_rate = (
+            (
+                actual_future_price
+                - current_price
+            )
+            / current_price
+            * 100
+        )
+
+        rate_gap = (
+            rise_rate
+            - expected_rate
+        )
+
+        if previous_count > 0:
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+        else:
+            volume_ratio = 0.0
+
+        # V1 신호만 분석
+        if not (
+            rise_rate >= 4.0
+            and rate_gap >= 2.0
+        ):
+            continue
+
+        valid_results.append({
+            "actual_change_rate": actual_change_rate,
+            "volume_ratio": volume_ratio
+        })
+
+    if not valid_results:
+        print("분석 가능한 V1 신호가 없습니다.")
+        return
+
+    # =====================================================
+    # 거래량 유지율 구간
+    # =====================================================
+
+    buckets = [
+        {
+            "name": "0.0 ~ 0.3배",
+            "min": 0.0,
+            "max": 0.3
+        },
+        {
+            "name": "0.3 ~ 0.5배",
+            "min": 0.3,
+            "max": 0.5
+        },
+        {
+            "name": "0.5 ~ 0.8배",
+            "min": 0.5,
+            "max": 0.8
+        },
+        {
+            "name": "0.8 ~ 1.2배",
+            "min": 0.8,
+            "max": 1.2
+        },
+        {
+            "name": "1.2 ~ 2.0배",
+            "min": 1.2,
+            "max": 2.0
+        },
+        {
+            "name": "2.0배 이상",
+            "min": 2.0,
+            "max": None
+        }
+    ]
+
+    print(
+        f"V1 전체 신호 : "
+        f"{len(valid_results)}건"
+    )
+
+    print()
+    print(
+        "거래비 구간 | 신호 | 급등 | 오탐 | 급등확률"
+    )
+    print("-" * 115)
+
+    total_surge = 0
+    total_false = 0
+
+    for bucket in buckets:
+
+        group = []
+
+        for r in valid_results:
+
+            ratio = r["volume_ratio"]
+
+            if bucket["max"] is None:
+
+                matched = (
+                    ratio >= bucket["min"]
+                )
+
+            else:
+
+                matched = (
+                    ratio >= bucket["min"]
+                    and
+                    ratio < bucket["max"]
+                )
+
+            if matched:
+                group.append(r)
+
+        signal_count = len(group)
+
+        surge_count = sum(
+            1
+            for r in group
+            if r["actual_change_rate"] >= 15.0
+        )
+
+        false_count = (
+            signal_count
+            - surge_count
+        )
+
+        if signal_count > 0:
+            surge_probability = (
+                surge_count
+                / signal_count
+                * 100
+            )
+        else:
+            surge_probability = 0
+
+        total_surge += surge_count
+        total_false += false_count
+
+        print(
+            f'{bucket["name"]:<12} | '
+            f'{signal_count:>3}건 | '
+            f'{surge_count:>3}건 | '
+            f'{false_count:>3}건 | '
+            f'{surge_probability:>5.1f}%'
+        )
+
+    print("-" * 115)
+
+    print(
+        f"V1 급등 포착 합계 : "
+        f"{total_surge}건"
+    )
+
+    print(
+        f"V1 오탐 합계 : "
+        f"{total_false}건"
+    )
+
+    print("=" * 115)
+
+def analyze_surge_volume_threshold_v4(results):
+
+    print()
+    print("=" * 115)
+    print("🚀 급등 V4 거래량 증가 임계값 자동 탐색")
+    print("=" * 115)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+            or previous_count <= 0
+        ):
+            continue
+
+        actual_change_rate = (
+            (actual_future_price - current_price)
+            / current_price
+            * 100
+        )
+
+        rate_gap = (
+            rise_rate
+            - expected_rate
+        )
+
+        # 급등 V1 조건
+        if not (
+            rise_rate >= 4.0
+            and rate_gap >= 2.0
+        ):
+            continue
+
+        volume_ratio = (
+            recent_count
+            / previous_count
+        )
+
+        valid_results.append({
+            "actual_change_rate": actual_change_rate,
+            "volume_ratio": volume_ratio
+        })
+
+    surge_total = sum(
+        1
+        for r in valid_results
+        if r["actual_change_rate"] >= 15.0
+    )
+
+    thresholds = [
+        0.8,
+        1.0,
+        1.2,
+        1.5,
+        2.0,
+        2.5,
+        3.0
+    ]
+
+    search_results = []
+
+    for threshold in thresholds:
+
+        signals = [
+            r
+            for r in valid_results
+            if r["volume_ratio"] >= threshold
+        ]
+
+        signal_count = len(signals)
+
+        caught = sum(
+            1
+            for r in signals
+            if r["actual_change_rate"] >= 15.0
+        )
+
+        false_positive = (
+            signal_count
+            - caught
+        )
+
+        recall = (
+            caught / surge_total * 100
+            if surge_total > 0
+            else 0
+        )
+
+        precision = (
+            caught / signal_count * 100
+            if signal_count > 0
+            else 0
+        )
+
+        if precision + recall > 0:
+            f1 = (
+                2
+                * precision
+                * recall
+                / (precision + recall)
+            )
+        else:
+            f1 = 0
+
+        search_results.append({
+            "threshold": threshold,
+            "signal_count": signal_count,
+            "caught": caught,
+            "false_positive": false_positive,
+            "recall": recall,
+            "precision": precision,
+            "f1": f1
+        })
+
+    search_results.sort(
+        key=lambda x: x["f1"],
+        reverse=True
+    )
+
+    print(
+        f"V1 분석 가능 신호 : "
+        f"{len(valid_results)}건"
+    )
+
+    print(
+        f"실제 15% 이상 급등 : "
+        f"{surge_total}건"
+    )
+
+    print()
+    print(
+        "순위 | 거래량 증가 기준 | 신호 | 급등포착 | "
+        "오탐 | 포착률 | 정확도 | F1"
+    )
+
+    print("-" * 115)
+
+    for rank, r in enumerate(
+        search_results,
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"거래비 >= {r['threshold']:.1f}배 | "
+            f"신호 {r['signal_count']}건 | "
+            f"포착 {r['caught']}건 | "
+            f"오탐 {r['false_positive']}건 | "
+            f"포착률 {r['recall']:.1f}% | "
+            f"정확도 {r['precision']:.1f}% | "
+            f"F1 {r['f1']:.1f}"
+        )
+
+    print("-" * 115)
+
+    if search_results:
+
+        best = search_results[0]
+
+        print(
+            f"🏆 최적 거래량 증가 기준 : "
+            f"{best['threshold']:.1f}배 이상"
+        )
+
+        print(
+            f"🏆 신호 발생 : "
+            f"{best['signal_count']}건"
+        )
+
+        print(
+            f"🏆 급등 포착 : "
+            f"{best['caught']}건"
+        )
+
+        print(
+            f"🏆 정상구간 오탐 : "
+            f"{best['false_positive']}건"
+        )
+
+        print(
+            f"🏆 급등 포착률 : "
+            f"{best['recall']:.1f}%"
+        )
+
+        print(
+            f"🏆 신호 정확도 : "
+            f"{best['precision']:.1f}%"
+        )
+
+        print(
+            f"🏆 F1 점수 : "
+            f"{best['f1']:.1f}"
+        )
+
+def analyze_surge_slowdown_conflict_v5(results):
+
+    print()
+    print("=" * 125)
+    print("🚀 급등 V5 상승둔화 V3 충돌 분석")
+    print("=" * 125)
+
+    conflicts = []
+    slowdown_total = 0
+    actual_surge_total = 0
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        price_variation = float(
+            r.get("recent_price_variation", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+        ):
+            continue
+
+        actual_change_rate = (
+            (actual_future_price - current_price)
+            / current_price
+            * 100
+        )
+
+        if actual_change_rate >= 15.0:
+            actual_surge_total += 1
+
+        if previous_count > 0:
+
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+
+        else:
+
+            volume_ratio = 0.0
+
+        # =====================================================
+        # 상승둔화 V3 조건 재현
+        #
+        # 주의:
+        # results의 expected_rate는 이미 실제 엔진에서
+        # 50% 보정된 값일 수 있으므로
+        # 여기서는 보정 전 예상률을 역산합니다.
+        # =====================================================
+
+        expected_before_slowdown = expected_rate
+
+        if (
+            r.get("uptrend_slowdown_signal", False)
+        ):
+            expected_before_slowdown = (
+                expected_rate * 2
+            )
+
+        momentum_gap = (
+            expected_before_slowdown
+            - price_variation
+        )
+
+        # =====================================================
+        # ✅ 실제 미래예측 엔진에서 발생한
+        #    상승둔화 V3 신호만 사용
+        # =====================================================
+
+        slowdown_signal = bool(
+            r.get(
+                "uptrend_slowdown_signal",
+                False
+            )
+        )
+
+        if not slowdown_signal:
+            continue
+
+        slowdown_total += 1
+
+        # 실제 6개월 후 +15% 이상 상승한 경우만 충돌
+        if actual_change_rate < 15.0:
+            continue
+
+        conflicts.append({
+            "region": r.get("region", ""),
+            "apt_name": r.get("apt_name", ""),
+            "analysis_date": r.get("analysis_date", ""),
+            "actual_change_rate": actual_change_rate,
+            "rise_rate": rise_rate,
+            "expected_before": expected_before_slowdown,
+            "expected_after": expected_rate,
+            "price_variation": price_variation,
+            "previous_count": previous_count,
+            "recent_count": recent_count,
+            "volume_ratio": volume_ratio,
+            "trend_confidence": r.get(
+                "trend_confidence",
+                "미확인"
+            )
+        })
+
+    conflicts.sort(
+        key=lambda x: x["actual_change_rate"],
+        reverse=True
+    )
+
+    print(
+        f"전체 실제 15% 이상 급등 : "
+        f"{actual_surge_total}건"
+    )
+
+    print(
+        f"상승둔화 V3 신호 : "
+        f"{slowdown_total}건"
+    )
+
+    print(
+        f"상승둔화 V3 + 실제 급등 충돌 : "
+        f"{len(conflicts)}건"
+    )
+
+    print()
+
+    if slowdown_total > 0:
+
+        conflict_rate = (
+            len(conflicts)
+            / slowdown_total
+            * 100
+        )
+
+        print(
+            f"둔화신호 중 실제 급등 비율 : "
+            f"{conflict_rate:.1f}%"
+        )
+
+    if actual_surge_total > 0:
+
+        missed_surge_rate = (
+            len(conflicts)
+            / actual_surge_total
+            * 100
+        )
+
+        print(
+            f"전체 급등 중 둔화보정 충돌 비율 : "
+            f"{missed_surge_rate:.1f}%"
+        )
+
+    print()
+    print("-" * 125)
+
+    print(
+        "단지 | 기준일 | 실제변동 | 거래상승률 | "
+        "보정전예상 | 보정후예상 | 가격변동 | "
+        "거래량 | 거래비 | 신뢰도"
+    )
+
+    print("-" * 125)
+
+    for x in conflicts:
+
+        print(
+            f"{x['apt_name']} | "
+            f"{x['analysis_date']} | "
+            f"실제 {x['actual_change_rate']:+.2f}% | "
+            f"거래상승률 {x['rise_rate']:+.2f}% | "
+            f"보정전 {x['expected_before']:+.2f}% | "
+            f"보정후 {x['expected_after']:+.2f}% | "
+            f"가격변동 {x['price_variation']:+.2f}% | "
+            f"{x['previous_count']}→{x['recent_count']}건 | "
+            f"{x['volume_ratio']:.2f}배 | "
+            f"{x['trend_confidence']}"
+        )
+
+    print("-" * 125)
+
+    if conflicts:
+
+        print(
+            "⚠️ 상승둔화 V3가 실제 15% 이상 급등과 "
+            f"{len(conflicts)}건 충돌"
+        )
+
+    else:
+
+        print(
+            "✅ 상승둔화 V3와 15% 이상 실제 급등의 "
+            "충돌 없음"
+        )
+
+def analyze_uptrend_slowdown_exception_v6(results):
+
+    print()
+    print("=" * 120)
+    print("🚀 상승둔화 V3 예외조건 V6 임계값 자동 탐색")
+    print("=" * 120)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        slowdown_signal = bool(
+            r.get(
+                "uptrend_slowdown_signal",
+                False
+            )
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+        ):
+            continue
+
+        actual_change_rate = (
+            (
+                actual_future_price
+                - current_price
+            )
+            / current_price
+            * 100
+        )
+
+        valid_results.append({
+            "current_price": current_price,
+            "actual_future_price": actual_future_price,
+            "expected_rate": expected_rate,
+            "rise_rate": rise_rate,
+            "slowdown_signal": slowdown_signal,
+            "actual_change_rate": actual_change_rate,
+            "market_phase": r.get(
+                "market_phase",
+                "미확인"
+            )
+        })
+
+    if not valid_results:
+
+        print("검증 가능한 데이터가 없습니다.")
+        return
+
+    # =====================================================
+    # 현재 실제 엔진 MAE
+    # =====================================================
+
+    original_errors = []
+
+    for r in valid_results:
+
+        predicted_price = (
+            r["current_price"]
+            * (
+                1
+                + r["expected_rate"] / 100
+            )
+        )
+
+        error = abs(
+            (
+                predicted_price
+                - r["actual_future_price"]
+            )
+            / r["actual_future_price"]
+            * 100
+        )
+
+        original_errors.append(
+            error
+        )
+
+    original_mae = (
+        sum(original_errors)
+        / len(original_errors)
+    )
+
+    # =====================================================
+    # 거래상승률 예외 임계값 후보
+    # =====================================================
+
+    thresholds = [
+        8.0,
+        9.0,
+        10.0,
+        11.0,
+        12.0,
+        13.0,
+        14.0,
+        15.0,
+        16.0
+    ]
+
+    search_results = []
+
+    for threshold in thresholds:
+
+        all_errors = []
+
+        signal_original_errors = []
+        signal_exception_errors = []
+
+        exception_count = 0
+
+        surge_rescued = 0
+        non_surge_exception = 0
+
+        improved = 0
+        worsened = 0
+        same = 0
+
+        for r in valid_results:
+
+            adjusted_rate = (
+                r["expected_rate"]
+            )
+
+            # =============================================
+            # 현재 V3 신호가 실제 발생했고,
+            # 거래상승률이 매우 강하면
+            # 50% 둔화보정을 가상으로 해제
+            #
+            # 현재 expected_rate는 이미 50% 적용값이므로
+            # 원래 값으로 복원하기 위해 ×2
+            # =============================================
+
+            exception_signal = (
+                r["slowdown_signal"]
+                and
+                r["rise_rate"] >= threshold
+            )
+
+            if exception_signal:
+
+                adjusted_rate = (
+                    r["expected_rate"]
+                    * 2
+                )
+
+                exception_count += 1
+
+                if (
+                    r["actual_change_rate"]
+                    >= 15.0
+                ):
+                    surge_rescued += 1
+
+                else:
+                    non_surge_exception += 1
+
+            # ---------------------------------------------
+            # 기존 실제 엔진 예상가격
+            # ---------------------------------------------
+
+            original_price = (
+                r["current_price"]
+                * (
+                    1
+                    + r["expected_rate"] / 100
+                )
+            )
+
+            # ---------------------------------------------
+            # V6 가상 예외 적용 예상가격
+            # ---------------------------------------------
+
+            adjusted_price = (
+                r["current_price"]
+                * (
+                    1
+                    + adjusted_rate / 100
+                )
+            )
+
+            original_error = abs(
+                (
+                    original_price
+                    - r["actual_future_price"]
+                )
+                / r["actual_future_price"]
+                * 100
+            )
+
+            adjusted_error = abs(
+                (
+                    adjusted_price
+                    - r["actual_future_price"]
+                )
+                / r["actual_future_price"]
+                * 100
+            )
+
+            all_errors.append(
+                adjusted_error
+            )
+
+            if exception_signal:
+
+                signal_original_errors.append(
+                    original_error
+                )
+
+                signal_exception_errors.append(
+                    adjusted_error
+                )
+
+                diff = (
+                    original_error
+                    - adjusted_error
+                )
+
+                if diff > 0.001:
+                    improved += 1
+
+                elif diff < -0.001:
+                    worsened += 1
+
+                else:
+                    same += 1
+
+        total_mae = (
+            sum(all_errors)
+            / len(all_errors)
+        )
+
+        if signal_exception_errors:
+
+            signal_original_mae = (
+                sum(signal_original_errors)
+                / len(signal_original_errors)
+            )
+
+            signal_exception_mae = (
+                sum(signal_exception_errors)
+                / len(signal_exception_errors)
+            )
+
+        else:
+
+            signal_original_mae = 0.0
+            signal_exception_mae = 0.0
+
+        search_results.append({
+            "threshold": threshold,
+            "total_mae": total_mae,
+
+            "exception_count": exception_count,
+
+            "surge_rescued": surge_rescued,
+
+            "non_surge_exception":
+                non_surge_exception,
+
+            "signal_original_mae":
+                signal_original_mae,
+
+            "signal_exception_mae":
+                signal_exception_mae,
+
+            "improved": improved,
+            "worsened": worsened,
+            "same": same
+        })
+
+    # =====================================================
+    # 전체 MAE 낮은 순서
+    # =====================================================
+
+    search_results.sort(
+        key=lambda x: (
+            x["total_mae"],
+            -x["surge_rescued"],
+            x["non_surge_exception"]
+        )
+    )
+
+    print(
+        f"전체 테스트 : "
+        f"{len(valid_results)}건"
+    )
+
+    slowdown_count = sum(
+        1
+        for r in valid_results
+        if r["slowdown_signal"]
+    )
+
+    print(
+        f"실제 상승둔화 V3 신호 : "
+        f"{slowdown_count}건"
+    )
+
+    print(
+        f"현재 실제엔진 MAE : "
+        f"{original_mae:.2f}%"
+    )
+
+    print()
+
+    print(
+        "순위 | 거래상승률 예외기준 | "
+        "예외적용 | 급등구제 | 비급등예외 | "
+        "전체 MAE | 신호기존 MAE | 신호예외 MAE | "
+        "개선/악화/동일"
+    )
+
+    print("-" * 120)
+
+    for rank, x in enumerate(
+        search_results,
+        start=1
+    ):
+
+        print(
+            f"{rank}위 | "
+            f"거래상승률 >= "
+            f"+{x['threshold']:.1f}% | "
+            f"예외 {x['exception_count']}건 | "
+            f"급등구제 {x['surge_rescued']}건 | "
+            f"비급등 {x['non_surge_exception']}건 | "
+            f"전체 {x['total_mae']:.2f}% | "
+            f"신호기존 "
+            f"{x['signal_original_mae']:.2f}% | "
+            f"신호예외 "
+            f"{x['signal_exception_mae']:.2f}% | "
+            f"{x['improved']}/"
+            f"{x['worsened']}/"
+            f"{x['same']}"
+        )
+
+    if search_results:
+
+        best = (
+            search_results[0]
+        )
+
+        print("-" * 120)
+
+        print(
+            f"🏆 최적 거래상승률 예외 기준 : "
+            f"+{best['threshold']:.1f}% 이상"
+        )
+
+        print(
+            f"🏆 예외 적용 : "
+            f"{best['exception_count']}건"
+        )
+
+        print(
+            f"🏆 실제 급등 구제 : "
+            f"{best['surge_rescued']}건"
+        )
+
+        print(
+            f"🏆 비급등 예외 적용 : "
+            f"{best['non_surge_exception']}건"
+        )
+
+        print(
+            f"🏆 현재 엔진 MAE : "
+            f"{original_mae:.2f}%"
+        )
+
+        print(
+            f"🏆 V6 가상정책 MAE : "
+            f"{best['total_mae']:.2f}%"
+        )
+
+        print(
+            f"🏆 전체 개선효과 : "
+            f"{original_mae - best['total_mae']:+.2f}%p"
+        )
+
+        print(
+            f"🏆 예외구간 기존 MAE : "
+            f"{best['signal_original_mae']:.2f}%"
+        )
+
+        print(
+            f"🏆 예외구간 V6 MAE : "
+            f"{best['signal_exception_mae']:.2f}%"
+        )
+
+        print(
+            f"🏆 예외구간 개선 / 악화 / 동일 : "
+            f"{best['improved']} / "
+            f"{best['worsened']} / "
+            f"{best['same']}"
+        )
+
+    print("=" * 120)   
+
+def analyze_surge_lead_time_v7(results):
+
+    print()
+    print("=" * 125)
+    print("🚀 급등 조기신호 V7 선행기간 분석")
+    print("=" * 125)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        actual_future_price = float(
+            r.get("actual_future_price", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        if (
+            current_price <= 0
+            or actual_future_price <= 0
+        ):
+            continue
+
+        actual_change_rate = (
+            (
+                actual_future_price
+                - current_price
+            )
+            / current_price
+            * 100
+        )
+
+        rate_gap = (
+            rise_rate
+            - expected_rate
+        )
+
+        if previous_count > 0:
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+        else:
+            volume_ratio = 0.0
+
+        # =====================================================
+        # 급등 V1 관심신호
+        # =====================================================
+
+        surge_signal = (
+            rise_rate >= 4.0
+            and rate_gap >= 2.0
+        )
+
+        # =====================================================
+        # 강한 급등신호
+        # =====================================================
+
+        strong_surge_signal = (
+            surge_signal
+            and previous_count > 0
+            and volume_ratio >= 2.0
+        )
+
+        valid_results.append({
+            "apt_name": r.get(
+                "apt_name",
+                ""
+            ),
+
+            "analysis_date": r.get(
+                "analysis_date",
+                ""
+            ),
+
+            "actual_change_rate":
+                actual_change_rate,
+
+            "rise_rate":
+                rise_rate,
+
+            "expected_rate":
+                expected_rate,
+
+            "rate_gap":
+                rate_gap,
+
+            "volume_ratio":
+                volume_ratio,
+
+            "surge_signal":
+                surge_signal,
+
+            "strong_surge_signal":
+                strong_surge_signal
+        })
+
+    if not valid_results:
+
+        print(
+            "검증 가능한 데이터가 없습니다."
+        )
+
+        return
+
+    # =====================================================
+    # 날짜순 정렬
+    # =====================================================
+
+    valid_results.sort(
+        key=lambda x: (
+            x["apt_name"],
+            str(x["analysis_date"])
+        )
+    )
+
+    # =====================================================
+    # 단지별 분리
+    # =====================================================
+
+    apt_groups = {}
+
+    for r in valid_results:
+
+        apt_name = r["apt_name"]
+
+        if apt_name not in apt_groups:
+            apt_groups[apt_name] = []
+
+        apt_groups[apt_name].append(r)
+
+    # =====================================================
+    # 선행개월 집계
+    #
+    # 기준:
+    # 신호 발생 후 1~6개월 내
+    # 실제 +15% 이상 급등 여부 확인
+    # =====================================================
+
+    lead_months = [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+    ]
+
+    summary = {
+        month: {
+            "signal_count": 0,
+            "caught": 0,
+            "strong_signal_count": 0,
+            "strong_caught": 0
+        }
+        for month in lead_months
+    }
+
+    detail_rows = []
+
+    for apt_name, rows in apt_groups.items():
+
+        for i, row in enumerate(rows):
+
+            if not row["surge_signal"]:
+                continue
+
+            for lead in lead_months:
+
+                target_index = (
+                    i + lead
+                )
+
+                if target_index >= len(rows):
+                    continue
+
+                future_row = (
+                    rows[target_index]
+                )
+
+                summary[lead][
+                    "signal_count"
+                ] += 1
+
+                if (
+                    future_row[
+                        "actual_change_rate"
+                    ] >= 15.0
+                ):
+                    summary[lead][
+                        "caught"
+                    ] += 1
+
+                    detail_rows.append({
+                        "apt_name":
+                            apt_name,
+
+                        "signal_date":
+                            row[
+                                "analysis_date"
+                            ],
+
+                        "lead":
+                            lead,
+
+                        "target_date":
+                            future_row[
+                                "analysis_date"
+                            ],
+
+                        "rise_rate":
+                            row[
+                                "rise_rate"
+                            ],
+
+                        "expected_rate":
+                            row[
+                                "expected_rate"
+                            ],
+
+                        "volume_ratio":
+                            row[
+                                "volume_ratio"
+                            ],
+
+                        "future_change":
+                            future_row[
+                                "actual_change_rate"
+                            ],
+
+                        "strong":
+                            row[
+                                "strong_surge_signal"
+                            ]
+                    })
+
+                if (
+                    row[
+                        "strong_surge_signal"
+                    ]
+                ):
+
+                    summary[lead][
+                        "strong_signal_count"
+                    ] += 1
+
+                    if (
+                        future_row[
+                            "actual_change_rate"
+                        ] >= 15.0
+                    ):
+                        summary[lead][
+                            "strong_caught"
+                        ] += 1
+
+    # =====================================================
+    # 출력
+    # =====================================================
+
+    print(
+        "선행기간 | 일반신호 | 급등포착 | 적중률 | "
+        "강한신호 | 급등포착 | 강한신호 적중률"
+    )
+
+    print("-" * 125)
+
+    for lead in lead_months:
+
+        s = summary[lead]
+
+        signal_count = (
+            s["signal_count"]
+        )
+
+        caught = (
+            s["caught"]
+        )
+
+        strong_count = (
+            s["strong_signal_count"]
+        )
+
+        strong_caught = (
+            s["strong_caught"]
+        )
+
+        hit_rate = (
+            caught
+            / signal_count
+            * 100
+            if signal_count > 0
+            else 0
+        )
+
+        strong_hit_rate = (
+            strong_caught
+            / strong_count
+            * 100
+            if strong_count > 0
+            else 0
+        )
+
+        print(
+            f"{lead}개월 | "
+            f"{signal_count:>3}건 | "
+            f"{caught:>3}건 | "
+            f"{hit_rate:>5.1f}% | "
+            f"{strong_count:>3}건 | "
+            f"{strong_caught:>3}건 | "
+            f"{strong_hit_rate:>5.1f}%"
+        )
+
+    print("-" * 125)
+
+    # =====================================================
+    # 실제 포착 사례 일부 출력
+    # =====================================================
+
+    detail_rows.sort(
+        key=lambda x: (
+            x["lead"],
+            -x["future_change"]
+        )
+    )
+
+    print()
+    print(
+        "📋 급등신호 → 실제 급등 사례"
+    )
+
+    print("-" * 125)
+
+    for x in detail_rows[:40]:
+
+        strength = (
+            "🔥 강한신호"
+            if x["strong"]
+            else "관심신호"
+        )
+
+        print(
+            f'{x["apt_name"]} | '
+            f'신호 {x["signal_date"]} | '
+            f'{x["lead"]}개월 후 | '
+            f'목표 {x["target_date"]} | '
+            f'거래상승률 '
+            f'{x["rise_rate"]:+.2f}% | '
+            f'예상 '
+            f'{x["expected_rate"]:+.2f}% | '
+            f'거래비 '
+            f'{x["volume_ratio"]:.2f}배 | '
+            f'실제 '
+            f'{x["future_change"]:+.2f}% | '
+            f'{strength}'
+        )
+
+    print("=" * 125)   
+
+def analyze_surge_price_path_v71(results):
+
+    print()
+    print("=" * 130)
+    print("🚀 급등 조기신호 V7.1 실제가격 경로 분석")
+    print("=" * 130)
+
+    valid_results = []
+
+    for r in results:
+
+        current_price = float(
+            r.get("current_price", 0) or 0
+        )
+
+        rise_rate = float(
+            r.get("rise_rate", 0) or 0
+        )
+
+        expected_rate = float(
+            r.get("expected_rate", 0) or 0
+        )
+
+        previous_count = int(
+            r.get("previous_3m_count", 0) or 0
+        )
+
+        recent_count = int(
+            r.get("recent_3m_count", 0) or 0
+        )
+
+        if current_price <= 0:
+            continue
+
+        if previous_count > 0:
+            volume_ratio = (
+                recent_count
+                / previous_count
+            )
+        else:
+            volume_ratio = 0.0
+
+        rate_gap = (
+            rise_rate
+            - expected_rate
+        )
+
+        surge_signal = (
+            rise_rate >= 4.0
+            and rate_gap >= 2.0
+        )
+
+        strong_surge_signal = (
+            surge_signal
+            and previous_count > 0
+            and volume_ratio >= 2.0
+        )
+
+        valid_results.append({
+            "apt_name": r.get(
+                "apt_name",
+                ""
+            ),
+
+            "analysis_date": r.get(
+                "analysis_date",
+                ""
+            ),
+
+            "current_price":
+                current_price,
+
+            "rise_rate":
+                rise_rate,
+
+            "expected_rate":
+                expected_rate,
+
+            "rate_gap":
+                rate_gap,
+
+            "volume_ratio":
+                volume_ratio,
+
+            "surge_signal":
+                surge_signal,
+
+            "strong_surge_signal":
+                strong_surge_signal
+        })
+
+    if not valid_results:
+
+        print(
+            "검증 가능한 데이터가 없습니다."
+        )
+
+        return
+
+    # =====================================================
+    # 단지별 날짜순 정렬
+    # =====================================================
+
+    valid_results.sort(
+        key=lambda x: (
+            x["apt_name"],
+            str(x["analysis_date"])
+        )
+    )
+
+    apt_groups = {}
+
+    for r in valid_results:
+
+        apt_name = r["apt_name"]
+
+        if apt_name not in apt_groups:
+            apt_groups[apt_name] = []
+
+        apt_groups[apt_name].append(r)
+
+    # =====================================================
+    # 1~6개월 실제 가격변동 경로 집계
+    # =====================================================
+
+    lead_months = [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+    ]
+
+    summary = {
+        lead: {
+            "signal_count": 0,
+            "sum_change": 0.0,
+            "rise_5": 0,
+            "rise_10": 0,
+            "rise_15": 0,
+
+            "strong_count": 0,
+            "strong_sum_change": 0.0,
+            "strong_rise_5": 0,
+            "strong_rise_10": 0,
+            "strong_rise_15": 0
+        }
+        for lead in lead_months
+    }
+
+    detail_rows = []
+
+    for apt_name, rows in apt_groups.items():
+
+        for i, row in enumerate(rows):
+
+            if not row["surge_signal"]:
+                continue
+
+            base_price = (
+                row["current_price"]
+            )
+
+            path_changes = []
+
+            for lead in lead_months:
+
+                target_index = (
+                    i + lead
+                )
+
+                if target_index >= len(rows):
+                    continue
+
+                target_row = (
+                    rows[target_index]
+                )
+
+                target_price = (
+                    target_row[
+                        "current_price"
+                    ]
+                )
+
+                if (
+                    base_price <= 0
+                    or target_price <= 0
+                ):
+                    continue
+
+                actual_change = (
+                    (
+                        target_price
+                        - base_price
+                    )
+                    / base_price
+                    * 100
+                )
+
+                path_changes.append(
+                    (
+                        lead,
+                        actual_change
+                    )
+                )
+
+                s = summary[lead]
+
+                s["signal_count"] += 1
+                s["sum_change"] += (
+                    actual_change
+                )
+
+                if actual_change >= 5:
+                    s["rise_5"] += 1
+
+                if actual_change >= 10:
+                    s["rise_10"] += 1
+
+                if actual_change >= 15:
+                    s["rise_15"] += 1
+
+                if row[
+                    "strong_surge_signal"
+                ]:
+
+                    s["strong_count"] += 1
+
+                    s[
+                        "strong_sum_change"
+                    ] += actual_change
+
+                    if actual_change >= 5:
+                        s[
+                            "strong_rise_5"
+                        ] += 1
+
+                    if actual_change >= 10:
+                        s[
+                            "strong_rise_10"
+                        ] += 1
+
+                    if actual_change >= 15:
+                        s[
+                            "strong_rise_15"
+                        ] += 1
+
+            # =================================================
+            # 신호 1건별 1~6개월 최대 상승폭
+            # =================================================
+
+            if path_changes:
+
+                max_lead, max_change = max(
+                    path_changes,
+                    key=lambda x: x[1]
+                )
+
+                detail_rows.append({
+                    "apt_name":
+                        apt_name,
+
+                    "signal_date":
+                        row[
+                            "analysis_date"
+                        ],
+
+                    "rise_rate":
+                        row[
+                            "rise_rate"
+                        ],
+
+                    "expected_rate":
+                        row[
+                            "expected_rate"
+                        ],
+
+                    "volume_ratio":
+                        row[
+                            "volume_ratio"
+                        ],
+
+                    "max_lead":
+                        max_lead,
+
+                    "max_change":
+                        max_change,
+
+                    "strong":
+                        row[
+                            "strong_surge_signal"
+                        ],
+
+                    "path":
+                        path_changes
+                })
+
+    # =====================================================
+    # 요약 출력
+    # =====================================================
+
+    print(
+        "선행기간 | 일반신호 | 평균상승률 | "
+        "+5% | +10% | +15% | "
+        "강한신호 | 평균상승률 | "
+        "+5% | +10% | +15%"
+    )
+
+    print("-" * 130)
+
+    for lead in lead_months:
+
+        s = summary[lead]
+
+        count = (
+            s["signal_count"]
+        )
+
+        strong_count = (
+            s["strong_count"]
+        )
+
+        avg_change = (
+            s["sum_change"]
+            / count
+            if count > 0
+            else 0
+        )
+
+        strong_avg = (
+            s["strong_sum_change"]
+            / strong_count
+            if strong_count > 0
+            else 0
+        )
+
+        print(
+            f"{lead}개월 | "
+            f"{count:>3}건 | "
+            f"{avg_change:+6.2f}% | "
+            f"{s['rise_5']:>3} | "
+            f"{s['rise_10']:>3} | "
+            f"{s['rise_15']:>3} | "
+            f"{strong_count:>3}건 | "
+            f"{strong_avg:+6.2f}% | "
+            f"{s['strong_rise_5']:>3} | "
+            f"{s['strong_rise_10']:>3} | "
+            f"{s['strong_rise_15']:>3}"
+        )
+
+    print("-" * 130)
+
+    # =====================================================
+    # 6개월 내 최대상승률 기준 통계
+    # =====================================================
+
+    if detail_rows:
+
+        max_5 = sum(
+            1
+            for x in detail_rows
+            if x["max_change"] >= 5
+        )
+
+        max_10 = sum(
+            1
+            for x in detail_rows
+            if x["max_change"] >= 10
+        )
+
+        max_15 = sum(
+            1
+            for x in detail_rows
+            if x["max_change"] >= 15
+        )
+
+        total = len(
+            detail_rows
+        )
+
+        print(
+            f"신호 발생 후 6개월 내 "
+            f"최대 +5% 이상 : "
+            f"{max_5}/{total}건 "
+            f"({max_5 / total * 100:.1f}%)"
+        )
+
+        print(
+            f"신호 발생 후 6개월 내 "
+            f"최대 +10% 이상 : "
+            f"{max_10}/{total}건 "
+            f"({max_10 / total * 100:.1f}%)"
+        )
+
+        print(
+            f"신호 발생 후 6개월 내 "
+            f"최대 +15% 이상 : "
+            f"{max_15}/{total}건 "
+            f"({max_15 / total * 100:.1f}%)"
+        )
+
+    print()
+    print("-" * 130)
+    print("📋 신호별 실제 가격경로")
+    print("-" * 130)
+
+    detail_rows.sort(
+        key=lambda x: (
+            -x["max_change"]
+        )
+    )
+
+    for x in detail_rows[:30]:
+
+        path_text = " | ".join(
+            f"{lead}M {change:+.1f}%"
+            for lead, change in x["path"]
+        )
+
+        strength = (
+            "🔥 강한신호"
+            if x["strong"]
+            else "관심신호"
+        )
+
+        print(
+            f'{x["apt_name"]} | '
+            f'{x["signal_date"]} | '
+            f'거래상승률 '
+            f'{x["rise_rate"]:+.2f}% | '
+            f'예상 '
+            f'{x["expected_rate"]:+.2f}% | '
+            f'거래비 '
+            f'{x["volume_ratio"]:.2f}배 | '
+            f'최대 '
+            f'{x["max_change"]:+.2f}% '
+            f'({x["max_lead"]}개월) | '
+            f'{strength} | '
+            f'{path_text}'
+        )
+
+    print("=" * 130)
+
+def analyze_surge_price_consistency_v72(results):
+
+    print()
+    print("=" * 120)
+    print("🔍 급등 V7.2 가격 기준 일치성 검증")
+    print("=" * 120)
+
+    # 대표 검증 사례
+    target_apt = "잠실엘스"
+    target_date = "2025-05-06"
+
+    target = None
+
+    # =====================================================
+    # ① 기준일 데이터 찾기
+    # =====================================================
+
+    for r in results:
+
+        apt_name = str(
+            r.get("apt_name", "")
+        )
+
+        analysis_date = str(
+            r.get("analysis_date", "")
+        )
+
+        if (
+            apt_name == target_apt
+            and analysis_date == target_date
+        ):
+            target = r
+            break
+
+    if target is None:
+
+        print(
+            f"⚠️ 대상 데이터를 찾지 못했습니다: "
+            f"{target_apt} | {target_date}"
+        )
+
+        return
+
+    # =====================================================
+    # ② 기준일 데이터
+    # =====================================================
+
+    current_price = float(
+        target.get(
+            "current_price",
+            0
+        ) or 0
+    )
+
+    actual_future_price = float(
+        target.get(
+            "actual_future_price",
+            0
+        ) or 0
+    )
+
+    actual_change_rate = float(
+        target.get(
+            "actual_change_rate",
+            0
+        ) or 0
+    )
+
+    expected_rate = float(
+        target.get(
+            "expected_rate",
+            0
+        ) or 0
+    )
+
+    # =====================================================
+    # ③ results에서 6개월 뒤 행 찾기
+    #
+    # 현재 테스트가 매월 6일 기준이므로
+    # 2025-05-06 → 2025-11-06
+    # =====================================================
+
+    from datetime import datetime
+
+    try:
+
+        base_date = datetime.strptime(
+            target_date,
+            "%Y-%m-%d"
+        )
+
+        target_month_index = (
+            base_date.year * 12
+            + base_date.month
+            + 6
+        )
+
+        future_year = (
+            (target_month_index - 1)
+            // 12
+        )
+
+        future_month = (
+            (target_month_index - 1)
+            % 12
+            + 1
+        )
+
+        future_date = (
+            f"{future_year:04d}-"
+            f"{future_month:02d}-"
+            f"{base_date.day:02d}"
+        )
+
+    except Exception as e:
+
+        print(
+            "⚠️ 날짜 계산 오류:",
+            e
+        )
+
+        return
+
+    future_row = None
+
+    for r in results:
+
+        if (
+            str(
+                r.get(
+                    "apt_name",
+                    ""
+                )
+            ) == target_apt
+
+            and
+
+            str(
+                r.get(
+                    "analysis_date",
+                    ""
+                )
+            ) == future_date
+        ):
+
+            future_row = r
+            break
+
+    # =====================================================
+    # ④ 6개월 뒤 current_price
+    # =====================================================
+
+    future_current_price = 0.0
+
+    if future_row:
+
+        future_current_price = float(
+            future_row.get(
+                "current_price",
+                0
+            ) or 0
+        )
+
+    # =====================================================
+    # ⑤ current_price끼리 직접 변동률
+    # =====================================================
+
+    current_price_path_rate = None
+
+    if (
+        current_price > 0
+        and future_current_price > 0
+    ):
+
+        current_price_path_rate = (
+            (
+                future_current_price
+                - current_price
+            )
+            / current_price
+            * 100
+        )
+
+    # =====================================================
+    # ⑥ actual_change_rate 역산
+    #
+    # actual_future_price가 존재한다면
+    # actual_change_rate가 current_price 기준인지 확인
+    # =====================================================
+
+    recalculated_actual_rate = None
+
+    if (
+        current_price > 0
+        and actual_future_price > 0
+    ):
+
+        recalculated_actual_rate = (
+            (
+                actual_future_price
+                - current_price
+            )
+            / current_price
+            * 100
+        )
+
+    # =====================================================
+    # 출력
+    # =====================================================
+
+    print(
+        f"단지명                : "
+        f"{target_apt}"
+    )
+
+    print(
+        f"분석기준일            : "
+        f"{target_date}"
+    )
+
+    print(
+        f"6개월 뒤 비교일       : "
+        f"{future_date}"
+    )
+
+    print("-" * 120)
+
+    print(
+        f"① 기준일 current_price        : "
+        f"{current_price:,.0f}만원"
+    )
+
+    print(
+        f"② actual_future_price         : "
+        f"{actual_future_price:,.0f}만원"
+    )
+
+    print(
+        f"③ 저장 actual_change_rate     : "
+        f"{actual_change_rate:+.2f}%"
+    )
+
+    print(
+        f"   저장 expected_rate          : "
+        f"{expected_rate:+.2f}%"
+    )
+
+    print("-" * 120)
+
+    if future_row:
+
+        print(
+            f"④ {future_date} current_price : "
+            f"{future_current_price:,.0f}만원"
+        )
+
+    else:
+
+        print(
+            f"④ {future_date} current_price : "
+            f"데이터 없음"
+        )
+
+    if current_price_path_rate is not None:
+
+        print(
+            f"⑤ current_price 직접변동률     : "
+            f"{current_price_path_rate:+.2f}%"
+        )
+
+    else:
+
+        print(
+            "⑤ current_price 직접변동률     : "
+            "계산 불가"
+        )
+
+    print("-" * 120)
+
+    if recalculated_actual_rate is not None:
+
+        print(
+            f"⑥ current→actual_future 재계산 : "
+            f"{recalculated_actual_rate:+.2f}%"
+        )
+
+        difference = (
+            actual_change_rate
+            - recalculated_actual_rate
+        )
+
+        print(
+            f"⑦ 저장률-재계산률 차이         : "
+            f"{difference:+.4f}%p"
+        )
+
+    else:
+
+        print(
+            "⑥ current→actual_future 재계산 : "
+            "계산 불가"
+        )
+
+    print("-" * 120)
+
+    # =====================================================
+    # 자동 판정
+    # =====================================================
+
+    if recalculated_actual_rate is not None:
+
+        difference = abs(
+            actual_change_rate
+            - recalculated_actual_rate
+        )
+
+        if difference <= 0.1:
+
+            print(
+                "✅ actual_change_rate는 "
+                "current_price → actual_future_price "
+                "기준으로 계산된 것으로 보입니다."
+            )
+
+        else:
+
+            print(
+                "⚠️ actual_change_rate는 "
+                "current_price → actual_future_price "
+                "단순 계산과 일치하지 않습니다."
+            )
+
+    if (
+        current_price_path_rate is not None
+        and actual_change_rate is not None
+    ):
+
+        path_gap = (
+            actual_change_rate
+            - current_price_path_rate
+        )
+
+        print(
+            f"📌 기존 실제변동률과 "
+            f"V7.1 가격경로 차이 : "
+            f"{path_gap:+.2f}%p"
+        )
+
+    print("=" * 120)
 
 def run_backtest_batch(
     region,
@@ -7956,6 +17039,84 @@ def run_backtest_multi_region(
         "results": all_results
     }
 
+def get_backtest_sale_trades(
+    region,
+    apt_name,
+    size
+):
+    """
+    백테스트 전용 과거 매매 거래 조회
+    운영 Supabase가 아니라
+    backtest_history.db를 사용한다.
+    """
+
+    conn = sqlite3.connect(
+        BACKTEST_DB_PATH
+    )
+
+    conn.row_factory = sqlite3.Row
+
+    cur = conn.cursor()
+
+    try:
+
+        cur.execute("""
+            SELECT
+                region,
+                sigungu,
+                dong,
+                apt_name,
+                size,
+                contract_date,
+                price,
+                floor,
+                source_month,
+                apt_dong
+            FROM backtest_sale_trades
+            WHERE TRIM(region || ' ' || sigungu) = ?
+              AND apt_name = ?
+              AND ROUND(size, 4) = ROUND(?, 4)
+            ORDER BY contract_date DESC
+        """, (
+            region.strip(),
+            apt_name.strip(),
+            float(size)
+        ))
+
+        rows = cur.fetchall()
+
+        result = []
+
+        for row in rows:
+
+            result.append({
+                "region": row["region"],
+                "sigungu": row["sigungu"],
+                "dong": row["dong"],
+                "apt_name": row["apt_name"],
+                "size": row["size"],
+                "date": row["contract_date"],
+                "price": row["price"],
+                "floor": row["floor"],
+                "source_month": row["source_month"],
+                "apt_dong": row["apt_dong"] or ""
+            })
+
+        print(
+            "✅ 백테스트 과거거래 조회:",
+            f"region=[{region}]",
+            f"apt_name=[{apt_name}]",
+            f"size=[{size}]",
+            f"건수=[{len(result)}]"
+        )
+
+        return result
+
+    finally:
+
+        cur.close()
+        conn.close()
+
 @app.get("/admin", response_class=HTMLResponse)
 def admin_page(pw: str = ""):
 
@@ -8172,6 +17333,53 @@ def admin_page(pw: str = ""):
     </body>
     </html>
     """
+if __name__ == "__main__":
+
+    apartments = [
+        {
+            "region": "서울특별시 강동구",
+            "apt_name": "고덕그라시움",
+            "size": 59.785
+        },
+        {
+            "region": "서울특별시 송파구",
+            "apt_name": "헬리오시티",
+            "size": 84.99
+        },
+        {
+            "region": "서울특별시 송파구",
+            "apt_name": "잠실엘스",
+            "size": 84.8
+        },
+        {
+            "region": "경기도 화성시 동탄구",
+            "apt_name": "동탄역시범예미지아파트",
+            "size": 84.8
+        },
+        {
+            "region": "경기도 수원시 영통구",
+            "apt_name": "힐스테이트영통",
+            "size": 84.8897
+        },
+        {
+            "region": "경기도 성남시 분당구",
+            "apt_name": "파크뷰",
+            "size": 84.99
+        }
+    ]
+
+    test_cases = build_monthly_backtest_cases(
+        apartments,
+        start_date="2024-07-06",
+        end_date="2026-01-06"
+    )
+
+    print(
+        f"🔥 상승장 V3 실엔진 재검증 케이스 = "
+        f"{len(test_cases)}건"
+    )
+
+    run_batch_backtest(test_cases)
 
 # =========================================================
 # ✅ 백테스트 수동 실행 영역

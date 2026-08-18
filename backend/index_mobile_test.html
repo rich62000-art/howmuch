@@ -10524,6 +10524,15 @@ function openFuturePrediction() {
         // ===== 미래예측 결과 상태 저장 =====
         lastFutureResult = data;
         isFutureReport = true;
+        console.log(
+            "🔥 미래예측 데이터신뢰도 =",
+            data.데이터신뢰도
+        );
+
+        console.log(
+            "🔥 미래예측 최근12개월거래건수 =",
+            data.최근12개월거래건수
+        );
 
         // =================================================
         // 4-1. 미래예측 결과 리포트 HTML 렌더링
@@ -11005,6 +11014,11 @@ function formatPrice(value) {
 
 function renderFuturePredictionReport(data) {
     console.log("🔥 미래예측 data 전체:", data);
+    console.log(
+        "🔥 미래예측 신뢰도 확인:",
+        data.데이터신뢰도,
+        data.최근12개월거래건수
+    );
     console.log("최근12개월그래프", data["최근12개월가격거래그래프"]);
 
     return `
@@ -11120,17 +11134,69 @@ function renderFuturePredictionReport(data) {
                                 width:100%;
                                 text-align:center;
                             ">
-                                ${formatPrice(data["6개월예상하한가"])} ~ ${formatPrice(data["6개월예상상한가"])}
+                                ${
+                                    data.데이터신뢰도 === "예측 보류"
+                                        ? `
+                                            <span style="
+                                                font-size:18px;
+                                                font-weight:900;
+                                                color:#64748b;
+                                            ">
+                                                예측 보류
+                                            </span>
+                                        `
+                                        : `${formatPrice(data["6개월예상하한가"])} ~ ${formatPrice(data["6개월예상상한가"])}`
+                                }
+
+                                ${
+                                    data.데이터신뢰도 === "예측 보류"
+                                        ? `
+                                            <div style="
+                                                margin-top:7px;
+                                                width:100%;
+                                                text-align:center;
+                                                font-size:11px;
+                                                line-height:1.25;
+                                                font-weight:800;
+                                                color:#d97706;
+                                                white-space:nowrap;
+                                            ">
+                                                ⚠️ 최근 거래 없음
+                                            </div>
+                                        `
+                                        : data.데이터신뢰도 === "거래 부족"
+                                            ? `
+                                                <div style="
+                                                    margin-top:7px;
+                                                    width:100%;
+                                                    text-align:center;
+                                                    font-size:11px;
+                                                    line-height:1.25;
+                                                    font-weight:800;
+                                                    color:#d97706;
+                                                    white-space:nowrap;
+                                                ">
+                                                    ⚠️ 거래 부족 · 예측 참고용
+                                                </div>
+                                            `
+                                            : ""
+                                }
                             </strong>
-                            <div style="
-                                margin-top:5px;
-                                font-size:12px;
-                                color:#475569;
-                                font-weight:700;
-                                text-align:center;
-                            ">
-                                중심가 ${formatPrice(data["6개월예상중심가"])}
-                            </div>
+                            ${
+                                data.데이터신뢰도 !== "예측 보류"
+                                    ? `
+                                        <div style="
+                                            margin-top:5px;
+                                            font-size:12px;
+                                            color:#475569;
+                                            font-weight:700;
+                                            text-align:center;
+                                        ">
+                                            중심가 ${formatPrice(data["6개월예상중심가"])}
+                                        </div>
+                                    `
+                                    : ""
+                            }
                         </div>
 
                         <div style="
@@ -11852,9 +11918,25 @@ function renderFuturePredictionReport(data) {
                     padding-right:8px;
                     word-break:keep-all;
                 ">
-                    ${String(data.AI총평 || "")
+                    ${[
+                        data.하락장전환신호
+                            ? "📉 하락 흐름은 이어지고 있지만 거래량 회복 신호가 확인되어 추가 하락 압력은 이전보다 낮아진 구간입니다."
+                            : "",
+
+                        data.상승장둔화신호
+                            ? "📈 상승 흐름은 유지되고 있지만 거래량이 둔화되어 향후 상승 탄력은 이전보다 약해질 가능성이 있습니다."
+                            : "",
+
+                        String(data.AI총평 || "")
+                    ]
+                        .filter(Boolean)
+                        .join("\n")
                         .split("\n")
-                        .map(line => `<div style="margin-bottom:6px;">${line}</div>`)
+                        .map(line => `
+                            <div style="margin-bottom:6px;">
+                                ${line}
+                            </div>
+                        `)
                         .join("")}
                 </div>
 

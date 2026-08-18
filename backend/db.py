@@ -2255,6 +2255,8 @@ def delete_apt_sale_trades_by_month(region, sigungu, source_month):
         cur.close()
         release_pg_connection(conn)
 
+
+
 if __name__ == "__main__":
     # create_tables()
     check_db_status()
